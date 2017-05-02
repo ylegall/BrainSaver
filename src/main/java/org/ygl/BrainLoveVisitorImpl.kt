@@ -34,6 +34,12 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
         return result
     }
 
+    override fun visitStatement(ctx: StatementContext?): Symbol? {
+        val result = super.visitStatement(ctx)
+        codegen.currentScope().deleteTemps()
+        return result
+    }
+
     override fun visitAssignmentStatement(ctx: AssignmentStatementContext?): Symbol? {
         if (ctx == null) throw Exception("null AssignmentStatementContext")
         val lhs = ctx.lhs.text
@@ -42,50 +48,53 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
 
         val expResult = this.visit(rhs) ?: throw Exception("null rhs expression result")
 
-        var lhsSymbol = codegen.currentScope().getSymbol(lhs)
-        if (lhsSymbol == null) {
-            lhsSymbol = codegen.currentScope().createSymbol(lhs, expResult.size, expResult.type)
-        } else {
-            if (lhsSymbol.type != expResult.type) throw Exception("type mismatch")
-        }
-
         // TODO: implement operators
-        when (op) {
-            "="  -> assign(lhsSymbol, expResult)
-        //"+=" -> print("x == 2")
-        //"-=" -> print("x == 2")
-        //"*=" -> print("x == 2")
-        //"/=" -> print("x == 2")
-        //"%=" -> print("x == 2")
+        val result = when (op) {
+            "="  -> codegen.assign(lhs, expResult)
+            "+=" -> codegen.opAssign(lhs, expResult, codegen::addTo)
+            "-=" -> codegen.opAssign(lhs, expResult, codegen::subtractFrom)
+            "*=" -> codegen.opAssign(lhs, expResult, codegen::multiplyBy)
+            "/=" -> codegen.opAssign(lhs, expResult, codegen::divideBy)
+            "%=" -> codegen.opAssign(lhs, expResult, codegen::modBy)
             else -> {
                 throw Exception("unknown assignment operator: " + op)
             }
         }
-        return lhsSymbol
-    }
-
-    private fun assign(lhs: Symbol, rhs: Symbol): Symbol {
-        if (rhs.isConstant()) {
-            when (rhs.type) {
-                Type.STRING -> codegen.loadString(lhs, rhs.value as String)
-                Type.INT    -> codegen.set(lhs, rhs.value as Int)
-            }
-        } else {
-            codegen.assign(lhs, rhs)
-        }
-        return lhs
+        return result
     }
 
     override fun visitPrintStatement(ctx: PrintStatementContext?): Symbol? {
         if (ctx == null) throw Exception("null PrintStatementContext")
         val scope = codegen.currentScope()
-        var sym = if (ctx.exp() is AtomExpContext) {
-            scope.getSymbol(ctx.exp().text)
-        } else {
-            visit(ctx.exp())
-        } ?: throw Exception("null argument to print()")
 
-        return codegen.print(sym)
+        val exp = ctx.exp()
+        when (exp) {
+            is AtomIdContext -> {
+                val symbol = scope.getSymbol(ctx.exp().text) ?:
+                        throw Exception("undefined identifier: ${ctx.exp().text}")
+                return codegen.print(symbol)
+            }
+            is AtomStrContext -> {
+                val str = (exp as AtomStrContext).text
+                val chars = removeQuotes(str)
+                codegen.printImmediate(chars)
+                return null
+            }
+            else -> {
+                val symbol = visit(exp) ?: throw Exception("null argument to print()")
+                return codegen.print(symbol)
+            }
+        }
+    }
+
+    private fun removeQuotes(str: String) = str.trim().substring(1 .. str.length-2)
+
+    override fun visitReadStatement(ctx: ReadStatementContext?): Symbol? {
+        if (ctx == null) throw Exception("null ReadStatementContext")
+        val id = ctx.Identifier().text
+        var sym = codegen.currentScope().getOrCreateSymbol(id)
+        codegen.readInt(sym)
+        return sym
     }
 
     override fun visitAtomId(ctx: AtomIdContext?): Symbol? {
@@ -98,10 +107,10 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
 
     override fun visitAtomStr(ctx: AtomStrContext?): Symbol? {
         val scope = codegen.currentScope()
-        val str = ctx?.StringLiteral()?.text
-        val chars = str?.substring(1 .. str.length-2) ?: throw Exception("null string literal")
+        val str = ctx?.StringLiteral()?.text ?: throw Exception("null string literal")
+        val chars = removeQuotes(str)
         val tempSymbol = scope.getTempSymbol(Type.STRING, chars.length)
-        //codegen.loadString(tempSymbol, chars)
+        codegen.loadString(tempSymbol, chars)
         tempSymbol.value = chars
         return tempSymbol
     }
@@ -109,9 +118,9 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
     override fun visitAtomInt(ctx: AtomIntContext?): Symbol? {
         val scope = codegen.currentScope()
         val valueStr = ctx?.IntegerLiteral()?.text ?: throw Exception("null integer literal")
-        val value = Integer.parseInt(valueStr) % 256
+        val value = Integer.parseInt(valueStr)
+        if (value >= 256) throw Exception("integer overflow: $value")
         val tempSymbol = scope.getTempSymbol(Type.INT)
-        //codegen.set(tempSymbol, value)
         tempSymbol.value = value
         return tempSymbol
     }

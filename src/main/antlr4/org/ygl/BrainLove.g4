@@ -3,8 +3,6 @@
 grammar BrainLove;
 
 
-tokens { PRINT, RETURN, FUNCTION }
-
 program
     : functionList
     ;
@@ -35,6 +33,7 @@ functionBody
 statement
     :   returnStatement
     |   printStatement
+    |   readStatement
     |   assignmentStatement
     ;
 
@@ -50,15 +49,20 @@ returnStatement
     :   RETURN exp? ';'
     ;
 
+readStatement
+    :   READ '(' Identifier ')' ';'
+    ;
+
 // TODO
 printStatement
     :   PRINT '(' exp ')' ';'
     ;
 
-exp : '(' parenExp=exp ')'                          # parenExp
-     | left=exp op=('*' | '/' | '%') right=exp      # opExp
-     | left=exp op=('+' | '-')       right=exp      # opExp
-     | atom                                         # atomExp
+exp : '(' parenExp=exp ')'                                       # parenExp
+     | left=exp op=('*'|'/'|'%')                 right=exp       # opExp
+     | left=exp op=('+'|'-')                     right=exp       # opExp
+     | left=exp op=('=='|'<'|'<='|'>'|'>='|'!=') right=exp       # opExp
+     | atom                                                      # atomExp
      ;
 
 atom
@@ -72,6 +76,7 @@ atom
 FUNCTION: 'fn';
 RETURN  : 'return';
 PRINT   : 'print';
+READ    : 'read';
 
 // lexer rules
 
@@ -87,7 +92,7 @@ IntegerLiteral
     ;
 
 StringLiteral
-    :   '"' chars=SCharSequence? '"'
+    :   '"' SCharSequence? '"'
     ;
 
 fragment

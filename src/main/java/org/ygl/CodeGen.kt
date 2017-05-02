@@ -7,6 +7,8 @@ import java.nio.file.Files
 import java.util.*
 
 
+typealias ConstFunction = (Int, Int) -> Int
+typealias SymbolFunction = (Symbol, Symbol) -> Symbol
 class CodeGen(outputFile: File, var verbose:Boolean = true) : AutoCloseable {
 
     private val TABSIZE = 8
@@ -16,7 +18,6 @@ class CodeGen(outputFile: File, var verbose:Boolean = true) : AutoCloseable {
     private var nestLevel = 0
 
     private var dataPointer = 0
-    private var memorySize = 0
 
     private val scopes = ArrayList<Scope>()
     private val functions = HashMap<String, Function>()
@@ -40,6 +41,12 @@ class CodeGen(outputFile: File, var verbose:Boolean = true) : AutoCloseable {
     }
 
     fun enterScope() {
+        val memorySize = if (scopes.isEmpty()) {
+            0
+        } else {
+            val lastScope = scopes[scopes.size - 1]
+            lastScope.startAddress + lastScope.scopeSize
+        }
         val newScope = Scope(memorySize)
         scopes.add(newScope)
     }
@@ -53,18 +60,46 @@ class CodeGen(outputFile: File, var verbose:Boolean = true) : AutoCloseable {
         return scopes[scopes.size - 1]
     }
 
-    fun assign(lhs: Symbol, rhs: Symbol) {
-        if (rhs.isConstant() && lhs.type == rhs.type) {
-            set(lhs, rhs.value)
+    fun assign(lhs: String, rhs: Symbol): Symbol {
+        val lhsSymbol = currentScope().getOrCreateSymbol(lhs, rhs.size, rhs.type)
+        return assign(lhsSymbol, rhs)
+    }
+
+    fun assign(lhs: Symbol, rhs: Symbol): Symbol {
+        if (rhs.isConstant()) {
+            // TODO: if sizes don't match, reallocate
+            when (rhs.type) {
+                Type.STRING -> loadString(lhs, rhs.value as String)
+                Type.INT    -> loadInt(lhs, rhs.value as Int)
+            }
+            lhs.value = rhs.value
+        } else {
+            lhs.value = null
+            when (rhs.type) {
+                Type.STRING -> copyString(lhs, rhs)
+                Type.INT    -> assignInt(lhs, rhs)
+            }
         }
+        return lhs
+    }
 
-        val tmp = currentScope().getTempSymbol()
+    /**
+     * Handles op-assign operations like x += y
+     * throws exception if lhs identifier is undefined
+     */
+    fun opAssign(lhs: String, rhs: Symbol, func: SymbolFunction): Symbol {
+        val lhsSymbol = currentScope().getSymbol(lhs) ?:
+                throw Exception("undefined identifier $lhs")
+        return func(lhsSymbol, rhs)
+    }
 
+    fun assignInt(lhs: Symbol, rhs: Symbol): Symbol {
         commentLine("assign $rhs to $lhs")
 
+        val tmp = currentScope().getTempSymbol()
         setZero(lhs)
         setZero(tmp)
-        moveTo(rhs.address)
+        moveTo(rhs)
 
         enterLoop()
         emit("-")
@@ -82,9 +117,45 @@ class CodeGen(outputFile: File, var verbose:Boolean = true) : AutoCloseable {
         emit("+")
         moveTo(tmp)
         exitLoop()
+        currentScope().delete(tmp)
+        return lhs
+    }
+
+    fun divide(s1: Symbol, s2: Symbol): Symbol {
+        return binaryOp(s1, s2, { a, b -> a / b }, this::divideBy)
+    }
+
+    fun multiply(s1: Symbol, s2: Symbol): Symbol {
+        return binaryOp(s1, s2, { a, b -> a * b }, this::multiplyBy)
+    }
+
+    fun mod(s1: Symbol, s2: Symbol): Symbol {
+        return binaryOp(s1, s2, { a, b -> a % b }, this::modBy)
+    }
+
+    fun subtract(s1: Symbol, s2: Symbol): Symbol {
+        return binaryOp(s1, s2, { a, b -> a - b }, this::subtractFrom)
     }
 
     fun add(s1: Symbol, s2: Symbol): Symbol {
+        return binaryOp(s1, s2, { a, b -> a + b }, this::addTo)
+    }
+
+    fun binaryOp(s1: Symbol, s2: Symbol, constFunc: ConstFunction, fallBack: BinaryOp): Symbol {
+        val result = currentScope().getTempSymbol()
+        if (s1.isConstant() && s2.isConstant()) {
+            result.value = constFunc.invoke(s1.value as Int, s2.value as Int)
+        } else {
+            assign(result, s1)
+            fallBack(result, s2)
+        }
+        return result
+    }
+
+    fun addTo(s1: Symbol, s2: Symbol): Symbol {
+        if (s1.isConstant() && s2.isConstant()) {
+            return loadInt(s1, s1.value as Int + s2.value as Int)
+        }
         val tmp = currentScope().getTempSymbol()
         assign(tmp, s2)
         moveTo(tmp)
@@ -94,10 +165,14 @@ class CodeGen(outputFile: File, var verbose:Boolean = true) : AutoCloseable {
         emit("+")
         moveTo(tmp)
         exitLoop()
+        currentScope().delete(tmp)
         return s1
     }
 
-    fun subtract(s1: Symbol, s2: Symbol): Symbol {
+    fun subtractFrom(s1: Symbol, s2: Symbol): Symbol {
+        if (s1.isConstant() && s2.isConstant()) {
+            return loadInt(s1, s1.value as Int - s2.value as Int)
+        }
         val tmp = currentScope().getTempSymbol()
         assign(tmp, s2)
         moveTo(tmp)
@@ -107,10 +182,14 @@ class CodeGen(outputFile: File, var verbose:Boolean = true) : AutoCloseable {
         emit("-")
         moveTo(tmp)
         exitLoop()
+        currentScope().delete(tmp)
         return s1
     }
 
-    fun multiply(s1: Symbol, s2: Symbol): Symbol {
+    fun multiplyBy(s1: Symbol, s2: Symbol): Symbol {
+        if (s1.isConstant() && s2.isConstant()) {
+            return loadInt(s1, s1.value as Int * s2.value as Int)
+        }
         val t1 = currentScope().getTempSymbol()
         val t2 = currentScope().getTempSymbol()
         assign(t1, s1)
@@ -119,23 +198,29 @@ class CodeGen(outputFile: File, var verbose:Boolean = true) : AutoCloseable {
         moveTo(t2)
         enterLoop()
         emit("-")
-        add(s1, t1)
+        addTo(s1, t1)
         moveTo(t2)
         exitLoop()
+        currentScope().delete(t1)
+        currentScope().delete(t2)
         return s1
     }
 
-    fun divide(s1: Symbol, s2: Symbol): Symbol {
+    fun divideBy(s1: Symbol, s2: Symbol): Symbol {
+        if (s1.isConstant() && s2.isConstant()) {
+            return loadInt(s1, s1.value as Int / s2.value as Int)
+        }
         val cpy = currentScope().getTempSymbol()
         val div = currentScope().getTempSymbol()
         assign(cpy, s1)
         moveTo(cpy)
         enterLoop()
-        subtract(cpy, s2)
+        subtractFrom(cpy, s2)
         moveTo(div)
         emit("+")
         moveTo(cpy)
         exitLoop()
+        currentScope().delete(cpy)
 
         val remainder = multiply(div, s2)
         subtract(remainder, s1)
@@ -149,17 +234,31 @@ class CodeGen(outputFile: File, var verbose:Boolean = true) : AutoCloseable {
         moveTo(remainder)
         exitLoop()
 
-        subtract(div, flag)
+        subtractFrom(div, flag)
+        currentScope().delete(flag)
         assign(s1, div)
+        currentScope().delete(div)
+
         return s1
     }
 
-    fun mod(s1: Symbol, s2: Symbol): Symbol {
+    fun modBy(s1: Symbol, s2: Symbol): Symbol {
+        if (s1.isConstant() && s2.isConstant()) {
+            return loadInt(s1, s1.value as Int % s2.value as Int)
+        }
         val tmp = currentScope().getTempSymbol()
         assign(tmp, s1)
-        divide(tmp, s2)
-        subtract(s1, multiply(tmp, s2))
+        divideBy(tmp, s2)
+        subtractFrom(s1, multiply(tmp, s2))
+        currentScope().delete(tmp)
         return s1
+    }
+
+    fun readInt(symbol: Symbol): Symbol {
+        moveTo(symbol)
+        emit(",")
+        comment("read $symbol")
+        return symbol
     }
 
     fun print(symbol: Symbol): Symbol {
@@ -185,81 +284,107 @@ class CodeGen(outputFile: File, var verbose:Boolean = true) : AutoCloseable {
         val c1 = currentScope().getTempSymbol()
         val c2 = currentScope().getTempSymbol()
 
-        set(hundred, 100)
-        set(ten, 10)
-        set(aaa, 48)
+        loadInt(hundred, 100)
+        loadInt(ten, 10)
+        loadInt(aaa, 48)
 
         assign(c1, divide(cpy, hundred))
-        mod(cpy, hundred)
+        modBy(cpy, hundred)
+        currentScope().delete(hundred)
         assign(c2, divide(cpy, ten))
-        mod(cpy, ten)
+        modBy(cpy, ten)
+        currentScope().delete(ten)
 
-        add(c1, aaa)
+//        fun printLeadingZero(sym: Symbol) {
+//            moveTo(sym); emit("[.]"); printChar(sym)
+//        }
+
+        addTo(c1, aaa)
         printChar(c1)
-        add(c2, aaa)
+        addTo(c2, aaa)
         printChar(c2)
-        add(cpy, aaa)
+        addTo(cpy, aaa)
         printChar(cpy)
+
+        currentScope().delete(cpy)
+        currentScope().delete(aaa)
+        currentScope().delete(c1)
+        currentScope().delete(c2)
+
         return symbol
     }
 
     fun printString(symbol: Symbol): Symbol {
         for (i in 0 until symbol.size) {
-            printChar(Offset(symbol, i))
+            printChar(symbol, i)
         }
         return symbol
     }
 
-    fun printChar(symbol: Addressable): Addressable {
-        moveTo(symbol.address())
+    fun printImmediate(chars: String) {
+        val tmp = currentScope().getTempSymbol()
+        moveTo(tmp)
+        for (i in 1 .. chars.length) {
+            setZero(tmp)
+            val intValue = chars[i].toInt()
+            loadInt(tmp, intValue)
+            emit(".")
+        }
+        currentScope().delete(tmp)
+    }
+
+    fun printChar(symbol: Symbol, offset: Int = 0): Symbol {
+        moveTo(symbol, offset)
         emit(".")
         return symbol
     }
 
     fun loadString(symbol: Symbol, chars: String): Symbol {
         assert(symbol.size == chars.length, { "loadString() string size larger than symbol size" })
-        commentLine("load string ${symbol.name} = $chars")
+        commentLine("load ${symbol.name} = \"$chars\"")
         moveTo(symbol)
         for (i in 0 until symbol.size) {
             val intValue = chars[i].toInt()
-            set(Offset(symbol, i), intValue)
+            loadInt(symbol, intValue, offset=i)
         }
         symbol.value = chars
         return symbol
     }
 
-    fun setZero(symbol: Addressable) {
-        moveTo(symbol.address())
-        if (symbol.size() == 1) {
+    // TODO: implement string copy function
+    fun copyString(lhs: Symbol, rhs: Symbol): Symbol {
+        throw Exception("not implemented")
+    }
+
+    fun setZero(symbol: Symbol, offset: Int = 0): Symbol {
+        moveTo(symbol, offset)
+        if (symbol.size == 1) {
             emit("[-]")
         } else {
-            for (i in 1..symbol.size()) {
+            for (i in 1..symbol.size) {
                 emit("[-]")
                 emit(">")
                 dataPointer += 1
             }
-            moveTo(symbol.address())
+            moveTo(symbol, offset)
         }
         comment("zero $symbol")
+        return symbol
     }
 
-    fun set(symbol: Addressable, value: Int): Addressable {
-        setZero(symbol)
+    fun loadInt(symbol: Symbol, value: Int, offset: Int = 0): Symbol {
+        setZero(symbol, offset)
         emit("+".repeat(value))
-        comment("set $symbol = $value")
+        comment("load $symbol = $value")
         symbol.value = value
         return symbol
     }
 
-    fun set(symbol: Addressable, value: String): Addressable {
-        return loadString(symbol as Symbol, value)
+    fun moveTo(symbol: Symbol, offset: Int = 0) {
+        return moveToAddress(symbol.address + offset)
     }
 
-    fun moveTo(symbol: Addressable) {
-        return moveTo(symbol.address())
-    }
-
-    fun moveTo(address: Int) {
+    fun moveToAddress(address: Int) {
         val diff = Math.abs(address - dataPointer)
         if (diff != 0) {
             val dir = if (address > dataPointer) ">" else "<"
@@ -357,3 +482,5 @@ class CodeGen(outputFile: File, var verbose:Boolean = true) : AutoCloseable {
         print(code)
     }
 }
+typealias BinaryOp = (Symbol, Symbol) -> Symbol
+

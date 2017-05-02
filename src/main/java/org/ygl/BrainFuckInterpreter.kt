@@ -11,7 +11,11 @@ class Interpreter
     private var data: ByteArray = ByteArray(30000)
     private val text = ArrayList<Char>()
 
+    private var lineCounter = 0
+    private var maxPC = 0
+
     fun growArray() {
+        println("(growing memory size)")
         val newArray = ByteArray((data.size * 1.7) as Int)
         System.arraycopy(data, 0, newArray, 0, data.size)
         data = newArray
@@ -60,6 +64,7 @@ class Interpreter
                         when (text[pc]) {
                             '[' -> stack++
                             ']' -> stack--
+                            '\n' -> lineCounter++
                         }
                     }
                 }
@@ -72,8 +77,16 @@ class Interpreter
                         when (text[pc]) {
                             '[' -> stack--
                             ']' -> stack++
+                            '\n' -> lineCounter--
                         }
                     }
+                }
+            }
+            '\n' -> {
+                lineCounter += 1
+                if (pc > maxPC) {
+                    maxPC = pc
+                    //println(lineCounter)
                 }
             }
             else -> {
@@ -97,55 +110,7 @@ fun main(args: Array<String>) {
     val code = String(Files.readAllBytes(Paths.get("output.txt")))
 //    val code = String(Files.readAllBytes(Paths.get("bf-test.txt")))
     println(interpreter.eval(code))
+    println("DONE")
 }
 
-//fun run(text: CharArray) {
-//
-//    while (true) {
-//        val c = text[pc]
-//        when (c) {
-//            '>' -> {
-//                dp++
-//                if (dp >= data.size) growArray()
-//            }
-//            '<' -> {
-//                dp--
-//                if (dp < 0) dp = 0
-//            }
-//            '+' -> data[dp] = (data[dp] + 1).toByte()
-//            '-' -> data[dp] = (data[dp] - 1).toByte()
-//            '.' -> print(data[dp].toChar())
-//            ',' -> data[dp] = readChar()
-//            '[' -> {
-//                if (data[dp] == 0.toByte()) {
-//                    var stack = 1
-//                    while (stack > 0) {
-//                        pc++
-//                        when (text[pc]) {
-//                            '[' -> stack++
-//                            ']' -> stack--
-//                        }
-//                    }
-//                }
-//            }
-//            ']' -> {
-//                if (data[dp] != 0.toByte()) {
-//                    var stack = 1
-//                    while (stack > 0) {
-//                        pc--
-//                        when (text[pc]) {
-//                            '[' -> stack--
-//                            ']' -> stack++
-//                        }
-//                    }
-//                }
-//            }
-//            else -> {
-//            }
-//        }
-//        pc++
-//
-//        if (pc >= text.size) break
-//    }
-//}
 

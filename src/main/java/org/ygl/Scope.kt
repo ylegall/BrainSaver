@@ -1,17 +1,23 @@
 package org.ygl
 
+import java.util.*
+
 class Scope(val startAddress: Int) {
 
     private var tempCounter = 0
-    private var scopeSize = 0
+
+    var scopeSize = 0
+        private set
+
     private val symbolMap = HashMap<String, Symbol>()
+    private val freeSlots = ArrayDeque<Symbol>()
 
     fun addSymbol(symbol: Symbol) {
         if (!symbolMap.containsKey(symbol.name)) {
             symbolMap.put(symbol.name, symbol)
             scopeSize += symbol.size
         } else {
-            throw Exception("scope.addSymbol(): duplicate symbol: " + symbol.name)
+            throw Exception("scope.addSymbol(): duplicate symbol: ${symbol.name}")
         }
     }
 
@@ -33,9 +39,34 @@ class Scope(val startAddress: Int) {
     }
 
     fun createSymbol(name: String, size: Int = 1, type: Type = Type.INT, value: Any? = null): Symbol {
-        var symbol = Symbol(name, size, startAddress + scopeSize, type, value)
+        if (symbolMap.containsKey(name)) throw Exception("duplicate symbol: $name")
+
+        // check for freed slots
+        var address: Int
+        if (!freeSlots.isEmpty()) {
+            address = freeSlots.pop().address
+        } else {
+            address = startAddress + scopeSize
+            scopeSize += size
+        }
+
+        var symbol = Symbol(name, size, address, type, value)
         symbolMap.put(name, symbol)
-        scopeSize += size
         return symbol
+    }
+
+    fun delete(symbol: Symbol) {
+        if (!symbolMap.containsKey(symbol.name)) throw Exception("undefined symbol: ${symbol.name}")
+        freeSlots.add(symbol)
+        symbolMap.remove(symbol.name)
+    }
+
+    fun deleteTemps() {
+        val garbageList = ArrayList<Symbol>()
+        garbageList.addAll(symbolMap.filterKeys { it.startsWith("$") }.values)
+        garbageList.forEach {
+            symbolMap.remove(it.name)
+            freeSlots.add(it)
+        }
     }
 }
