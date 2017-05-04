@@ -2,9 +2,13 @@ package org.ygl
 
 import java.util.*
 
+val returnSymbolName = "#return"
+val zeroSymbolName = "#0"
+
 class Scope(val startAddress: Int) {
 
     private var tempCounter = 0
+    var returnCount = 0
 
     var scopeSize = 0
         private set
@@ -12,17 +16,21 @@ class Scope(val startAddress: Int) {
     private val symbolMap = HashMap<String, Symbol>()
     private val freeSlots = ArrayDeque<Symbol>()
 
-    fun addSymbol(symbol: Symbol) {
-        if (!symbolMap.containsKey(symbol.name)) {
-            symbolMap.put(symbol.name, symbol)
-            scopeSize += symbol.size
-        } else {
-            throw Exception("scope.addSymbol(): duplicate symbol: ${symbol.name}")
-        }
+    init {
+        createSymbol(zeroSymbolName, size = 1, type = Type.INT, value = 0)
+        createSymbol(returnSymbolName, size = 1, type = Type.INT, value = 0)
     }
 
     fun getSymbol(name: String): Symbol? {
         return symbolMap[name]
+    }
+
+    fun getReturnSymbol(): Symbol {
+        return symbolMap[returnSymbolName]!!
+    }
+
+    fun getZeroSymbol(): Symbol {
+        return symbolMap[zeroSymbolName]!!
     }
 
     fun getOrCreateSymbol(name: String, size: Int = 1, type: Type = Type.INT): Symbol {
@@ -51,6 +59,23 @@ class Scope(val startAddress: Int) {
         }
 
         var symbol = Symbol(name, size, address, type, value)
+        symbolMap.put(name, symbol)
+        return symbol
+    }
+
+    fun createSymbol(name: String, other: Symbol): Symbol {
+        if (symbolMap.containsKey(name)) throw Exception("duplicate symbol: $name")
+
+        // check for freed slots
+        var address: Int
+        if (!freeSlots.isEmpty()) {
+            address = freeSlots.pop().address
+        } else {
+            address = startAddress + scopeSize
+            scopeSize += other.size
+        }
+
+        var symbol = Symbol(name, other.size, address, other.type, other.value)
         symbolMap.put(name, symbol)
         return symbol
     }

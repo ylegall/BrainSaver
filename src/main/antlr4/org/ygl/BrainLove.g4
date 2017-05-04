@@ -8,8 +8,7 @@ program
     ;
 
 functionList
-    :   function
-    |   functionList function
+    :   function+
     ;
 
 function
@@ -21,8 +20,7 @@ parameterList
     ;
 
 identifierList
-    :   Identifier
-    |   identifierList ',' Identifier
+    :   Identifier (',' Identifier)*
     ;
 
 functionBody
@@ -35,6 +33,7 @@ statement
     |   printStatement
     |   readStatement
     |   assignmentStatement
+    |   callStatement
     ;
 
 assignmentStatement
@@ -43,6 +42,10 @@ assignmentStatement
 
 assignmentOperator
     :   '=' | '*=' | '/=' | '%=' | '+=' | '-='
+    ;
+
+callStatement
+    :   funcName=Identifier '(' args=expList? ')' ';'
     ;
 
 returnStatement
@@ -62,8 +65,13 @@ exp : '(' parenExp=exp ')'                                       # parenExp
      | left=exp op=('*'|'/'|'%')                 right=exp       # opExp
      | left=exp op=('+'|'-')                     right=exp       # opExp
      | left=exp op=('=='|'<'|'<='|'>'|'>='|'!=') right=exp       # opExp
+     | funcName=Identifier '(' args=expList? ')'                 # callExp
      | atom                                                      # atomExp
      ;
+
+expList
+    :   exp (',' exp)*
+    ;
 
 atom
     :   Identifier      # atomId

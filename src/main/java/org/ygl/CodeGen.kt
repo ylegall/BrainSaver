@@ -19,8 +19,8 @@ class CodeGen(outputFile: File, var verbose:Boolean = true) : AutoCloseable {
 
     private var dataPointer = 0
 
+    val functions = HashMap<String, Function>()
     private val scopes = ArrayList<Scope>()
-    private val functions = HashMap<String, Function>()
     private val output: PrintWriter = PrintWriter(
             Files.newBufferedWriter(outputFile.toPath(), Charset.forName("UTF-8"))
     )
@@ -49,10 +49,10 @@ class CodeGen(outputFile: File, var verbose:Boolean = true) : AutoCloseable {
         }
         val newScope = Scope(memorySize)
         scopes.add(newScope)
+        setZero(newScope.getZeroSymbol())
     }
 
     fun exitScope(): Scope {
-        // TODO
         return scopes.removeAt(scopes.size-1)
     }
 
@@ -242,7 +242,25 @@ class CodeGen(outputFile: File, var verbose:Boolean = true) : AutoCloseable {
         return s1
     }
 
+    // TODO: optimize
     fun modBy(s1: Symbol, s2: Symbol): Symbol {
+//        if (s1.isConstant() && s2.isConstant()) {
+//            return loadInt(s1, s1.value as Int % s2.value as Int)
+//        }
+//        val cpy = currentScope().getTempSymbol()
+//        val div = currentScope().getTempSymbol()
+//        assign(cpy, s1)
+//        moveTo(cpy)
+//        enterLoop()
+//        subtractFrom(cpy, s2)
+//        moveTo(div)
+//        emit("+")
+//        moveTo(cpy)
+//        exitLoop()
+//        currentScope().delete(cpy)
+//
+//        val remainder = multiply(div, s2)
+
         if (s1.isConstant() && s2.isConstant()) {
             return loadInt(s1, s1.value as Int % s2.value as Int)
         }
@@ -278,40 +296,61 @@ class CodeGen(outputFile: File, var verbose:Boolean = true) : AutoCloseable {
         val cpy = currentScope().getTempSymbol()
         assign(cpy, symbol)
 
-        val hundred = currentScope().getTempSymbol()
         val ten = currentScope().getTempSymbol()
-        val aaa = currentScope().getTempSymbol()
-        val c1 = currentScope().getTempSymbol()
-        val c2 = currentScope().getTempSymbol()
+        val asciiOffset = currentScope().getTempSymbol()
+        val d2 = currentScope().getTempSymbol()
+        val d3 = currentScope().getTempSymbol()
 
-        loadInt(hundred, 100)
         loadInt(ten, 10)
-        loadInt(aaa, 48)
+        loadInt(asciiOffset, 48)
 
-        assign(c1, divide(cpy, hundred))
-        modBy(cpy, hundred)
-        currentScope().delete(hundred)
-        assign(c2, divide(cpy, ten))
-        modBy(cpy, ten)
-        currentScope().delete(ten)
+        assign(d3, mod(cpy, ten))
+        divideBy(cpy, ten)
+        assign(d2, mod(cpy, ten))
+        divideBy(cpy, ten)
 
-//        fun printLeadingZero(sym: Symbol) {
-//            moveTo(sym); emit("[.]"); printChar(sym)
-//        }
-
-        addTo(c1, aaa)
-        printChar(c1)
-        addTo(c2, aaa)
-        printChar(c2)
-        addTo(cpy, aaa)
+        addTo(cpy, asciiOffset)
         printChar(cpy)
-
-        currentScope().delete(cpy)
-        currentScope().delete(aaa)
-        currentScope().delete(c1)
-        currentScope().delete(c2)
+        addTo(d2, asciiOffset)
+        printChar(d2)
+        addTo(d3, asciiOffset)
+        printChar(d3)
 
         return symbol
+        // ------------------------------------
+//        val cpy = currentScope().getTempSymbol()
+//        assign(cpy, symbol)
+//
+//        val hundred = currentScope().getTempSymbol()
+//        val ten = currentScope().getTempSymbol()
+//        val aaa = currentScope().getTempSymbol()
+//        val c1 = currentScope().getTempSymbol()
+//        val c2 = currentScope().getTempSymbol()
+//
+//        loadInt(hundred, 100)
+//        loadInt(ten, 10)
+//        loadInt(aaa, 48)
+//
+//        assign(c1, divide(cpy, hundred))
+//        modBy(cpy, hundred)
+//        currentScope().delete(hundred)
+//        assign(c2, divide(cpy, ten))
+//        modBy(cpy, ten)
+//        currentScope().delete(ten)
+//
+//        addTo(c1, aaa)
+//        printChar(c1)
+//        addTo(c2, aaa)
+//        printChar(c2)
+//        addTo(cpy, aaa)
+//        printChar(cpy)
+//
+//        currentScope().delete(cpy)
+//        currentScope().delete(aaa)
+//        currentScope().delete(c1)
+//        currentScope().delete(c2)
+//
+//        return symbol
     }
 
     fun printString(symbol: Symbol): Symbol {
@@ -397,25 +436,45 @@ class CodeGen(outputFile: File, var verbose:Boolean = true) : AutoCloseable {
     fun enterLoop() {
         newline()
         emit("[")
-        if (nestLevel < 10) nestLevel += 1
+        nestLevel = Math.min(nestLevel + 1, 10)
         newline()
     }
 
     fun exitLoop() {
         nestLevel -= 1
-        assert(nestLevel >= 0)
+        assert(nestLevel >= 0, {-> "negative nest level"})
         newline()
         emit("]")
         newline()
     }
 
-    private fun commentLine(str: String) {
+    fun emitReturn(sym: Symbol?) {
+        currentScope().returnCount += 1
+        if (sym != null) {
+            val returnSymbol = currentScope().getReturnSymbol()
+            assign(returnSymbol, sym)
+        }
+        moveTo(currentScope().getZeroSymbol())
+        emit("[")
+        comment("return $sym")
+        nestLevel = Math.min(nestLevel + 1, 10)
+    }
+
+    fun closeFunction(func: String = "") {
+        val count = currentScope().returnCount
+        nestLevel -= count
+        emit("]".repeat(count))
+        currentScope().returnCount = 0
+        comment("end function $func\n")
+    }
+
+    fun commentLine(str: String) {
         if (col != 0) newline()
         newline()
         comment(str)
     }
 
-    private fun comment(str: String) {
+    fun comment(str: String) {
         if (verbose) {
 
             if (reservedChars.containsMatchIn(str)) {

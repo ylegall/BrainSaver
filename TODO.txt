@@ -1,4 +1,4 @@
 function calls
-optimize print integer call which
+optimize code to print ints
 comparison operators
 flow control

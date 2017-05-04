@@ -28,9 +28,8 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
     }
 
     override fun visitFunction(ctx: FunctionContext?): Symbol? {
-        //println("enter function: ${ctx?.name?.text}")
         val result = visitChildren(ctx)
-        //println("exit function: ${ctx?.name?.text}")
+        codegen.closeFunction(ctx?.name?.text ?: "")
         return result
     }
 
@@ -57,7 +56,7 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
             "/=" -> codegen.opAssign(lhs, expResult, codegen::divideBy)
             "%=" -> codegen.opAssign(lhs, expResult, codegen::modBy)
             else -> {
-                throw Exception("unknown assignment operator: " + op)
+                throw Exception("invalid assignment operator: " + op)
             }
         }
         return result
@@ -129,7 +128,68 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
         return visit(ctx?.exp())
     }
 
-    // TODO
+    override fun visitCallStatement(ctx: CallStatementContext?): Symbol? {
+        val name = ctx?.funcName?.text ?: throw Exception("null CallStatementContext")
+        val args = ctx.expList().exp()
+        functionCall(name, args)
+        return null
+    }
+
+    override fun visitCallExp(ctx: CallExpContext?): Symbol? {
+        val name = ctx?.funcName?.text ?: throw Exception("null CallExpContext")
+        val args = ctx.expList()?.exp()
+        return functionCall(name, args)
+    }
+
+    private fun functionCall(funcName: String, args: List<BrainLoveParser.ExpContext>?): Symbol? {
+        // lookup matching function and its params
+        val function = codegen.functions[funcName] ?: throw Exception("unrecognized function: $funcName")
+
+        // collect arguments for function call
+        if (args != null) {
+            val params = function.ctx.params?.identifierList()?.Identifier()
+            if (params == null || args.size != params.size) {
+                throw Exception("wrong number of arguments to $funcName")
+            }
+
+            val arguments = ArrayList<Symbol>(params.size)
+            for (exp in args) {
+                val expResult = visit(exp) ?: throw Exception("null call argument: ${exp.text}")
+                arguments.add(expResult)
+            }
+
+            codegen.enterScope()
+            codegen.commentLine("call $funcName")
+            // create new scope and copy expression args into function param variables
+            for (i in 0 until params.size) {
+                val param = params[i]
+                codegen.currentScope().createSymbol(param.text, arguments[i])
+            }
+        } else {
+            codegen.enterScope()
+            codegen.commentLine("call $funcName")
+        }
+
+        // execute statements in function body:
+        // TODO get return symbol
+        visit(function.ctx)
+
+        // TODO: handle return result
+        val result = codegen.currentScope().getSymbol(org.ygl.returnSymbolName)
+        codegen.exitScope()
+        return if (result != null) {
+            codegen.assign(codegen.currentScope().getTempSymbol(result.type, result.size), result)
+        } else {
+            return null
+        }
+    }
+
+    override fun visitReturnStatement(ctx: ReturnStatementContext?): Symbol? {
+        val ret = visit(ctx?.exp())
+        codegen.emitReturn(ret)
+        return ret
+    }
+
     override fun visitOpExp(ctx: OpExpContext?): Symbol? {
         if (ctx == null) throw Exception("null op ctx")
         val op = ctx.op.text
