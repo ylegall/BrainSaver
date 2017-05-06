@@ -1,4 +1,3 @@
-function calls
 optimize code to print ints
-comparison operators
-flow control
+not equals
+loops

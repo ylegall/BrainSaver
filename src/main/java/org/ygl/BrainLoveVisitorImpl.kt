@@ -92,7 +92,11 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
         if (ctx == null) throw Exception("null ReadStatementContext")
         val id = ctx.Identifier().text
         var sym = codegen.currentScope().getOrCreateSymbol(id)
-        codegen.readInt(sym)
+        if (ctx.rd != null) {
+            codegen.readChar(sym)
+        } else if (ctx.rdint != null) {
+            codegen.readInt(sym)
+        }
         return sym
     }
 
@@ -109,7 +113,7 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
         val str = ctx?.StringLiteral()?.text ?: throw Exception("null string literal")
         val chars = removeQuotes(str)
         val tempSymbol = scope.getTempSymbol(Type.STRING, chars.length)
-        codegen.loadString(tempSymbol, chars)
+        codegen.set(tempSymbol, chars)
         tempSymbol.value = chars
         return tempSymbol
     }
@@ -171,10 +175,8 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
         }
 
         // execute statements in function body:
-        // TODO get return symbol
         visit(function.ctx)
 
-        // TODO: handle return result
         val result = codegen.currentScope().getSymbol(org.ygl.returnSymbolName)
         codegen.exitScope()
         return if (result != null) {
@@ -220,4 +222,65 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
         }
     }
 
+    override fun visitIfStatement(ctx: IfStatementContext?): Symbol? {
+        if (ctx == null) throw Exception("null IfStatementContext")
+        val condition = visit(ctx.condition()) ?: throw Exception("null condition result")
+
+        if (condition.isConstant()) {
+            if (condition.value == 0) {
+                return visit(ctx.falseStatements)
+            } else {
+                return visit(ctx.trueStatements)
+            }
+        } else {
+            // TODO
+            if (ctx.falseStatements != null && !ctx.falseStatements.isEmpty) {
+                codegen.startIf(condition)
+                visit(ctx.trueStatements)
+                codegen.endIf(condition)
+                codegen.startElse(condition)
+                visit(ctx.falseStatements)
+                codegen.endElse(condition)
+            } else {
+                codegen.startIf(condition)
+                visit(ctx.trueStatements)
+                codegen.endIf(condition)
+            }
+            codegen.currentScope().popConditionFlag()
+            return null
+        }
+    }
+
+    override fun visitCondition(ctx: ConditionContext?): Symbol? {
+        if (ctx == null) throw Exception("null ConditionContext")
+
+        val left  = visit(ctx.left)  ?: throw Exception("null left exp")
+        val right = visit(ctx.right) ?: throw Exception("null exp result")
+        val op = ctx.op.text
+
+        if (left.isConstant() && right.isConstant()) {
+            val symbol = codegen.currentScope().getTempSymbol()
+            symbol.value = when (op) {
+                "<" -> if ((left.value as Int) < (right.value as Int)) 1 else 0
+                ">" -> if ((left.value as Int) > (right.value as Int)) 1 else 0
+                "==" -> if ((left.value as Int) == (right.value as Int)) 1 else 0
+                "!=" -> if ((left.value as Int) != (right.value as Int)) 1 else 0
+                "<=" -> if ((left.value as Int) <= (right.value as Int)) 1 else 0
+                ">=" -> if ((left.value as Int) >= (right.value as Int)) 1 else 0
+                else -> throw Exception("invalid op $op")
+            }
+            return symbol
+        } else {
+            return when (op) {
+                // TODO
+                "<" ->  codegen.lessThan(left, right)
+                ">" ->  codegen.greaterThan(left, right)
+                "==" -> codegen.equal(left, right)
+//                "!=" -> codegen.notEqual(left, right)
+                "<=" -> codegen.lessThanEqual(left, right)
+                ">=" -> codegen.greaterThanEqual(left, right)
+                else -> throw Exception("invalid op $op")
+            }
+        }
+    }
 }

@@ -2,6 +2,8 @@ package org.ygl
 
 import java.util.*
 
+//typealias IfElseFlags = Pair<Symbol, Symbol>
+
 val returnSymbolName = "#return"
 val zeroSymbolName = "#0"
 
@@ -14,7 +16,9 @@ class Scope(val startAddress: Int) {
         private set
 
     private val symbolMap = HashMap<String, Symbol>()
-    private val freeSlots = ArrayDeque<Symbol>()
+    private val freeSlots = PriorityQueue<Symbol>()
+    //private val conditionFlags = ArrayDeque<IfElseFlags>()
+    private val conditionFlags = ArrayDeque<Symbol>()
 
     init {
         createSymbol(zeroSymbolName, size = 1, type = Type.INT, value = 0)
@@ -52,7 +56,10 @@ class Scope(val startAddress: Int) {
         // check for freed slots
         var address: Int
         if (!freeSlots.isEmpty()) {
-            address = freeSlots.pop().address
+            address = freeSlots.remove().address
+            if (address >= (startAddress + scopeSize)) {
+                scopeSize = address + size
+            }
         } else {
             address = startAddress + scopeSize
             scopeSize += size
@@ -64,34 +71,52 @@ class Scope(val startAddress: Int) {
     }
 
     fun createSymbol(name: String, other: Symbol): Symbol {
-        if (symbolMap.containsKey(name)) throw Exception("duplicate symbol: $name")
+        return createSymbol(name, other.size, other.type, other.value)
+    }
 
-        // check for freed slots
-        var address: Int
-        if (!freeSlots.isEmpty()) {
-            address = freeSlots.pop().address
-        } else {
-            address = startAddress + scopeSize
-            scopeSize += other.size
-        }
+    fun pushConditionFlag(): Symbol {
+        val flag = createSymbol("&" + conditionFlags.size)
+        conditionFlags.push(flag)
+        return flag
+    }
 
-        var symbol = Symbol(name, other.size, address, other.type, other.value)
-        symbolMap.put(name, symbol)
-        return symbol
+    fun getConditionFlag(): Symbol {
+        return conditionFlags.peek() ?: throw Exception("condition flags empty")
+    }
+
+    fun popConditionFlag() {
+        val flag = conditionFlags.pop()
+        delete(flag)
     }
 
     fun delete(symbol: Symbol) {
         if (!symbolMap.containsKey(symbol.name)) throw Exception("undefined symbol: ${symbol.name}")
         freeSlots.add(symbol)
         symbolMap.remove(symbol.name)
+        if (symbol.address == scopeSize - symbol.size) {
+            scopeSize -= symbol.size
+        }
     }
 
     fun deleteTemps() {
+        var maxAddress = startAddress + 2
         val garbageList = ArrayList<Symbol>()
-        garbageList.addAll(symbolMap.filterKeys { it.startsWith("$") }.values)
+
+        for (entry in symbolMap) {
+            val symbol = entry.value
+            if (symbol.name.startsWith("$")) {
+                garbageList.add(symbol)
+            } else {
+                maxAddress = Math.max(maxAddress, entry.value.address)
+            }
+        }
+
+        //garbageList.addAll(symbolMap.filterKeys { it.startsWith("$") }.values)
         garbageList.forEach {
             symbolMap.remove(it.name)
             freeSlots.add(it)
         }
+
+        scopeSize = maxAddress - startAddress + 1
     }
 }

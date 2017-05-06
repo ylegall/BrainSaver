@@ -34,6 +34,19 @@ statement
     |   readStatement
     |   assignmentStatement
     |   callStatement
+    |   ifStatement
+    ;
+
+ifStatement
+    :   IF '(' condition ')' '{' trueStatements=statement* '}' ( ELSE '{' falseStatements=statement* '}' )?
+    ;
+
+condition
+    :   left=exp op=comparisonOperator right=exp
+    ;
+
+comparisonOperator
+    :   '==' | '<' | '>' | '<=' | '>=' | '!='
     ;
 
 assignmentStatement
@@ -53,7 +66,7 @@ returnStatement
     ;
 
 readStatement
-    :   READ '(' Identifier ')' ';'
+    :   (rd=READ|rdint=READINT) '(' Identifier ')' ';'
     ;
 
 // TODO
@@ -61,13 +74,14 @@ printStatement
     :   PRINT '(' exp ')' ';'
     ;
 
-exp : '(' parenExp=exp ')'                                       # parenExp
-     | left=exp op=('*'|'/'|'%')                 right=exp       # opExp
-     | left=exp op=('+'|'-')                     right=exp       # opExp
-     | left=exp op=('=='|'<'|'<='|'>'|'>='|'!=') right=exp       # opExp
-     | funcName=Identifier '(' args=expList? ')'                 # callExp
-     | atom                                                      # atomExp
-     ;
+exp
+    : '(' parenExp=exp ')'                                      # parenExp
+    | left=exp op=('*'|'/'|'%')                 right=exp       # opExp
+    | left=exp op=('+'|'-')                     right=exp       # opExp
+    | left=exp op=('=='|'<'|'<='|'>'|'>='|'!=') right=exp       # opExp
+    | funcName=Identifier '(' args=expList? ')'                 # callExp
+    | atom                                                      # atomExp
+    ;
 
 expList
     :   exp (',' exp)*
@@ -85,6 +99,9 @@ FUNCTION: 'fn';
 RETURN  : 'return';
 PRINT   : 'print';
 READ    : 'read';
+READINT : 'readInt';
+IF      : 'if';
+ELSE    : 'else';
 
 // lexer rules
 
@@ -97,6 +114,7 @@ Identifier
 
 IntegerLiteral
     :   '-'? NonzeroDigit Digit*
+    |   '0'
     ;
 
 StringLiteral
