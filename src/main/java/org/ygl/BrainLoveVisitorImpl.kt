@@ -124,7 +124,7 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
         val value = Integer.parseInt(valueStr)
         if (value >= 256) throw Exception("integer overflow: $value")
         val tempSymbol = scope.getTempSymbol(Type.INT)
-        tempSymbol.value = value
+        codegen.loadConstant(tempSymbol, value)
         return tempSymbol
     }
 
@@ -272,9 +272,9 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
                 }
                 codegen.endElse(condition)
             } else {
-                codegen.startIf(condition)
+                val ifFlag = codegen.startIf(condition)
                 visit(ctx.trueStatements)
-                codegen.endIf(condition)
+                codegen.endIf(ifFlag)
             }
             codegen.currentScope().popConditionFlag()
             return null

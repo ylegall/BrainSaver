@@ -158,8 +158,11 @@ class CodeGen(outputFile: File, var verbose:Boolean = true) : AutoCloseable {
     }
 
     fun addTo(s1: Symbol, s2: Symbol): Symbol {
+        commentLine("add $s2 to $s1")
         if (s1.isConstant() && s2.isConstant()) {
             return incrementBy(s1, s2.value as Int)
+        } else {
+            s1.value = null
         }
         val tmp = currentScope().getTempSymbol()
         assign(tmp, s2)
@@ -177,6 +180,8 @@ class CodeGen(outputFile: File, var verbose:Boolean = true) : AutoCloseable {
         commentLine("subtract $s2 from $s1")
         if (s1.isConstant() && s2.isConstant()) {
             return incrementBy(s1, -(s2.value as Int))
+        } else {
+            s1.value = null
         }
         val tmp = currentScope().getTempSymbol()
         assign(tmp, s2)
@@ -191,9 +196,12 @@ class CodeGen(outputFile: File, var verbose:Boolean = true) : AutoCloseable {
     }
 
     fun multiplyBy(s1: Symbol, s2: Symbol): Symbol {
+        commentLine("$s1 *= $s2")
         if (isConstant(s1) && isConstant(s2)) {
             // TODO
             return loadInt(s1, s1.value as Int * s2.value as Int)
+        } else {
+            s1.value = null
         }
         val t1 = currentScope().getTempSymbol()
         val t2 = currentScope().getTempSymbol()
@@ -212,9 +220,12 @@ class CodeGen(outputFile: File, var verbose:Boolean = true) : AutoCloseable {
     }
 
     fun divideBy(s1: Symbol, s2: Symbol): Symbol {
+        commentLine("$s1 /= $s2")
         if (s1.isConstant() && s2.isConstant()) {
             // TODO
             return loadInt(s1, s1.value as Int / s2.value as Int)
+        } else {
+            s1.value = null
         }
         val cpy = currentScope().getTempSymbol()
         val div = currentScope().getTempSymbol()
@@ -248,10 +259,12 @@ class CodeGen(outputFile: File, var verbose:Boolean = true) : AutoCloseable {
 
     // TODO: optimize
     fun modBy(s1: Symbol, s2: Symbol): Symbol {
-
+        commentLine("$s1 %= $s2")
         if (s1.isConstant() && s2.isConstant()) {
             // TODO
             return loadInt(s1, s1.value as Int % s2.value as Int)
+        } else {
+            s1.value = null
         }
         val tmp = currentScope().getTempSymbol()
         assign(tmp, s1)
@@ -521,14 +534,11 @@ class CodeGen(outputFile: File, var verbose:Boolean = true) : AutoCloseable {
         return ret
     }
 
-    fun startIf(condition: Symbol) {
+    fun startIf(condition: Symbol): Symbol {
         commentLine("if $condition")
         val elseFlag = currentScope().pushConditionFlag()
         loadInt(elseFlag, 1)    // loadInt else to 1
 
-        // TODO
-        // if condition is non-zero
-        // loadInt the else flag to zero and execute the if clause
         val tmp = currentScope().getTempSymbol()
         assign(tmp, condition)
         moveTo(tmp)
@@ -538,17 +548,19 @@ class CodeGen(outputFile: File, var verbose:Boolean = true) : AutoCloseable {
             moveTo(tmp)
         endLoop()
 
-        currentScope().delete(tmp)
+        assign(tmp, condition)
 
-        moveTo(condition)
+        moveTo(tmp)
         startLoop()
-        setZero(condition)
+        setZero(tmp)
+        return tmp
     }
 
-    fun endIf(condition: Symbol) {
-        moveTo(condition)
+    // is passed the tmp variable from the startIf
+    fun endIf(tmp: Symbol) {
+        moveTo(tmp)
         endLoop()
-        commentLine("end if $condition")
+        commentLine("end if")
     }
 
     fun startElse(condition: Symbol) {
@@ -586,7 +598,6 @@ class CodeGen(outputFile: File, var verbose:Boolean = true) : AutoCloseable {
     fun readChar(symbol: Symbol): Symbol {
         moveTo(symbol)
         emit(",", "read char $symbol")
-        //comment("read char $symbol")
         return symbol
     }
 
@@ -609,7 +620,7 @@ class CodeGen(outputFile: File, var verbose:Boolean = true) : AutoCloseable {
         }
     }
 
-    // TODO
+    // TODO optimize?
     fun printInt(symbol: Symbol): Symbol {
 
         val cpy = currentScope().getTempSymbol()
@@ -643,6 +654,12 @@ class CodeGen(outputFile: File, var verbose:Boolean = true) : AutoCloseable {
         moveTo(d3)
         addTo(d3, asciiOffset)
         printChar(d3)
+
+        currentScope().delete(d3)
+        currentScope().delete(d2)
+        currentScope().delete(asciiOffset)
+        currentScope().delete(ten)
+        currentScope().delete(cpy)
 
         return symbol
 
