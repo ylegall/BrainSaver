@@ -27,6 +27,10 @@ functionBody
     :   '{' statement* '}'
     ;
 
+statementList
+    :   statement (statement)*
+    ;
+
 // TODO
 statement
     :   returnStatement
@@ -35,18 +39,15 @@ statement
     |   assignmentStatement
     |   callStatement
     |   ifStatement
+    |   whileStatement
     ;
 
 ifStatement
-    :   IF '(' condition ')' '{' trueStatements=statement* '}' ( ELSE '{' falseStatements=statement* '}' )?
+    :   IF '(' condition=exp ')' '{' trueStatements=statementList '}' ( ELSE '{' falseStatements=statementList '}' )?
     ;
 
-condition
-    :   left=exp op=comparisonOperator right=exp
-    ;
-
-comparisonOperator
-    :   '==' | '<' | '>' | '<=' | '>=' | '!='
+whileStatement
+    :   WHILE '(' condition=exp ')' '{' body=statementList '}'
     ;
 
 assignmentStatement
@@ -79,6 +80,8 @@ exp
     | left=exp op=('*'|'/'|'%')                 right=exp       # opExp
     | left=exp op=('+'|'-')                     right=exp       # opExp
     | left=exp op=('=='|'<'|'<='|'>'|'>='|'!=') right=exp       # opExp
+    | left=exp op=('&&'|'||')                   right=exp       # opExp
+    |          op='!'                           right=exp       # notExp
     | funcName=Identifier '(' args=expList? ')'                 # callExp
     | atom                                                      # atomExp
     ;
@@ -102,6 +105,7 @@ READ    : 'read';
 READINT : 'readInt';
 IF      : 'if';
 ELSE    : 'else';
+WHILE   : 'while';
 
 // lexer rules
 

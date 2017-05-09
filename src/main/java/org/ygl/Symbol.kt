@@ -14,7 +14,7 @@ data class Symbol(
 ) : Comparable<Symbol>
 {
     override fun toString(): String {
-        return "$name{$address} |${value?:""}|"
+        return "$name{$address}" + if (value != null) "=$value" else ""
     }
 
     override fun compareTo(other: Symbol) = address - other.address

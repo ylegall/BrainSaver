@@ -52,8 +52,8 @@ class Interpreter
                 dp--
                 if (dp < 0) dp = 0
             }
-            '+' -> data[dp] = (data[dp] + 1).toByte()
-            '-' -> data[dp] = (data[dp] - 1).toByte()
+            '+' -> data[dp] = if (data[dp] == 255.toByte()) 255.toByte() else (data[dp] + 1).toByte()
+            '-' -> data[dp] = Math.max(data[dp] - 1, 0).toByte()
             '.' -> output = data[dp].toChar()
             ',' -> data[dp] = readChar()
             '[' -> {
@@ -88,6 +88,9 @@ class Interpreter
                     maxPC = pc
                     //println(lineCounter)
                 }
+            }
+            '#' -> {
+
             }
             else -> {
             }
