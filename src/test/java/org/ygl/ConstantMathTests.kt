@@ -42,10 +42,11 @@ internal class ConstantMathTests {
 
     @Test
     fun testConstantMultiplication() {
-        test(5, 5, "*", 25)
         test(0, 4, "*", 0)
         test(1, 4, "*", 4)
         test(4, 1, "*", 4)
+        test(5, 5, "*", 25)
+        test(21, 5, "*", 105)
     }
 
     @Test

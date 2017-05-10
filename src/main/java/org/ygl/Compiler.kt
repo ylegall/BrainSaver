@@ -6,7 +6,8 @@ import java.io.InputStream
 import java.io.OutputStream
 
 class CompileOptions(
-    val verbose: Boolean = false
+    val verbose: Boolean = false,
+    val commentChar: String = "#"
 )
 
 val DEFAULT_COMPILE_OPTIONS = CompileOptions()

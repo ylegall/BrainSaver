@@ -199,7 +199,7 @@ class CodeGen(
         commentLine("$s1 *= $s2")
         if (isConstant(s1) && isConstant(s2)) {
             // TODO
-            return loadInt(s1, s1.value as Int * s2.value as Int)
+            return loadConstant(s1, s1.value as Int * s2.value as Int)
         } else {
             s1.value = null
         }
@@ -223,7 +223,7 @@ class CodeGen(
         commentLine("$s1 /= $s2")
         if (s1.isConstant() && s2.isConstant()) {
             // TODO
-            return loadInt(s1, s1.value as Int / s2.value as Int)
+            return loadConstant(s1, s1.value as Int / s2.value as Int)
         } else {
             s1.value = null
         }
@@ -263,7 +263,7 @@ class CodeGen(
         commentLine("$s1 %= $s2")
         if (s1.isConstant() && s2.isConstant()) {
             // TODO
-            return loadInt(s1, s1.value as Int % s2.value as Int)
+            return loadConstant(s1, s1.value as Int % s2.value as Int)
         } else {
             s1.value = null
         }
@@ -653,6 +653,7 @@ class CodeGen(
         divideBy(cpy, ten)
 
         commentLine("print 100s char")
+        assign(ten, cpy)
         moveTo(cpy)
         startLoop()
             addTo(cpy, asciiOffset)
@@ -661,11 +662,12 @@ class CodeGen(
         endLoop()
 
         commentLine("print 10s char")
-        moveTo(d2)
+        addTo(ten, d2)
+        moveTo(ten)
         startLoop()
             addTo(d2, asciiOffset)
             printChar(d2)
-            setZero(d2)
+            setZero(ten)
         endLoop()
 
         commentLine("print 1s char")
@@ -705,7 +707,7 @@ class CodeGen(
 
     fun printChar(symbol: Symbol, offset: Int = 0): Symbol {
         moveTo(symbol, offset)
-        emit(".")
+        emit(".", "print char $symbol")
         return symbol
     }
 
@@ -754,6 +756,7 @@ class CodeGen(
         if (symbol.isConstant()) {
             symbol.value = symbol.value as Int + value
         }
+        moveTo(symbol)
         emit(ch.repeat(Math.abs(value)), "increment $symbol by $value")
         return symbol
     }
@@ -823,7 +826,7 @@ class CodeGen(
     fun commentLine(str: String) {
         if (col != 0) newline()
         assert(!str.contains(reservedChars))
-        write(";; " + str)
+        write("${options.commentChar} $str")
         newline()
     }
 
@@ -857,7 +860,7 @@ class CodeGen(
                 if (!cmt.isEmpty()) {
                     assert(!cmt.contains(reservedChars))
                     val commentPadding = COMMENT_MARGIN - col
-                    write(" ".repeat(commentPadding) + ";; " + cmt)
+                    write(" ".repeat(commentPadding) + "${options.commentChar} $cmt")
                     cmt = ""
                     newline()
                 }
