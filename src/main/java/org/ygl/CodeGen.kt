@@ -1,8 +1,7 @@
 package org.ygl
 
-import java.io.File
+import java.io.OutputStream
 import java.io.PrintWriter
-import java.nio.file.Files
 import java.util.*
 
 
@@ -15,18 +14,19 @@ const val COMMENT_MARGIN  = 44
 
 // https://esolangs.org/wiki/Brainfuck_algorithms
 // https://www.codeproject.com/Articles/558979/BrainFix-the-language-that-translates-to-fluent-Br
-class CodeGen(outputFile: File, var verbose:Boolean = true) : AutoCloseable {
+class CodeGen(
+        outputStream: OutputStream,
+        val options: CompileOptions = DEFAULT_COMPILE_OPTIONS
+) : AutoCloseable
+{
 
     private var col = 0
     private var nestLevel = 0
-
     private var dataPointer = 0
 
     val functions = HashMap<String, Function>()
     private val scopes = ArrayList<Scope>()
-    private val output: PrintWriter = PrintWriter(
-            Files.newBufferedWriter(outputFile.toPath(), Charsets.UTF_8)
-    )
+    private val output: PrintWriter = PrintWriter(outputStream)
     private val reservedChars = Regex("""[\[\]<>+-,.]""")
 
     override fun close() {
@@ -229,6 +229,7 @@ class CodeGen(outputFile: File, var verbose:Boolean = true) : AutoCloseable {
         }
         val cpy = currentScope().getTempSymbol()
         val div = currentScope().getTempSymbol()
+
         assign(cpy, s1)
         moveTo(cpy)
         startLoop()
@@ -239,7 +240,7 @@ class CodeGen(outputFile: File, var verbose:Boolean = true) : AutoCloseable {
         currentScope().delete(cpy)
 
         val remainder = multiply(div, s2)
-        subtract(remainder, s1)
+        subtractFrom(remainder, s1)
 
         val flag = currentScope().getTempSymbol()
         moveTo(remainder)
@@ -412,59 +413,72 @@ class CodeGen(outputFile: File, var verbose:Boolean = true) : AutoCloseable {
         return lessThan(rhs, lhs)
     }
 
+    // TODO: optimize
     fun greaterThan(lhs: Symbol, rhs: Symbol): Symbol {
         // z = x > y
-
         commentLine("${lhs.name} greater than ${rhs.name}")
-        val z = currentScope().getTempSymbol()
-        val x = currentScope().getTempSymbol()
-        val y = currentScope().getTempSymbol()
-        val t0 = currentScope().getTempSymbol()
-        val t1 = currentScope().getTempSymbol()
 
-        assign(x, lhs)
-        assign(y, rhs)
-
-        setZero(t0)
-        setZero(t1)
-        setZero(z)
-
-        moveTo(x)
+        val ret = currentScope().getTempSymbol()
+        setZero(ret)
+        val z = subtract(lhs, rhs)
+        moveTo(z)
         startLoop()
-            inc(t0)
-
-            moveTo(y)
-            startLoop()
-                emit("-")
-                setZero(t0)
-                inc(t1)
-                moveTo(y)
-            endLoop()
-
-            moveTo(t0)
-            startLoop()
-                emit("-")
-                inc(z)
-                moveTo(t0)
-            endLoop()
-
-            moveTo(t1)
-            startLoop()
-                emit("-")
-                inc(y)
-                moveTo(t1)
-            endLoop()
-
-            dec(y)
-            dec(x)
+            loadInt(ret, 1)
+            setZero(z)
         endLoop()
+        currentScope().delete(z)
 
-        currentScope().delete(x)
-        currentScope().delete(y)
-        currentScope().delete(t0)
-        currentScope().delete(t1)
+        return ret
 
-        return z
+//        val z = currentScope().getTempSymbol()
+//        val x = currentScope().getTempSymbol()
+//        val y = currentScope().getTempSymbol()
+//        val t0 = currentScope().getTempSymbol()
+//        val t1 = currentScope().getTempSymbol()
+//
+//        assign(x, lhs)
+//        assign(y, rhs)
+//
+//        setZero(t0)
+//        setZero(t1)
+//        setZero(z)
+//
+//        moveTo(x)
+//        startLoop()
+//            inc(t0)
+//
+//            moveTo(y)
+//            startLoop()
+//                emit("-")
+//                setZero(t0)
+//                inc(t1)
+//                moveTo(y)
+//            endLoop()
+//
+//            moveTo(t0)
+//            startLoop()
+//                emit("-")
+//                inc(z)
+//                moveTo(t0)
+//            endLoop()
+//
+//            moveTo(t1)
+//            startLoop()
+//                emit("-")
+//                inc(y)
+//                moveTo(t1)
+//            endLoop()
+//
+//            dec(y)
+//            dec(x)
+//        endLoop()
+//
+//        currentScope().delete(x)
+//        currentScope().delete(y)
+//        currentScope().delete(t0)
+//        currentScope().delete(t1)
+//
+//        return z
     }
 
     fun and(lhs: Symbol, rhs: Symbol): Symbol {
@@ -611,7 +625,6 @@ class CodeGen(outputFile: File, var verbose:Boolean = true) : AutoCloseable {
 
     fun print(symbol: Symbol): Symbol {
         newline()
-        commentLine("print $symbol")
         moveTo(symbol)
         return if (symbol.type == Type.STRING) {
             printString(symbol)
@@ -622,35 +635,40 @@ class CodeGen(outputFile: File, var verbose:Boolean = true) : AutoCloseable {
 
     // TODO optimize?
     fun printInt(symbol: Symbol): Symbol {
-
-        val cpy = currentScope().getTempSymbol()
+        commentLine("print int $symbol")
+        val cpy = currentScope().createSymbol("cpy")
         assign(cpy, symbol)
 
-        val ten = currentScope().getTempSymbol()
-        val asciiOffset = currentScope().getTempSymbol()
-        val d2 = currentScope().getTempSymbol()
-        val d3 = currentScope().getTempSymbol()
+        val ten = currentScope().createSymbol("ten")
+        val asciiOffset = currentScope().createSymbol("ao")
+        val d2 = currentScope().createSymbol("d2")
+        val d3 = currentScope().createSymbol("d3")
 
-        loadInt(ten, 10)
-        loadInt(asciiOffset, 48)
+        loadConstant(ten, 10)
+        loadConstant(asciiOffset, 48)
 
         assign(d3, mod(cpy, ten))
         divideBy(cpy, ten)
         assign(d2, mod(cpy, ten))
         divideBy(cpy, ten)
 
+        commentLine("print 100s char")
         moveTo(cpy)
         startLoop()
-        addTo(cpy, asciiOffset)
-        printChar(cpy)
+            addTo(cpy, asciiOffset)
+            printChar(cpy)
+            setZero(cpy)
         endLoop()
 
+        commentLine("print 10s char")
         moveTo(d2)
         startLoop()
-        addTo(d2, asciiOffset)
-        printChar(d2)
+            addTo(d2, asciiOffset)
+            printChar(d2)
+            setZero(d2)
         endLoop()
 
+        commentLine("print 1s char")
         moveTo(d3)
         addTo(d3, asciiOffset)
         printChar(d3)
@@ -666,6 +684,7 @@ class CodeGen(outputFile: File, var verbose:Boolean = true) : AutoCloseable {
     }
 
     fun printString(symbol: Symbol): Symbol {
+        commentLine("print str $symbol")
         for (i in 0 until symbol.size) {
             printChar(symbol, i)
         }
@@ -723,7 +742,7 @@ class CodeGen(outputFile: File, var verbose:Boolean = true) : AutoCloseable {
     }
 
     fun loadInt(symbol: Symbol, value: Int, offset: Int = 0): Symbol {
-        if (value == 0) return setZero(symbol, offset)
+        if (value <= 0) return setZero(symbol, offset) // non wrapping
         setZero(symbol, offset)
         emit("+".repeat(value), "load $symbol = $value")
         return symbol
@@ -804,7 +823,7 @@ class CodeGen(outputFile: File, var verbose:Boolean = true) : AutoCloseable {
     fun commentLine(str: String) {
         if (col != 0) newline()
         assert(!str.contains(reservedChars))
-        write("# " + str)
+        write(";; " + str)
         newline()
     }
 
@@ -818,9 +837,10 @@ class CodeGen(outputFile: File, var verbose:Boolean = true) : AutoCloseable {
     private fun getIndent() = "  ".repeat(nestLevel)
 
     private fun emit(code: String, comment: String = "") {
-        if (verbose) {
+        if (options.verbose) {
 
             var text = code
+            var cmt = comment
             while (!text.isEmpty()) {
                 if (col == MARGIN) newline()
                 if (text.length + col > MARGIN) {
@@ -834,10 +854,11 @@ class CodeGen(outputFile: File, var verbose:Boolean = true) : AutoCloseable {
                     text = ""
                 }
 
-                if (!comment.isEmpty()) {
-                    assert(!comment.contains(reservedChars))
+                if (!cmt.isEmpty()) {
+                    assert(!cmt.contains(reservedChars))
                     val commentPadding = COMMENT_MARGIN - col
-                    write(" ".repeat(commentPadding) + "# " + comment)
+                    write(" ".repeat(commentPadding) + ";; " + cmt)
+                    cmt = ""
                     newline()
                 }
             }
@@ -850,6 +871,6 @@ class CodeGen(outputFile: File, var verbose:Boolean = true) : AutoCloseable {
 
     private fun write(code: String) {
         output.print(code)
-        print(code)
+        if (options.verbose) print(code)
     }
 }

@@ -1,3 +1,4 @@
 optimize code to print ints
 constant folding
 loops
+string to int function

@@ -91,13 +91,15 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
     override fun visitReadStatement(ctx: ReadStatementContext?): Symbol? {
         if (ctx == null) throw Exception("null ReadStatementContext")
         val id = ctx.Identifier().text
-        var sym = codegen.currentScope().getOrCreateSymbol(id)
-        if (ctx.rd != null) {
+        return if (ctx.rd != null) {
+            var sym = codegen.currentScope().getOrCreateSymbol(id, type = Type.INT)
             codegen.readChar(sym)
         } else if (ctx.rdint != null) {
+            var sym = codegen.currentScope().getOrCreateSymbol(id, type = Type.INT)
             codegen.readInt(sym)
+        } else {
+            throw Exception("unsupported read call")
         }
-        return sym
     }
 
     override fun visitAtomId(ctx: AtomIdContext?): Symbol? {
