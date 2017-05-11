@@ -4,6 +4,10 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.nio.charset.StandardCharsets
 
+fun compileAndEval(input: String, userInput: String = ""): String {
+    return eval(compile(input), userInput)
+}
+
 fun compile(input: String): String {
     val inputStream = ByteArrayInputStream(input.toByteArray(StandardCharsets.UTF_8))
     val outputStream = ByteArrayOutputStream()

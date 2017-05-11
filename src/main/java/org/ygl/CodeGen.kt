@@ -73,6 +73,22 @@ class CodeGen(
         return symbol.isConstant() && !currentScope().hasConditions()
     }
 
+    /**
+     * moves rhs to lhs. rhs is not preserved
+     */
+    fun move(lhs: Symbol, rhs: Symbol): Symbol {
+        commentLine("move $rhs to $lhs")
+
+        setZero(lhs)
+        moveTo(rhs)
+        startLoop()
+            inc(lhs)
+            dec(rhs)
+        endLoop()
+
+        return lhs
+    }
+
     fun assign(lhs: Symbol, rhs: Symbol): Symbol {
         if (isConstant(rhs)) {
             // TODO: if sizes don't match, reallocate
@@ -321,101 +337,61 @@ class CodeGen(
         return result
     }
 
-    // TODO
     fun lessThan(lhs: Symbol, rhs: Symbol): Symbol {
         commentLine("${lhs.name} less than ${rhs.name}")
 
+        val ret = currentScope().getTempSymbol()
         val x = currentScope().getTempSymbol()
-        val y = currentScope().getTempSymbol()
 
-        val t0 = currentScope().getTempSymbol()
-
-        // TODO: ensure these are consecutive
-        val t1 = currentScope().getTempSymbol()
-        val t2 = currentScope().getTempSymbol()
-        val t3 = currentScope().getTempSymbol()
+        setZero(ret)
 
         assign(x, lhs)
-        assign(y, rhs)
+        subtractFrom(x, rhs)
 
-        setZero(t0)
-        setZero(t1)
-        loadInt(t2, 1)
-        setZero(t3)
-
-        // copy t to t0
-        moveTo(y)
-        startLoop()
-            inc(t0)
-            inc(t1)
-            dec(y)
-        endLoop()
-
-        moveTo(t1)
-        startLoop()
-            inc(y)
-            dec(t1)
-        endLoop()
-
-        // copy x to t1
         moveTo(x)
         startLoop()
-            inc(t1)
-            dec(x)
+            setZero(ret)
+            setZero(x)
         endLoop()
 
-        // temp1[>-]> [< x+ temp0[-] temp1>->]<+<
-        moveTo(t1)
+        assign(x, rhs)
+        subtractFrom(x, lhs)
+
+        moveTo(x)
         startLoop()
-            emit(">-")
+            loadInt(ret, 1)
+            setZero(x)
         endLoop()
 
-        startLoop()
-            emit("<")
-            inc(x)
-            setZero(t0)
-            moveTo(t1)
-            emit(">->")
-        endLoop()
-        emit("<+<")
-
-        // temp0[temp1- [>-]> [< x+ temp0[-]+ temp1>->]<+< temp0-]
-        moveTo(t0)
-        startLoop()
-            dec(t1)
-            emit("[>-]>")
-            startLoop()
-                emit("<")
-                inc(x)
-                loadInt(t0, 1)
-                moveTo(t1)
-                emit(">->")
-            endLoop()
-            emit("<+<")
-            dec(t0)
-        endLoop()
-
-        currentScope().delete(t0)
-        currentScope().delete(t1)
-        currentScope().delete(t2)
-        currentScope().delete(t3)
-        currentScope().delete(y)
-        return x
+        return ret
     }
 
     fun lessThanEqual(lhs: Symbol, rhs: Symbol): Symbol {
         commentLine("${lhs.name} less than or equal ${rhs.name}")
-        return greaterThan(rhs, lhs)
+
+        val ret = currentScope().getTempSymbol()
+        val x = currentScope().getTempSymbol()
+
+        loadInt(ret, 1)
+        assign(x, lhs)
+        subtractFrom(x, rhs)
+
+        moveTo(x)
+        startLoop()
+            setZero(ret)
+            setZero(x)
+        endLoop()
+
+        return ret
     }
 
     fun greaterThanEqual(lhs: Symbol, rhs: Symbol): Symbol {
         commentLine("${lhs.name} less than or equal ${rhs.name}")
-        return lessThan(rhs, lhs)
+        return lessThanEqual(rhs, lhs)
     }
 
     // TODO: optimize
     fun greaterThan(lhs: Symbol, rhs: Symbol): Symbol {
-        // z = x > y
         commentLine("${lhs.name} greater than ${rhs.name}")
 
         val ret = currentScope().getTempSymbol()
@@ -429,56 +405,6 @@ class CodeGen(
         currentScope().delete(z)
 
         return ret
-
-//        val z = currentScope().getTempSymbol()
-//        val x = currentScope().getTempSymbol()
-//        val y = currentScope().getTempSymbol()
-//        val t0 = currentScope().getTempSymbol()
-//        val t1 = currentScope().getTempSymbol()
-//
-//        assign(x, lhs)
-//        assign(y, rhs)
-//
-//        setZero(t0)
-//        setZero(t1)
-//        setZero(z)
-//
-//        moveTo(x)
-//        startLoop()
-//            inc(t0)
-//
-//            moveTo(y)
-//            startLoop()
-//                emit("-")
-//                setZero(t0)
-//                inc(t1)
-//                moveTo(y)
-//            endLoop()
-//
-//            moveTo(t0)
-//            startLoop()
-//                emit("-")
-//                inc(z)
-//                moveTo(t0)
-//            endLoop()
-//
-//            moveTo(t1)
-//            startLoop()
-//                emit("-")
-//                inc(y)
-//                moveTo(t1)
-//            endLoop()
-//
-//            dec(y)
-//            dec(x)
-//        endLoop()
-//
-//        currentScope().delete(x)
-//        currentScope().delete(y)
-//        currentScope().delete(t0)
-//        currentScope().delete(t1)
-//
-//        return z
     }
 
     fun and(lhs: Symbol, rhs: Symbol): Symbol {

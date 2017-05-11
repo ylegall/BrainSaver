@@ -5,7 +5,7 @@ import kotlin.test.assertEquals
 
 /**
  */
-internal class ConstantMathTests {
+internal class TestConstantMath {
 
     companion object {
         @BeforeAll

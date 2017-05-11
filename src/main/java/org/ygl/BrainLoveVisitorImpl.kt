@@ -169,7 +169,7 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
             // create new scope and copy expression args into function param variables
             for (i in 0 until params.size) {
                 val param = params[i]
-                codegen.currentScope().createSymbol(param.text, arguments[i])
+                codegen.currentScope().createSymbol(param.text, arguments[i]) // TODO, call loadInt()?
             }
         } else {
             codegen.enterScope()
@@ -182,7 +182,8 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
         val result = codegen.currentScope().getSymbol(org.ygl.returnSymbolName)
         codegen.exitScope()
         return if (result != null) {
-            codegen.assign(codegen.currentScope().getTempSymbol(result.type, result.size), result)
+            val cpy = codegen.currentScope().getTempSymbol(result.type, result.size)
+            codegen.move(cpy, result)
         } else {
             return null
         }

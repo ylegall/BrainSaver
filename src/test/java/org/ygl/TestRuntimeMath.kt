@@ -3,7 +3,7 @@ package org.ygl
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 
-internal class RuntimeMathTests
+internal class TestRuntimeMath
 {
     @Test
     fun testRuntimeAdd() {
