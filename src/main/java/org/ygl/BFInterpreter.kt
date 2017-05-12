@@ -64,7 +64,7 @@ class BFInterpreter(
         }
 
         if (options.isVerbose) {
-            println("\nprogram stats;")
+            println("\nprogram stats:")
             println("opCount:    $opCount")
         }
     }

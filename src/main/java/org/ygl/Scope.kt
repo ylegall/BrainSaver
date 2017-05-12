@@ -17,7 +17,6 @@ class Scope(val startAddress: Int) {
 
     private val symbolMap = HashMap<String, Symbol>()
     private val freeSlots = PriorityQueue<Symbol>()
-    //private val conditionFlags = ArrayDeque<IfElseFlags>()
     private val conditionFlags = ArrayDeque<Symbol>()
 
     init {

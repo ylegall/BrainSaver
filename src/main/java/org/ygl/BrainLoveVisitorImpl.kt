@@ -22,7 +22,7 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
                 mainFunction = function
             }
         }
-        if (mainFunction == null) throw Exception("no main function found")
+        mainFunction ?: throw Exception("no main function found")
         codegen.enterScope()
         return visit(mainFunction)
     }
@@ -40,14 +40,13 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
     }
 
     override fun visitAssignmentStatement(ctx: AssignmentStatementContext?): Symbol? {
-        if (ctx == null) throw Exception("null AssignmentStatementContext")
+        ctx ?: throw Exception("null AssignmentStatementContext")
         val lhs = ctx.lhs.text
         val op = ctx.op.text
         val rhs = ctx.exp()
 
         val expResult = this.visit(rhs) ?: throw Exception("null rhs expression result")
 
-        // TODO: implement operators
         val result = when (op) {
             "="  -> codegen.assign(lhs, expResult)
             "+=" -> codegen.opAssign(lhs, expResult, codegen::addTo)
@@ -63,7 +62,7 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
     }
 
     override fun visitPrintStatement(ctx: PrintStatementContext?): Symbol? {
-        if (ctx == null) throw Exception("null PrintStatementContext")
+        ctx ?: throw Exception("null PrintStatementContext")
         val scope = codegen.currentScope()
 
         val exp = ctx.exp()
@@ -89,7 +88,7 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
     private fun removeQuotes(str: String) = str.trim().substring(1 .. str.length-2)
 
     override fun visitReadStatement(ctx: ReadStatementContext?): Symbol? {
-        if (ctx == null) throw Exception("null ReadStatementContext")
+        ctx ?: throw Exception("null ReadStatementContext")
         val id = ctx.Identifier().text
         return if (ctx.rd != null) {
             var sym = codegen.currentScope().getOrCreateSymbol(id, type = Type.INT)
@@ -195,13 +194,12 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
         return ret
     }
 
-    override fun visitOpExp(ctx: OpExpContext?): Symbol? {
-        if (ctx == null) throw Exception("null op ctx")
+    override fun visitOpExp(context: OpExpContext?): Symbol? {
+        val ctx = checkNotNull(context, {" null op ctx"})
         val op = ctx.op.text
         val left  = visit(ctx.left)  ?: throw Exception("null exp result")
         val right = visit(ctx.right) ?: throw Exception("null exp result")
 
-        // TODO handle overflow
         if (isConstant(left) && isConstant(right)) {
             val symbol = codegen.currentScope().getTempSymbol()
             symbol.value = when (op) {
@@ -220,6 +218,14 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
                 "||"  -> if ((left.value != 0) || (right.value != 0)) 1 else 0
                 else -> throw Exception("invalid op $op")
             }
+
+            // TODO: overflow/underflow wrapping:
+            if ((symbol.value as Int) < 0) {
+                symbol.value = 0
+            } else if ((symbol.value as Int) > 255) {
+                symbol.value = 255
+            }
+
             return symbol
         } else {
             return when (op) {
@@ -242,7 +248,7 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
     }
 
     override fun visitNotExp(ctx: NotExpContext?): Symbol? {
-        if (ctx == null) throw Exception("null NotExpContext")
+        ctx ?: throw Exception("null NotExpContext")
         val right = visit(ctx.right) ?: throw Exception("null rhs")
         if (isConstant(right)) {
             val result = codegen.currentScope().getTempSymbol(right.type, right.size)
@@ -252,8 +258,8 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
         return codegen.not(right)
     }
 
-    override fun visitIfStatement(ctx: IfStatementContext?): Symbol? {
-        if (ctx == null) throw Exception("null IfStatementContext")
+    override fun visitIfStatement(context: IfStatementContext?): Symbol? {
+        val ctx = checkNotNull(context, { "null IfStatementContext" })
         val condition = visit(ctx.condition) ?: throw Exception("null condition result")
 
         if (isConstant(condition)) {
@@ -288,9 +294,12 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
      * TODO: constant folding is breaking this
      */
     override fun visitWhileStatement(ctx: WhileStatementContext?): Symbol? {
-        if (ctx == null) throw Exception("null WhileStatementContext")
+        ctx ?: throw Exception("null WhileStatementContext")
 
         var condition = visit(ctx.condition) ?: throw Exception("null condition result")
+
+        if (isConstant(condition) && condition.value == 0) return null
+
         codegen.startWhile(condition)
         for (stmt in ctx.body.statement()) {
             visit(stmt)

@@ -175,7 +175,7 @@ class CodeGen(
 
     fun addTo(s1: Symbol, s2: Symbol): Symbol {
         commentLine("add $s2 to $s1")
-        if (s1.isConstant() && s2.isConstant()) {
+        if (s2.isConstant()) {
             return incrementBy(s1, s2.value as Int)
         } else {
             s1.value = null
@@ -194,7 +194,7 @@ class CodeGen(
 
     fun subtractFrom(s1: Symbol, s2: Symbol): Symbol {
         commentLine("subtract $s2 from $s1")
-        if (s1.isConstant() && s2.isConstant()) {
+        if (s2.isConstant()) {
             return incrementBy(s1, -(s2.value as Int))
         } else {
             s1.value = null
@@ -520,19 +520,19 @@ class CodeGen(
 
     fun startWhile(condition: Symbol) {
         commentLine("start while $condition")
+        if (isConstant(condition)) {
+            loadInt(condition, condition.value as Int)
+        }
         val flag = currentScope().pushConditionFlag()
-        assign(flag, condition)
-        moveTo(flag)
+        moveTo(condition)
         startLoop()
     }
 
     fun endWhile(condition: Symbol) {
-        val flag = currentScope().getConditionFlag()
-        assign(flag, condition)
-        moveTo(flag)
+        currentScope().popConditionFlag()
+        moveTo(condition)
         endLoop()
         commentLine("end while $condition")
-        currentScope().popConditionFlag()
     }
 
     fun readChar(symbol: Symbol): Symbol {
@@ -559,7 +559,7 @@ class CodeGen(
         }
     }
 
-    // TODO optimize?
+    // TODO optimize: get a block of memory?
     fun printInt(symbol: Symbol): Symbol {
         commentLine("print int $symbol")
         val cpy = currentScope().createSymbol("cpy")
