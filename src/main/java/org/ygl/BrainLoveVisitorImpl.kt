@@ -115,7 +115,6 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
         val chars = removeQuotes(str)
         val tempSymbol = scope.getTempSymbol(Type.STRING, chars.length)
         codegen.loadString(tempSymbol, chars)
-        tempSymbol.value = chars
         return tempSymbol
     }
 
@@ -125,7 +124,7 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
         val value = Integer.parseInt(valueStr)
         if (value >= 256) throw Exception("integer overflow: $value")
         val tempSymbol = scope.getTempSymbol(Type.INT)
-        codegen.loadConstant(tempSymbol, value)
+        codegen.loadInt(tempSymbol, value)
         return tempSymbol
     }
 
@@ -168,7 +167,8 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
             // create new scope and copy expression args into function param variables
             for (i in 0 until params.size) {
                 val param = params[i]
-                codegen.currentScope().createSymbol(param.text, arguments[i]) // TODO, call loadInt()?
+                val sym = codegen.currentScope().createSymbol(param.text, arguments[i]) // TODO, call loadInt()?
+                codegen.assign(sym, arguments[i])
             }
         } else {
             codegen.enterScope()
@@ -200,61 +200,27 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
         val left  = visit(ctx.left)  ?: throw Exception("null exp result")
         val right = visit(ctx.right) ?: throw Exception("null exp result")
 
-        if (isConstant(left) && isConstant(right)) {
-            val symbol = codegen.currentScope().getTempSymbol()
-            symbol.value = when (op) {
-                "+" -> left.value as Int + right.value as Int
-                "-" -> left.value as Int - right.value as Int
-                "*" -> left.value as Int * right.value as Int
-                "/" -> left.value as Int / right.value as Int
-                "%" -> left.value as Int % right.value as Int
-                "<" -> if ((left.value as Int) < (right.value as Int)) 1 else 0
-                ">" -> if ((left.value as Int) > (right.value as Int)) 1 else 0
-                "==" -> if ((left.value as Int) == (right.value as Int)) 1 else 0
-                "!=" -> if ((left.value as Int) != (right.value as Int)) 1 else 0
-                "<=" -> if ((left.value as Int) <= (right.value as Int)) 1 else 0
-                ">=" -> if ((left.value as Int) >= (right.value as Int)) 1 else 0
-                "&&"  -> if ((left.value != 0) && (right.value != 0)) 1 else 0
-                "||"  -> if ((left.value != 0) || (right.value != 0)) 1 else 0
-                else -> throw Exception("invalid op $op")
-            }
-
-            // TODO: overflow/underflow wrapping:
-            if ((symbol.value as Int) < 0) {
-                symbol.value = 0
-            } else if ((symbol.value as Int) > 255) {
-                symbol.value = 255
-            }
-
-            return symbol
-        } else {
-            return when (op) {
-                "+" -> codegen.add(left, right)
-                "-" -> codegen.subtract(left, right)
-                "*" -> codegen.multiply(left, right)
-                "/" -> codegen.divide(left, right)
-                "%" -> codegen.mod(left, right)
-                "<" ->  codegen.lessThan(left, right)
-                ">" ->  codegen.greaterThan(left, right)
-                "==" -> codegen.equal(left, right)
-                "!=" -> codegen.notEqual(left, right)
-                "<=" -> codegen.lessThanEqual(left, right)
-                ">=" -> codegen.greaterThanEqual(left, right)
-                "&&" -> codegen.and(left, right)
-                "||" -> codegen.or(left, right)
-                else -> throw Exception("invalid op $op")
-            }
+        return when (op) {
+            "+" -> codegen.add(left, right)
+            "-" -> codegen.subtract(left, right)
+            "*" -> codegen.multiply(left, right)
+            "/" -> codegen.divide(left, right)
+            "%" -> codegen.mod(left, right)
+            "<" ->  codegen.lessThan(left, right)
+            ">" ->  codegen.greaterThan(left, right)
+            "==" -> codegen.equal(left, right)
+            "!=" -> codegen.notEqual(left, right)
+            "<=" -> codegen.lessThanEqual(left, right)
+            ">=" -> codegen.greaterThanEqual(left, right)
+            "&&" -> codegen.and(left, right)
+            "||" -> codegen.or(left, right)
+            else -> throw Exception("invalid op $op")
         }
     }
 
     override fun visitNotExp(ctx: NotExpContext?): Symbol? {
         ctx ?: throw Exception("null NotExpContext")
         val right = visit(ctx.right) ?: throw Exception("null rhs")
-        if (isConstant(right)) {
-            val result = codegen.currentScope().getTempSymbol(right.type, right.size)
-            result.value = if(right.value == 0) 1 else 0
-            return result
-        }
         return codegen.not(right)
     }
 
@@ -262,32 +228,24 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
         val ctx = checkNotNull(context, { "null IfStatementContext" })
         val condition = visit(ctx.condition) ?: throw Exception("null condition result")
 
-        if (isConstant(condition)) {
-            if (condition.value == 0) {
-                return if (ctx.falseStatements != null) visit(ctx.falseStatements) else null
-            } else {
-                return visit(ctx.trueStatements)
+        if (ctx.falseStatements != null && !ctx.falseStatements.isEmpty) {
+            val tmp = codegen.startIf(condition)
+            for (stmt in ctx.trueStatements.statement()) {
+                visit(stmt)
             }
+            codegen.endIf(tmp)
+            codegen.startElse(condition)
+            for (stmt in ctx.falseStatements.statement()) {
+                visit(stmt)
+            }
+            codegen.endElse(condition)
         } else {
-            if (ctx.falseStatements != null && !ctx.falseStatements.isEmpty) {
-                codegen.startIf(condition)
-                for (stmt in ctx.trueStatements.statement()) {
-                    visit(stmt)
-                }
-                codegen.endIf(condition)
-                codegen.startElse(condition)
-                for (stmt in ctx.falseStatements.statement()) {
-                    visit(stmt)
-                }
-                codegen.endElse(condition)
-            } else {
-                val ifFlag = codegen.startIf(condition)
-                visit(ctx.trueStatements)
-                codegen.endIf(ifFlag)
-            }
-            codegen.currentScope().popConditionFlag()
-            return null
+            val ifFlag = codegen.startIf(condition)
+            visit(ctx.trueStatements)
+            codegen.endIf(ifFlag)
         }
+        codegen.currentScope().popConditionFlag()
+        return null
     }
 
     /**
@@ -295,11 +253,7 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
      */
     override fun visitWhileStatement(ctx: WhileStatementContext?): Symbol? {
         ctx ?: throw Exception("null WhileStatementContext")
-
         var condition = visit(ctx.condition) ?: throw Exception("null condition result")
-
-        if (isConstant(condition) && condition.value == 0) return null
-
         codegen.startWhile(condition)
         for (stmt in ctx.body.statement()) {
             visit(stmt)
@@ -307,10 +261,6 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
         condition = visit(ctx.condition) ?: throw Exception("null condition result")
         codegen.endWhile(condition)
         return null
-    }
-
-    fun isConstant(symbol: Symbol): Boolean {
-        return symbol.isConstant() && !codegen.currentScope().hasConditions()
     }
 
 }

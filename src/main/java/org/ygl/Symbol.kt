@@ -19,5 +19,5 @@ data class Symbol(
 
     override fun compareTo(other: Symbol) = address - other.address
 
-    fun isConstant(): Boolean = value != null
+    //fun isConstant(): Boolean = value != null
 }

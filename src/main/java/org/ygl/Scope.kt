@@ -2,11 +2,12 @@ package org.ygl
 
 import java.util.*
 
-//typealias IfElseFlags = Pair<Symbol, Symbol>
+const val returnSymbolName = "#return"
+const val zeroSymbolName = "#0"
 
-val returnSymbolName = "#return"
-val zeroSymbolName = "#0"
-
+/**
+ *
+ */
 class Scope(val startAddress: Int) {
 
     private var tempCounter = 0
@@ -88,14 +89,9 @@ class Scope(val startAddress: Int) {
         delete(flag)
     }
 
-    fun hasConditions(): Boolean {
-        return !conditionFlags.isEmpty()
-    }
-
     fun delete(symbol: Symbol) {
-        if (!symbolMap.containsKey(symbol.name)) throw Exception("undefined symbol: ${symbol.name}")
+        symbolMap.remove(symbol.name) ?: throw Exception("undefined symbol: ${symbol.name}")
         freeSlots.add(symbol)
-        symbolMap.remove(symbol.name)
         if (symbol.address == scopeSize - symbol.size) {
             scopeSize -= symbol.size
         }
@@ -114,7 +110,6 @@ class Scope(val startAddress: Int) {
             }
         }
 
-        //garbageList.addAll(symbolMap.filterKeys { it.startsWith("$") }.values)
         garbageList.forEach {
             symbolMap.remove(it.name)
             freeSlots.add(it)

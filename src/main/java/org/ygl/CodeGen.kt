@@ -69,10 +69,6 @@ class CodeGen(
         return assign(lhsSymbol, rhs)
     }
 
-    fun isConstant(symbol: Symbol): Boolean {
-        return symbol.isConstant() && !currentScope().hasConditions()
-    }
-
     /**
      * moves rhs to lhs. rhs is not preserved
      */
@@ -90,19 +86,9 @@ class CodeGen(
     }
 
     fun assign(lhs: Symbol, rhs: Symbol): Symbol {
-        if (isConstant(rhs)) {
-            // TODO: if sizes don't match, reallocate
-            when (rhs.type) {
-                Type.STRING -> loadString(lhs, rhs.value as String)
-                Type.INT    -> loadConstant(lhs, rhs.value as Int)
-            }
-            lhs.value = rhs.value
-        } else {
-            lhs.value = null
-            when (rhs.type) {
-                Type.STRING -> copyString(lhs, rhs)
-                Type.INT    -> assignInt(lhs, rhs)
-            }
+        when (rhs.type) {
+            Type.STRING -> copyString(lhs, rhs)
+            Type.INT    -> assignInt(lhs, rhs)
         }
         return lhs
     }
@@ -139,47 +125,40 @@ class CodeGen(
             moveTo(tmp)
         endLoop()
         currentScope().delete(tmp)
+        commentLine("end assign $rhs to $lhs")
         return lhs
     }
 
     fun divide(s1: Symbol, s2: Symbol): Symbol {
-        return binaryOp(s1, s2, { a, b -> a / b }, this::divideBy)
+        return binaryOp(s1, s2, this::divideBy)
     }
 
     fun multiply(s1: Symbol, s2: Symbol): Symbol {
-        return binaryOp(s1, s2, { a, b -> a * b }, this::multiplyBy)
+        return binaryOp(s1, s2, this::multiplyBy)
     }
 
     fun mod(s1: Symbol, s2: Symbol): Symbol {
-        return binaryOp(s1, s2, { a, b -> a % b }, this::modBy)
+        return binaryOp(s1, s2, this::modBy)
     }
 
     fun subtract(s1: Symbol, s2: Symbol): Symbol {
-        return binaryOp(s1, s2, { a, b -> a - b }, this::subtractFrom)
+        return binaryOp(s1, s2, this::subtractFrom)
     }
 
     fun add(s1: Symbol, s2: Symbol): Symbol {
-        return binaryOp(s1, s2, { a, b -> a + b }, this::addTo)
+        return binaryOp(s1, s2, this::addTo)
     }
 
-    fun binaryOp(s1: Symbol, s2: Symbol, constFunc: ConstFunction, fallBack: BinaryOp): Symbol {
+    fun binaryOp(s1: Symbol, s2: Symbol, fallBack: BinaryOp): Symbol {
         val result = currentScope().getTempSymbol()
-        if (s1.isConstant() && s2.isConstant()) {
-            result.value = constFunc.invoke(s1.value as Int, s2.value as Int)
-        } else {
-            assign(result, s1)
-            fallBack(result, s2)
-        }
+        assign(result, s1)
+        fallBack(result, s2)
         return result
     }
 
     fun addTo(s1: Symbol, s2: Symbol): Symbol {
         commentLine("add $s2 to $s1")
-        if (s2.isConstant()) {
-            return incrementBy(s1, s2.value as Int)
-        } else {
-            s1.value = null
-        }
+
         val tmp = currentScope().getTempSymbol()
         assign(tmp, s2)
         moveTo(tmp)
@@ -189,16 +168,13 @@ class CodeGen(
             moveTo(tmp)
         endLoop()
         currentScope().delete(tmp)
+        commentLine("end add $s2 to $s1")
         return s1
     }
 
     fun subtractFrom(s1: Symbol, s2: Symbol): Symbol {
         commentLine("subtract $s2 from $s1")
-        if (s2.isConstant()) {
-            return incrementBy(s1, -(s2.value as Int))
-        } else {
-            s1.value = null
-        }
+
         val tmp = currentScope().getTempSymbol()
         assign(tmp, s2)
         moveTo(tmp)
@@ -213,12 +189,7 @@ class CodeGen(
 
     fun multiplyBy(s1: Symbol, s2: Symbol): Symbol {
         commentLine("$s1 *= $s2")
-        if (isConstant(s1) && isConstant(s2)) {
-            // TODO
-            return loadConstant(s1, s1.value as Int * s2.value as Int)
-        } else {
-            s1.value = null
-        }
+
         val t1 = currentScope().getTempSymbol()
         val t2 = currentScope().getTempSymbol()
         assign(t1, s1)
@@ -237,12 +208,7 @@ class CodeGen(
 
     fun divideBy(s1: Symbol, s2: Symbol): Symbol {
         commentLine("$s1 /= $s2")
-        if (s1.isConstant() && s2.isConstant()) {
-            // TODO
-            return loadConstant(s1, s1.value as Int / s2.value as Int)
-        } else {
-            s1.value = null
-        }
+
         val cpy = currentScope().getTempSymbol()
         val div = currentScope().getTempSymbol()
 
@@ -277,12 +243,7 @@ class CodeGen(
     // TODO: optimize
     fun modBy(s1: Symbol, s2: Symbol): Symbol {
         commentLine("$s1 %= $s2")
-        if (s1.isConstant() && s2.isConstant()) {
-            // TODO
-            return loadConstant(s1, s1.value as Int % s2.value as Int)
-        } else {
-            s1.value = null
-        }
+
         val tmp = currentScope().getTempSymbol()
         assign(tmp, s1)
         divideBy(tmp, s2)
@@ -482,7 +443,7 @@ class CodeGen(
         val tmp = currentScope().getTempSymbol()
         assign(tmp, condition)
         moveTo(tmp)
-        startLoop()
+        startLoop("zero else flag if $tmp is true")
             setZero(tmp)
             setZero(elseFlag)
             moveTo(tmp)
@@ -520,9 +481,6 @@ class CodeGen(
 
     fun startWhile(condition: Symbol) {
         commentLine("start while $condition")
-        if (isConstant(condition)) {
-            loadInt(condition, condition.value as Int)
-        }
         val flag = currentScope().pushConditionFlag()
         moveTo(condition)
         startLoop()
@@ -570,8 +528,8 @@ class CodeGen(
         val d2 = currentScope().createSymbol("d2")
         val d3 = currentScope().createSymbol("d3")
 
-        loadConstant(ten, 10)
-        loadConstant(asciiOffset, 48)
+        loadInt(ten, 10)
+        loadInt(asciiOffset, 48)
 
         assign(d3, mod(cpy, ten))
         divideBy(cpy, ten)
@@ -676,21 +634,13 @@ class CodeGen(
         return symbol
     }
 
-    fun incrementBy(symbol: Symbol, value: Int, offset: Int = 0): Symbol {
-        if (value == 0) return symbol
-        val ch = if (value < 0) "-" else "+"
-        if (symbol.isConstant()) {
-            symbol.value = symbol.value as Int + value
-        }
-        moveTo(symbol)
-        emit(ch.repeat(Math.abs(value)), "increment $symbol by $value")
-        return symbol
-    }
-
-    fun loadConstant(symbol: Symbol, value: Int, offset: Int = 0): Symbol {
-        symbol.value = value
-        return loadInt(symbol, value, offset)
-    }
+//    fun incrementBy(symbol: Symbol, value: Int, offset: Int = 0): Symbol {
+//        if (value == 0) return symbol
+//        val ch = if (value < 0) "-" else "+"
+//        moveTo(symbol)
+//        emit(ch.repeat(Math.abs(value)), "increment $symbol by $value")
+//        return symbol
+//    }
 
     fun inc(symbol: Symbol, comment: String = "") {
         moveTo(symbol)
@@ -715,18 +665,18 @@ class CodeGen(
         }
     }
 
-    fun startLoop() {
+    fun startLoop(comment: String = "") {
         newline()
-        emit("[")
+        emit("[", comment)
         nestLevel = Math.min(nestLevel + 1, 10)
         newline()
     }
 
-    fun endLoop() {
+    fun endLoop(comment: String = "") {
         nestLevel -= 1
-        assert(nestLevel >= 0, {-> "negative nest level"})
+        assert(nestLevel >= 0, {"negative nest level"})
         newline()
-        emit("]")
+        emit("]", comment)
         newline()
     }
 
