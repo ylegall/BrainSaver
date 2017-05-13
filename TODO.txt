@@ -1,4 +1,4 @@
 optimize code to print ints
-constant folding
-loops
+for loops
+loop unfolding
 string to int function

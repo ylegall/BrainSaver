@@ -89,6 +89,8 @@ class Scope(val startAddress: Int) {
         delete(flag)
     }
 
+    fun inConditionalScop() = !conditionFlags.isEmpty()
+
     fun delete(symbol: Symbol) {
         symbolMap.remove(symbol.name) ?: throw Exception("undefined symbol: ${symbol.name}")
         freeSlots.add(symbol)

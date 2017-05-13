@@ -47,18 +47,46 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
 
         val expResult = this.visit(rhs) ?: throw Exception("null rhs expression result")
 
-        val result = when (op) {
-            "="  -> codegen.assign(lhs, expResult)
-            "+=" -> codegen.opAssign(lhs, expResult, codegen::addTo)
-            "-=" -> codegen.opAssign(lhs, expResult, codegen::subtractFrom)
-            "*=" -> codegen.opAssign(lhs, expResult, codegen::multiplyBy)
-            "/=" -> codegen.opAssign(lhs, expResult, codegen::divideBy)
-            "%=" -> codegen.opAssign(lhs, expResult, codegen::modBy)
+        if (op == "=") {
+            return assign(lhs, expResult)
+        }
+
+        val lhsSymbol = codegen.currentScope().getSymbol(lhs) ?: throw Exception("undefined identifier $lhs")
+
+        return when (op) {
+            "+=" -> {
+                if (isConstant(expResult)) {
+                    codegen.incrementBy(lhsSymbol, expResult.value as Int)
+                } else {
+                    lhsSymbol.value = null
+                    codegen.addTo(lhsSymbol, expResult)
+                }
+            }
+            "-=" -> {
+                if (isConstant(expResult)) {
+                    codegen.incrementBy(lhsSymbol, -(expResult.value as Int))
+                } else {
+                    lhsSymbol.value = null
+                    codegen.subtractFrom(lhsSymbol, expResult)
+                }
+            }
+            "*=" -> codegen.multiplyBy(lhsSymbol, expResult)
+            "/=" -> codegen.divideBy(lhsSymbol, expResult)
+            "%=" -> codegen.modBy(lhsSymbol, expResult)
             else -> {
                 throw Exception("invalid assignment operator: " + op)
             }
         }
-        return result
+    }
+
+    private fun assign(lhs: String, rhs: Symbol): Symbol {
+        val lhsSymbol = codegen.currentScope().getOrCreateSymbol(lhs)
+        return if (isConstant(rhs)) {
+            lhsSymbol.value = rhs.value
+            codegen.loadInt(lhsSymbol, rhs.value as Int)
+        } else {
+            codegen.assign(lhsSymbol, rhs)
+        }
     }
 
     override fun visitPrintStatement(ctx: PrintStatementContext?): Symbol? {
@@ -85,7 +113,7 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
         }
     }
 
-    private fun removeQuotes(str: String) = str.trim().substring(1 .. str.length-2)
+    private inline fun removeQuotes(str: String) = str.trim().substring(1 .. str.length-2)
 
     override fun visitReadStatement(ctx: ReadStatementContext?): Symbol? {
         ctx ?: throw Exception("null ReadStatementContext")
@@ -125,6 +153,7 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
         if (value >= 256) throw Exception("integer overflow: $value")
         val tempSymbol = scope.getTempSymbol(Type.INT)
         codegen.loadInt(tempSymbol, value)
+        tempSymbol.value = value
         return tempSymbol
     }
 
@@ -167,7 +196,7 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
             // create new scope and copy expression args into function param variables
             for (i in 0 until params.size) {
                 val param = params[i]
-                val sym = codegen.currentScope().createSymbol(param.text, arguments[i]) // TODO, call loadInt()?
+                val sym = codegen.currentScope().createSymbol(param.text, arguments[i])
                 codegen.assign(sym, arguments[i])
             }
         } else {
@@ -200,6 +229,10 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
         val left  = visit(ctx.left)  ?: throw Exception("null exp result")
         val right = visit(ctx.right) ?: throw Exception("null exp result")
 
+        if (isConstant(left) && isConstant(right)) {
+            return constantFold(left, right, op)
+        }
+
         return when (op) {
             "+" -> codegen.add(left, right)
             "-" -> codegen.subtract(left, right)
@@ -216,6 +249,36 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
             "||" -> codegen.or(left, right)
             else -> throw Exception("invalid op $op")
         }
+    }
+
+    private inline fun constantFold(lhs: Symbol, rhs: Symbol, op: String): Symbol {
+        val left = lhs.value as Int
+        val right = rhs.value as Int
+
+        var result = when (op) {
+            "+" -> left + right
+            "-" -> left - right
+            "*" -> left * right
+            "/" -> left / right
+            "%" -> left % right
+            "<" ->  if (left < right)  1 else 0
+            ">" ->  if (left > right)  1 else 0
+            "==" -> if (left == right) 1 else 0
+            "!=" -> if (left != right) 1 else 0
+            "<=" -> if (left <= right) 1 else 0
+            ">=" -> if (left >= right) 1 else 0
+            "&&" -> if (left > 0 && right > 0) 1 else 0
+            "||" -> if (left > 0 || right > 0) 1 else 0
+            else -> throw Exception("invalid op $op")
+        }
+
+        result = Math.min(result, 255)
+        result = Math.max(result, 0)
+
+        val symbol = codegen.currentScope().getTempSymbol()
+        symbol.value = result
+        codegen.loadInt(symbol, result)
+        return symbol
     }
 
     override fun visitNotExp(ctx: NotExpContext?): Symbol? {
@@ -248,12 +311,10 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
         return null
     }
 
-    /**
-     * TODO: constant folding is breaking this
-     */
     override fun visitWhileStatement(ctx: WhileStatementContext?): Symbol? {
         ctx ?: throw Exception("null WhileStatementContext")
         var condition = visit(ctx.condition) ?: throw Exception("null condition result")
+
         codegen.startWhile(condition)
         for (stmt in ctx.body.statement()) {
             visit(stmt)
@@ -261,6 +322,26 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
         condition = visit(ctx.condition) ?: throw Exception("null condition result")
         codegen.endWhile(condition)
         return null
+    }
+
+//    private inline fun canUnrollLoop(condition: Symbol, body: List<StatementContext>): Boolean {
+//        if (!isConstant(condition)) return false
+//        if (condition.value as Int > 8) return false // TODO: make this a configurable setting
+//        for (stmt in body) {
+//            if (stmt is PrintStatementContext) return false
+//            if (stmt is CallStatementContext)  return false
+//        }
+//        return true
+//    }
+
+//    private fun unrollLoop(condition: Symbol, body: List<StatementContext>) {
+//        for (i in 1 .. condition.value as Int) {
+//            body.forEach { visit(it) }
+//        }
+//    }
+
+    private inline fun isConstant(symbol: Symbol): Boolean {
+        return !codegen.currentScope().inConditionalScop() && symbol.value != null
     }
 
 }

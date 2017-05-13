@@ -63,12 +63,6 @@ class CodeGen(
         return scopes[scopes.size - 1]
     }
 
-    // TODO: if rhs is constant and lhs is undefined, call loadConstant()
-    fun assign(lhs: String, rhs: Symbol): Symbol {
-        val lhsSymbol = currentScope().getOrCreateSymbol(lhs, rhs.size, rhs.type)
-        return assign(lhsSymbol, rhs)
-    }
-
     /**
      * moves rhs to lhs. rhs is not preserved
      */
@@ -91,16 +85,6 @@ class CodeGen(
             Type.INT    -> assignInt(lhs, rhs)
         }
         return lhs
-    }
-
-    /**
-     * Handles op-assign operations like x += y
-     * throws exception if lhs identifier is undefined
-     */
-    fun opAssign(lhs: String, rhs: Symbol, func: SymbolFunction): Symbol {
-        val lhsSymbol = currentScope().getSymbol(lhs) ?:
-                throw Exception("undefined identifier $lhs")
-        return func(lhsSymbol, rhs)
     }
 
     fun assignInt(lhs: Symbol, rhs: Symbol): Symbol {
@@ -299,7 +283,7 @@ class CodeGen(
     }
 
     fun lessThan(lhs: Symbol, rhs: Symbol): Symbol {
-        commentLine("${lhs.name} less than ${rhs.name}")
+        commentLine("$lhs less than $rhs")
 
         val ret = currentScope().getTempSymbol()
         val x = currentScope().getTempSymbol()
@@ -323,12 +307,12 @@ class CodeGen(
             loadInt(ret, 1)
             setZero(x)
         endLoop()
-
+        commentLine("end $lhs less than $rhs")
         return ret
     }
 
     fun lessThanEqual(lhs: Symbol, rhs: Symbol): Symbol {
-        commentLine("${lhs.name} less than or equal ${rhs.name}")
+        commentLine("$lhs less than or equal $rhs")
 
         val ret = currentScope().getTempSymbol()
         val x = currentScope().getTempSymbol()
@@ -488,7 +472,7 @@ class CodeGen(
 
     fun endWhile(condition: Symbol) {
         currentScope().popConditionFlag()
-        moveTo(condition)
+        moveTo(condition, comment="move to $condition")
         endLoop()
         commentLine("end while $condition")
     }
@@ -634,13 +618,13 @@ class CodeGen(
         return symbol
     }
 
-//    fun incrementBy(symbol: Symbol, value: Int, offset: Int = 0): Symbol {
-//        if (value == 0) return symbol
-//        val ch = if (value < 0) "-" else "+"
-//        moveTo(symbol)
-//        emit(ch.repeat(Math.abs(value)), "increment $symbol by $value")
-//        return symbol
-//    }
+    fun incrementBy(symbol: Symbol, value: Int, offset: Int = 0): Symbol {
+        if (value == 0) return symbol
+        val ch = if (value < 0) "-" else "+"
+        moveTo(symbol)
+        emit(ch.repeat(Math.abs(value)), "increment $symbol by $value")
+        return symbol
+    }
 
     fun inc(symbol: Symbol, comment: String = "") {
         moveTo(symbol)
@@ -706,14 +690,14 @@ class CodeGen(
         newline()
     }
 
-    private fun newline() {
+    private inline fun newline() {
         write(System.lineSeparator())
         val indent = getIndent()
         col = indent.length
         write(indent)
     }
 
-    private fun getIndent() = "  ".repeat(nestLevel)
+    private inline fun getIndent() = "  ".repeat(nestLevel)
 
     private fun emit(code: String, comment: String = "") {
         if (options.verbose) {
@@ -748,7 +732,7 @@ class CodeGen(
         }
     }
 
-    private fun write(code: String) {
+    private inline fun write(code: String) {
         output.print(code)
         if (options.verbose) print(code)
     }
