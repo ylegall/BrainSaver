@@ -179,12 +179,14 @@ class CodeGen(
         assign(t1, s1)
         assign(t2, s2)
         setZero(s1)
+
         moveTo(t2)
         startLoop()
             emit("-")
             addTo(s1, t1)
             moveTo(t2)
         endLoop()
+
         currentScope().delete(t2)
         currentScope().delete(t1)
         return s1
@@ -235,9 +237,12 @@ class CodeGen(
 
         val tmp = currentScope().getTempSymbol()
         assign(tmp, s1)
-        divideBy(tmp, s2)
-        subtractFrom(s1, multiply(tmp, s2))
 
+        divideBy(tmp, s2)
+        val prod = multiply(tmp, s2)
+        subtractFrom(s1, prod)
+
+        currentScope().delete(prod)
         currentScope().delete(tmp)
 
         commentLine("end $s1 %= $s2")
