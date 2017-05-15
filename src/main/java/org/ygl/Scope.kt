@@ -89,13 +89,14 @@ class Scope(val startAddress: Int) {
         delete(flag)
     }
 
-    fun inConditionalScop() = !conditionFlags.isEmpty()
+    fun inConditionalScope() = !conditionFlags.isEmpty()
 
     fun delete(symbol: Symbol) {
         symbolMap.remove(symbol.name) ?: throw Exception("undefined symbol: ${symbol.name}")
-        freeSlots.add(symbol)
-        if (symbol.address == scopeSize - symbol.size) {
+        if (symbol.address + symbol.size == startAddress + scopeSize) {
             scopeSize -= symbol.size
+        } else {
+            freeSlots.add(symbol)
         }
     }
 

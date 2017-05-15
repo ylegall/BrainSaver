@@ -341,7 +341,7 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
 //    }
 
     private inline fun isConstant(symbol: Symbol): Boolean {
-        return !codegen.currentScope().inConditionalScop() && symbol.value != null
+        return !codegen.currentScope().inConditionalScope() && symbol.value != null
     }
 
 }
