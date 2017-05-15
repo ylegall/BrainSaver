@@ -89,7 +89,7 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
             lhsSymbol = codegen.currentScope().createSymbol(lhs, rhs)
         }
 
-        return when(rhs.type) {
+        return when (rhs.type) {
             Type.INT -> {
                 if (isConstant(rhs)) {
                     lhsSymbol.value = rhs.value
@@ -318,6 +318,16 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
     override fun visitIfStatement(context: IfStatementContext?): Symbol? {
         val ctx = checkNotNull(context, { "null IfStatementContext" })
         val condition = visit(ctx.condition) ?: throw Exception("null condition result")
+
+        // constant branch elimination
+        if (isConstant(condition)) {
+            if (condition.value == 0) {
+                if (ctx.falseStatements != null) visit(ctx.falseStatements)
+            } else {
+                visit(ctx.trueStatements)
+            }
+            return null
+        }
 
         if (ctx.falseStatements != null && !ctx.falseStatements.isEmpty) {
             val tmp = codegen.startIf(condition)

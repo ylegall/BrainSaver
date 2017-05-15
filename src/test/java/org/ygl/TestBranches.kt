@@ -7,33 +7,58 @@ import org.junit.jupiter.api.Test
 internal class TestBranches
 {
     @Test
-    fun testIfElseBranch() {
-        testIfElse(0, 0, "+", 2)
-        testIfElse(0, 1, "+", 1)
+    fun testConstantIfElse() {
+        testConstant(5, 7, "<", 1)
+        testConstant(5, 7, ">", 2)
 
-        testIfElse(1, 1, "-", 2)
-        testIfElse(2, 1, "-", 1)
-        testIfElse(1, 2, "-", 2)
+        testConstant(6, 6, ">=", 1)
+        testConstant(8, 6, ">=", 1)
 
-        testIfElse(5, 7, "<", 1)
-        testIfElse(5, 7, ">", 2)
+        testConstant(4, 4, "==", 1)
+        testConstant(0, 0, "==", 1)
+        testConstant(3, 0, "==", 2)
 
-        testIfElse(6, 6, ">=", 1)
-        testIfElse(8, 6, ">=", 1)
-
-        testIfElse(4, 4, "==", 1)
-        testIfElse(0, 0, "==", 1)
-        testIfElse(3, 0, "==", 2)
-
-        testIfElse(0, 2, "!=", 1)
-        testIfElse(1, 2, "!=", 1)
+        testConstant(0, 2, "!=", 1)
+        testConstant(1, 2, "!=", 1)
     }
 
-    fun testIfElse(a: Int, b: Int, op: String, expected: Int) {
+    fun testConstant(a: Int, b: Int, op: String, expected: Int) {
         val program = """
             fn main() {
                 x = $a;
                 y = $b;
+                if (x $op y) {
+                    print("1");
+                } else {
+                    print("2");
+                }
+            }
+        """
+        val result = compileAndEval(program)
+        assertEquals(expected.toString(), result.trim())
+    }
+
+    @Test
+    fun testRuntimeIfElse() {
+        testRuntime(5, 7, "<", 1)
+        testRuntime(5, 7, ">", 2)
+
+        testRuntime(6, 6, ">=", 1)
+        testRuntime(8, 6, ">=", 1)
+
+        testRuntime(4, 4, "==", 1)
+        testRuntime(0, 0, "==", 1)
+        testRuntime(3, 0, "==", 2)
+
+        testRuntime(0, 2, "!=", 1)
+        testRuntime(1, 2, "!=", 1)
+    }
+
+    fun testRuntime(a: Int, b: Int, op: String, expected: Int) {
+        val program = """
+            fn main() {
+                x = $a;
+                readInt(y);
                 if (x $op y) {
                     print("1");
                 } else {
@@ -47,17 +72,39 @@ internal class TestBranches
 
     @Test
     fun testIfBranch() {
-        testIf(4, 5, ">", "")
-        testIf(5, 4, ">", "1")
-        testIf(2, 2, "==", "1")
-        testIf(2, 1, "==", "")
+        testConstantIf(4, 5, ">", "")
+        testConstantIf(5, 4, ">", "1")
+        testConstantIf(2, 2, "==", "1")
+        testConstantIf(2, 1, "==", "")
     }
 
-    fun testIf(a: Int, b: Int, op: String, expected: String) {
+    fun testConstantIf(a: Int, b: Int, op: String, expected: String) {
         val program = """
             fn main() {
                 x = $a;
                 y = $b;
+                if (x $op y) {
+                    print("1");
+                }
+            }
+        """
+        val result = compileAndEval(program, userInput = b.toString())
+        assertEquals(expected, result.trim())
+    }
+
+    @Test
+    fun testRuntimeIf() {
+        testRuntimeIf(4, 5, ">", "")
+        testRuntimeIf(5, 4, ">", "1")
+        testRuntimeIf(2, 2, "==", "1")
+        testRuntimeIf(2, 1, "==", "")
+    }
+
+    fun testRuntimeIf(a: Int, b: Int, op: String, expected: String) {
+        val program = """
+            fn main() {
+                x = $a;
+                readInt(y);
                 if (x $op y) {
                     print("1");
                 }
