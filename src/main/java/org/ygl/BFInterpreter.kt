@@ -87,6 +87,16 @@ class BFInterpreter(
                     jumpBack()
                 }
             }
+            '@' -> {
+                val sb = StringBuilder()
+                pc++
+                while (text[pc] != '@') {
+                    sb.append(text[pc])
+                    pc++
+                }
+                print(sb.toString())
+                println(memory[dp].toString())
+            }
             else -> {
                 opCount--
             }
@@ -133,7 +143,9 @@ class BFInterpreter(
 
     private fun readChar() {
         if (!userInput.isEmpty()) {
-            memory[dp] = userInput.pop()?.toByte() ?: throw Exception("null input char")
+            val c = userInput.pop()
+            //println("read value '$c'")
+            memory[dp] = c?.toByte() ?: throw Exception("null input char")
         } else {
             print("waiting for input: ")
             val c = System.`in`.read().toByte()

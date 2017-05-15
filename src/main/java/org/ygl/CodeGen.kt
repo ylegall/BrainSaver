@@ -133,10 +133,10 @@ class CodeGen(
         return binaryOp(s1, s2, this::addTo)
     }
 
-    fun binaryOp(s1: Symbol, s2: Symbol, fallBack: BinaryOp): Symbol {
+    fun binaryOp(s1: Symbol, s2: Symbol, op: BinaryOp): Symbol {
         val result = currentScope().getTempSymbol()
         assign(result, s1)
-        fallBack(result, s2)
+        op(result, s2)
         return result
     }
 
@@ -185,8 +185,8 @@ class CodeGen(
             addTo(s1, t1)
             moveTo(t2)
         endLoop()
-        currentScope().delete(t1)
         currentScope().delete(t2)
+        currentScope().delete(t1)
         return s1
     }
 
@@ -195,6 +195,10 @@ class CodeGen(
 
         val cpy = currentScope().getTempSymbol()
         val div = currentScope().getTempSymbol()
+        val flag = currentScope().getTempSymbol()
+
+        setZero(div)
+        setZero(flag)
 
         assign(cpy, s1)
         moveTo(cpy)
@@ -208,7 +212,6 @@ class CodeGen(
         val remainder = multiply(div, s2)
         subtractFrom(remainder, s1)
 
-        val flag = currentScope().getTempSymbol()
         moveTo(remainder)
         startLoop()
             setZero(remainder)
@@ -216,11 +219,13 @@ class CodeGen(
             moveTo(remainder)
         endLoop()
 
+        currentScope().delete(remainder)
         subtractFrom(div, flag)
         currentScope().delete(flag)
         assign(s1, div)
-        currentScope().delete(div)
 
+        currentScope().delete(div)
+        commentLine("end $s1 /= $s2")
         return s1
     }
 
@@ -232,7 +237,10 @@ class CodeGen(
         assign(tmp, s1)
         divideBy(tmp, s2)
         subtractFrom(s1, multiply(tmp, s2))
+
         currentScope().delete(tmp)
+
+        commentLine("end $s1 %= $s2")
         return s1
     }
 
@@ -501,30 +509,32 @@ class CodeGen(
         }
     }
 
+    private fun debug(symbol: Symbol, comment: String) {
+        moveTo(symbol)
+        emit("\n@$comment@\n")
+    }
+
     // TODO optimize: get a block of memory?
     fun printInt(symbol: Symbol): Symbol {
         commentLine("print int $symbol")
+
         val cpy = currentScope().createSymbol("cpy")
         assign(cpy, symbol)
 
+        val asciiOffset = 48
         val ten = currentScope().createSymbol("ten")
-        val asciiOffset = currentScope().createSymbol("ao")
-        val d2 = currentScope().createSymbol("d2")
-        val d3 = currentScope().createSymbol("d3")
-
         loadInt(ten, 10)
-        loadInt(asciiOffset, 48)
 
-        assign(d3, mod(cpy, ten))
+        val d3 = mod(cpy, ten)
         divideBy(cpy, ten)
-        assign(d2, mod(cpy, ten))
+        val d2 = mod(cpy, ten)
         divideBy(cpy, ten)
 
         commentLine("print 100s char")
         assign(ten, cpy)
         moveTo(cpy)
         startLoop()
-            addTo(cpy, asciiOffset)
+            incrementBy(cpy, asciiOffset)
             printChar(cpy)
             setZero(cpy)
         endLoop()
@@ -533,19 +543,18 @@ class CodeGen(
         addTo(ten, d2)
         moveTo(ten)
         startLoop()
-            addTo(d2, asciiOffset)
+            incrementBy(d2, asciiOffset)
             printChar(d2)
             setZero(ten)
         endLoop()
 
         commentLine("print 1s char")
         moveTo(d3)
-        addTo(d3, asciiOffset)
+        incrementBy(d3, asciiOffset)
         printChar(d3)
 
         currentScope().delete(d3)
         currentScope().delete(d2)
-        currentScope().delete(asciiOffset)
         currentScope().delete(ten)
         currentScope().delete(cpy)
 
