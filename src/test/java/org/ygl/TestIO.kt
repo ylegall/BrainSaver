@@ -3,7 +3,7 @@ package org.ygl
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
-internal class TestConversionMath
+internal class TestIO
 {
     @Test
     fun testPrintInt() {
@@ -11,9 +11,10 @@ internal class TestConversionMath
         testPrint(3, "3")
         testPrint(10, "10")
         testPrint(102, "102")
+        testPrint("\"ab\\ncd\"", "ab\ncd")
     }
 
-    private fun testPrint(a: Int, expected: String) {
+    private fun testPrint(a: Any, expected: String) {
         val program = """
             fn main() {
                 x = $a;

@@ -80,12 +80,35 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
     }
 
     private fun assign(lhs: String, rhs: Symbol): Symbol {
-        val lhsSymbol = codegen.currentScope().getOrCreateSymbol(lhs)
-        return if (isConstant(rhs)) {
-            lhsSymbol.value = rhs.value
-            codegen.loadInt(lhsSymbol, rhs.value as Int)
-        } else {
-            codegen.assign(lhsSymbol, rhs)
+        // reassign symbol if sizes don't match
+        var lhsSymbol = codegen.currentScope().getSymbol(lhs)
+        if (lhsSymbol == null) {
+            lhsSymbol = codegen.currentScope().createSymbol(lhs, rhs)
+        } else if (lhsSymbol.size != rhs.size) {
+            codegen.currentScope().delete(lhsSymbol)
+            lhsSymbol = codegen.currentScope().createSymbol(lhs, rhs)
+        }
+
+        return when(rhs.type) {
+            Type.INT -> {
+                if (isConstant(rhs)) {
+                    lhsSymbol.value = rhs.value
+                    codegen.loadInt(lhsSymbol, rhs.value as Int)
+                } else {
+                    codegen.assign(lhsSymbol, rhs)
+                }
+            }
+            Type.STRING -> {
+                if (isConstant(rhs)) {
+                    lhsSymbol.value = rhs.value
+                    codegen.loadString(lhsSymbol, rhs.value as String)
+                } else {
+                    codegen.copyString(lhsSymbol, rhs)
+                }
+            }
+            else -> {
+                throw Exception("unsupported type")
+            }
         }
     }
 
@@ -102,7 +125,7 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
             }
             is AtomStrContext -> {
                 val str = (exp as AtomStrContext).text
-                val chars = removeQuotes(str)
+                val chars = unescape(str)
                 codegen.printImmediate(chars)
                 return null
             }
@@ -113,7 +136,13 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
         }
     }
 
-    private inline fun removeQuotes(str: String) = str.trim().substring(1 .. str.length-2)
+    // TODO: improve
+    private inline fun unescape(str: String): String {
+        var withoutQuotes = str.trim().substring(1 .. str.length-2)
+        var result = withoutQuotes.replace("\\n", "\n").replace("\\t", "\t")
+        return result
+    }
+
 
     override fun visitReadStatement(ctx: ReadStatementContext?): Symbol? {
         ctx ?: throw Exception("null ReadStatementContext")
@@ -140,7 +169,7 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
     override fun visitAtomStr(ctx: AtomStrContext?): Symbol? {
         val scope = codegen.currentScope()
         val str = ctx?.StringLiteral()?.text ?: throw Exception("null string literal")
-        val chars = removeQuotes(str)
+        val chars = unescape(str)
         val tempSymbol = scope.getTempSymbol(Type.STRING, chars.length)
         codegen.loadString(tempSymbol, chars)
         return tempSymbol
