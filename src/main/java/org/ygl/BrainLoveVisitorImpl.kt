@@ -143,7 +143,6 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
         return result
     }
 
-
     override fun visitReadStatement(ctx: ReadStatementContext?): Symbol? {
         ctx ?: throw Exception("null ReadStatementContext")
         val id = ctx.Identifier().text
