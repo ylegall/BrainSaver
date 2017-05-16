@@ -9,6 +9,8 @@ import org.ygl.BrainLoveParser.*
  */
 class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>()
 {
+    private val libraryFunctions = LibraryFunctions(codegen)
+
     /**
      * scan and register functions. look for the org.ygl.main function
      */
@@ -16,7 +18,7 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
         val functionList = tree!!.getChild(0) as FunctionListContext
         var mainFunction: ParseTree? = null
         for (child in functionList.children) {
-            var function = (child as FunctionContext)
+            val function = (child as FunctionContext)
             codegen.registerFunction(function)
             if (function.name.text == "main") {
                 mainFunction = function
@@ -39,6 +41,9 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
         return result
     }
 
+    /**
+     * 
+     */
     override fun visitAssignmentStatement(ctx: AssignmentStatementContext?): Symbol? {
         ctx ?: throw Exception("null AssignmentStatementContext")
         val lhs = ctx.lhs.text
@@ -51,30 +56,32 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
             return assign(lhs, expResult)
         }
 
-        val lhsSymbol = codegen.currentScope().getSymbol(lhs) ?: throw Exception("undefined identifier $lhs")
+        with (codegen) {
+            val lhsSymbol = currentScope().getSymbol(lhs) ?: throw Exception("undefined identifier $lhs")
 
-        return when (op) {
-            "+=" -> {
-                if (isConstant(expResult)) {
-                    codegen.incrementBy(lhsSymbol, expResult.value as Int)
-                } else {
-                    lhsSymbol.value = null
-                    codegen.addTo(lhsSymbol, expResult)
+            return when (op) {
+                "+=" -> {
+                    if (isConstant(expResult)) {
+                        incrementBy(lhsSymbol, expResult.value as Int)
+                    } else {
+                        lhsSymbol.value = null
+                        math.addTo(lhsSymbol, expResult)
+                    }
                 }
-            }
-            "-=" -> {
-                if (isConstant(expResult)) {
-                    codegen.incrementBy(lhsSymbol, -(expResult.value as Int))
-                } else {
-                    lhsSymbol.value = null
-                    codegen.subtractFrom(lhsSymbol, expResult)
+                "-=" -> {
+                    if (isConstant(expResult)) {
+                        incrementBy(lhsSymbol, -(expResult.value as Int))
+                    } else {
+                        lhsSymbol.value = null
+                        math.subtractFrom(lhsSymbol, expResult)
+                    }
                 }
-            }
-            "*=" -> codegen.multiplyBy(lhsSymbol, expResult)
-            "/=" -> codegen.divideBy(lhsSymbol, expResult)
-            "%=" -> codegen.modBy(lhsSymbol, expResult)
-            else -> {
-                throw Exception("invalid assignment operator: " + op)
+                "*=" -> math.multiplyBy(lhsSymbol, expResult)
+                "/=" -> math.divideBy(lhsSymbol, expResult)
+                "%=" -> math.modBy(lhsSymbol, expResult)
+                else -> {
+                    throw Exception("invalid assignment operator: " + op)
+                }
             }
         }
     }
@@ -126,7 +133,7 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
             is AtomStrContext -> {
                 val str = (exp as AtomStrContext).text
                 val chars = unescape(str)
-                codegen.printImmediate(chars)
+                codegen.io.printImmediate(chars)
                 return null
             }
             else -> {
@@ -138,8 +145,8 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
 
     // TODO: improve
     private inline fun unescape(str: String): String {
-        var withoutQuotes = str.trim().substring(1 .. str.length-2)
-        var result = withoutQuotes.replace("\\n", "\n").replace("\\t", "\t")
+        val withoutQuotes = str.trim().substring(1 .. str.length-2)
+        val result = withoutQuotes.replace("\\n", "\n").replace("\\t", "\t")
         return result
     }
 
@@ -147,11 +154,11 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
         ctx ?: throw Exception("null ReadStatementContext")
         val id = ctx.Identifier().text
         return if (ctx.rd != null) {
-            var sym = codegen.currentScope().getOrCreateSymbol(id, type = Type.INT)
-            codegen.readChar(sym)
+            val sym = codegen.currentScope().getOrCreateSymbol(id, type = Type.INT)
+            codegen.io.readChar(sym)
         } else if (ctx.rdint != null) {
-            var sym = codegen.currentScope().getOrCreateSymbol(id, type = Type.INT)
-            codegen.readInt(sym)
+            val sym = codegen.currentScope().getOrCreateSymbol(id, type = Type.INT)
+            codegen.io.readInt(sym)
         } else {
             throw Exception("unsupported read call")
         }
@@ -261,21 +268,23 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
             return constantFold(left, right, op)
         }
 
-        return when (op) {
-            "+" -> codegen.add(left, right)
-            "-" -> codegen.subtract(left, right)
-            "*" -> codegen.multiply(left, right)
-            "/" -> codegen.divide(left, right)
-            "%" -> codegen.mod(left, right)
-            "<" ->  codegen.lessThan(left, right)
-            ">" ->  codegen.greaterThan(left, right)
-            "==" -> codegen.equal(left, right)
-            "!=" -> codegen.notEqual(left, right)
-            "<=" -> codegen.lessThanEqual(left, right)
-            ">=" -> codegen.greaterThanEqual(left, right)
-            "&&" -> codegen.and(left, right)
-            "||" -> codegen.or(left, right)
-            else -> throw Exception("invalid op $op")
+        with (codegen) {
+            return when (op) {
+                "+" ->  math.add(left, right)
+                "-" ->  math.subtract(left, right)
+                "*" ->  math.multiply(left, right)
+                "/" ->  math.divide(left, right)
+                "%" ->  math.mod(left, right)
+                "<" ->  math.lessThan(left, right)
+                ">" ->  math.greaterThan(left, right)
+                "==" -> math.equal(left, right)
+                "!=" -> math.notEqual(left, right)
+                "<=" -> math.lessThanEqual(left, right)
+                ">=" -> math.greaterThanEqual(left, right)
+                "&&" -> math.and(left, right)
+                "||" -> math.or(left, right)
+                else -> throw Exception("invalid op $op")
+            }
         }
     }
 
@@ -312,7 +321,7 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
     override fun visitNotExp(ctx: NotExpContext?): Symbol? {
         ctx ?: throw Exception("null NotExpContext")
         val right = visit(ctx.right) ?: throw Exception("null rhs")
-        return codegen.not(right)
+        return codegen.math.not(right)
     }
 
     override fun visitIfStatement(context: IfStatementContext?): Symbol? {
