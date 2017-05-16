@@ -17,7 +17,7 @@ class Scope(val startAddress: Int) {
         private set
 
     private val symbolMap = HashMap<String, Symbol>()
-    private val freeSlots = PriorityQueue<Symbol>()
+    private val freeSlots = ArrayDeque<Symbol>()
     private val conditionFlags = ArrayDeque<Symbol>()
 
     init {
@@ -54,13 +54,28 @@ class Scope(val startAddress: Int) {
         if (symbolMap.containsKey(name)) throw Exception("duplicate symbol: $name")
 
         // check for freed slots
-        var address: Int
+        var address: Int? = null
         if (!freeSlots.isEmpty()) {
-            address = freeSlots.remove().address
-            if (address >= (startAddress + scopeSize)) {
-                scopeSize = address + size
+            val slot = freeSlots.find { it.size >= size }
+            if (slot != null) {
+                freeSlots.remove(slot)
+                address = slot.address
+                if (slot.size > size) {
+                    freeSlots.addFirst(Symbol(
+                            slot.name,
+                            slot.size - size,
+                            slot.address + size,
+                            slot.type,
+                            slot.value)
+                    )
+                }
+                if (address + size >= (startAddress + scopeSize)) {
+                    scopeSize = address + size
+                }
             }
-        } else {
+        }
+
+        if (address == null) {
             address = startAddress + scopeSize
             scopeSize += size
         }
@@ -101,7 +116,7 @@ class Scope(val startAddress: Int) {
     }
 
     fun deleteTemps() {
-        var maxAddress = startAddress + 2
+        var maxAddress = startAddress + 1
         val garbageList = ArrayList<Symbol>()
 
         for (entry in symbolMap) {
@@ -109,7 +124,8 @@ class Scope(val startAddress: Int) {
             if (symbol.name.startsWith("$")) {
                 garbageList.add(symbol)
             } else {
-                maxAddress = Math.max(maxAddress, entry.value.address)
+                val sym = entry.value
+                maxAddress = Math.max(maxAddress, sym.address + sym.size - 1)
             }
         }
 

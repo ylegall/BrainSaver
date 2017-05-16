@@ -1,4 +1,3 @@
-optimize code to print ints
 for loops
 loop unfolding
-string to int function
+library functions: readInt(), array(), stringToInt(), delete()

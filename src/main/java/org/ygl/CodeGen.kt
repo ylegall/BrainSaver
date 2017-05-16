@@ -194,18 +194,9 @@ class CodeGen(
         throw Exception("not implemented")
     }
 
-    fun setZero(symbol: Symbol, offset: Int = 0): Symbol {
-        moveTo(symbol, offset)
-        if (symbol.size == 1) {
-            emit("[-]", "zero $symbol")
-        } else {
-            for (i in 1..symbol.size) {
-                emit("[-]")
-                emit(">")
-                dataPointer += 1
-            }
-            moveTo(symbol, offset)
-        }
+    fun setZero(symbol: Symbol): Symbol {
+        moveTo(symbol)
+        emit("[-]", "zero $symbol")
         return symbol
     }
 
@@ -215,20 +206,20 @@ class CodeGen(
         moveTo(symbol)
         for (i in 0 until symbol.size) {
             val intValue = chars[i].toInt()
-            loadInt(symbol, intValue, offset=i)
+            loadInt(symbol.offset(i), intValue)
         }
         symbol.value = chars
         return symbol
     }
 
-    fun loadInt(symbol: Symbol, value: Int, offset: Int = 0): Symbol {
-        if (value <= 0) return setZero(symbol, offset) // non wrapping
-        setZero(symbol, offset)
+    fun loadInt(symbol: Symbol, value: Int): Symbol {
+        if (value <= 0) return setZero(symbol) // non wrapping
+        setZero(symbol)
         emit("+".repeat(value), "load $symbol = $value")
         return symbol
     }
 
-    fun incrementBy(symbol: Symbol, value: Int, offset: Int = 0): Symbol {
+    fun incrementBy(symbol: Symbol, value: Int): Symbol {
         if (value == 0) return symbol
         val ch = if (value < 0) "-" else "+"
         moveTo(symbol)
@@ -291,6 +282,43 @@ class CodeGen(
         emit("]".repeat(count))
         currentScope().returnCount = 0
         commentLine("end function $func\n")
+    }
+
+    // TODO
+    fun readArray(array: Symbol, index: Symbol): Symbol {
+        commentLine("read array $array($index)")
+
+        val ret = currentScope().getTempSymbol()
+        val data = array.offset(3)
+
+        assign(array.offset(2), index)  // copy idx to readIdx
+        assign(array.offset(1), index)  // copy idx to writeIdx
+        setZero(data)                   // zero dataIdx
+
+        moveTo(array)
+        emit(">[>>>[-<<<<+>>>>]<<[->+<]<[->+<]>-]", "move read head to $index")
+        emit(">>>[-<+<<+>>>]<<<[->>>+<<<]>", "")
+        emit("[[-<+>]>[-<+>]<<<<[->>>>+<<<<]>>-]<<", "restore read head")
+
+        assign(ret, data)
+
+        commentLine("end read array $array($index)")
+        return ret
+    }
+
+    fun writeArray(array: Symbol, index: Symbol, value: Symbol) {
+        commentLine("write array $array($index) = $value")
+
+        assign(array.offset(2), index) // copy idx to readIdx
+        assign(array.offset(1), index) // copy idx to writeIdx
+        assign(array.offset(3), value) // copy value to dataIdx
+
+        moveTo(array)
+        emit(">[>>>[-<<<<+>>>>]<[->+<]<[->+<]<[->+<]>-]", "move read head to $index")
+        emit(">>>[-]<[->+<]<", "move $value to $index")
+        emit("[[-<+>]<<<[->>>>+<<<<]>>-]<<", "restore read head")
+
+        commentLine("end write array $array($index) = $value")
     }
 
     fun commentLine(str: String) {

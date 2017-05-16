@@ -1,6 +1,7 @@
 package org.ygl
 
 import org.antlr.v4.runtime.tree.ParseTree
+import org.antlr.v4.runtime.tree.TerminalNode
 import org.ygl.BrainLoveParser.*
 
 
@@ -370,6 +371,59 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
         codegen.endWhile(condition)
         return null
     }
+
+    override fun visitArrayConstructor(ctx: ArrayConstructorContext?): Symbol? {
+        ctx ?: throw Exception("null ArrayConstructorContext")
+        val name = ctx.lhs.text
+        val size = Integer.parseInt(ctx.arraySize.text)
+        return createArray(name, size)
+    }
+
+    override fun visitArrayLiteral(ctx: ArrayLiteralContext?): Symbol? {
+        ctx ?: throw Exception("null ArrayLiteralContext")
+        val name = ctx.lhs.text
+        val values = ctx.integerList().IntegerLiteral()
+        val size = values.size
+        return createArray(name, size, values)
+    }
+
+    private inline fun createArray(name: String, size: Int, values: List<TerminalNode>? = null): Symbol {
+        if (size < 1 || size >= 256) throw Exception("array size must be between 1 and 256")
+        val array = codegen.currentScope().createSymbol(name, size + 4, Type.INT)
+        if (values != null) {
+            values.map { Integer.parseInt(it.text) }.
+                    forEachIndexed { i, v -> codegen.loadInt(array.offset(i), value = v) }
+        }
+        return array
+    }
+
+    override fun visitArrayWriteStatement(ctx: ArrayWriteStatementContext?): Symbol? {
+        ctx ?: throw Exception("null ArrayWriteStatementContext")
+        val array = checkNotNull(codegen.currentScope().getSymbol(ctx.array.text), { "null ${ctx.array.text}" })
+        val index = checkNotNull(visit(ctx.idx), { "null ${ctx.idx.text}" })
+        val value = checkNotNull(visit(ctx.rhs), { "null ${ctx.rhs.text}" })
+
+        if (isConstant(index) && isConstant(value)) {
+            return codegen.loadInt(array.offset(index.value as Int), value.value as Int)
+        } else {
+            codegen.writeArray(array, index, value)
+            return null
+        }
+    }
+
+    override fun visitArrayReadExp(ctx: ArrayReadExpContext?): Symbol? {
+        ctx ?: throw Exception("null ArrayReadExpContext")
+        val array = checkNotNull(codegen.currentScope().getSymbol(ctx.array.text), { "null ${ctx.array.text}" })
+        val index = checkNotNull(visit(ctx.idx), { "null ${ctx.idx.text}" })
+
+        if (isConstant(index)) {
+            val ret = codegen.currentScope().getTempSymbol()
+            return codegen.assign(ret, array.offset(index.value as Int))
+        } else {
+            return codegen.readArray(array, index)
+        }
+    }
+
 
 //    private inline fun canUnrollLoop(condition: Symbol, body: List<StatementContext>): Boolean {
 //        if (!isConstant(condition)) return false
