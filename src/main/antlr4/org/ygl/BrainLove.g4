@@ -40,6 +40,8 @@ statement
     |   callStatement
     |   ifStatement
     |   whileStatement
+    |   arrayInitStatement
+    |   arrayWriteStatement
     ;
 
 ifStatement
@@ -75,8 +77,22 @@ printStatement
     :   PRINT '(' exp ')' ';'
     ;
 
+arrayInitStatement
+    :   lhs=Identifier '=' ARRAY '(' arraySize=IntegerLiteral ')' ';'   # arrayConstructor
+    |   lhs=Identifier '=' '[' contents=integerList ']' ';'             # arrayLiteral
+    ;
+
+arrayWriteStatement
+    :   array=Identifier '[' idx=exp ']' '=' rhs=exp ';'
+    ;
+
+integerList
+    :   IntegerLiteral (',' IntegerLiteral)*
+    ;
+
 exp
     : '(' parenExp=exp ')'                                      # parenExp
+    | array=Identifier '[' idx=exp ']'                          # arrayReadExp
     | left=exp op=('*'|'/'|'%')                 right=exp       # opExp
     | left=exp op=('+'|'-')                     right=exp       # opExp
     | left=exp op=('=='|'<'|'<='|'>'|'>='|'!=') right=exp       # opExp
@@ -98,6 +114,7 @@ atom
 
 // keywords
 
+ARRAY   : 'array';
 FUNCTION: 'fn';
 RETURN  : 'return';
 PRINT   : 'print';
