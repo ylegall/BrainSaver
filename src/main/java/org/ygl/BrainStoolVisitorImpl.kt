@@ -2,13 +2,13 @@ package org.ygl
 
 import org.antlr.v4.runtime.tree.ParseTree
 import org.antlr.v4.runtime.tree.TerminalNode
-import org.ygl.BrainLoveParser.*
+import org.ygl.BrainStoolParser.*
 
 
 /**
  * http://stackoverflow.com/questions/23092081/antlr4-visitor-pattern-on-simple-arithmetic-example
  */
-class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>()
+class BrainStoolVisitorImpl(val codegen: CodeGen) : BrainStoolBaseVisitor<Symbol?>()
 {
     private val libraryFunctions = LibraryFunctions(codegen)
 
@@ -210,7 +210,7 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
         return functionCall(name, args)
     }
 
-    private fun functionCall(funcName: String, args: List<BrainLoveParser.ExpContext>?): Symbol? {
+    private fun functionCall(funcName: String, args: List<BrainStoolParser.ExpContext>?): Symbol? {
         // lookup matching function and its params
         val function = codegen.functions[funcName] ?: throw Exception("unrecognized function: $funcName")
 

@@ -17,14 +17,14 @@ fun compile(
         outputStream: OutputStream = System.out,
         compileOptions: CompileOptions = DEFAULT_COMPILE_OPTIONS
 ) {
-    val lexer = BrainLoveLexer(CharStreams.fromStream(inputStream))
+    val lexer = BrainStoolLexer(CharStreams.fromStream(inputStream))
     val tokens = CommonTokenStream(lexer)
-    val parser = BrainLoveParser(tokens)
+    val parser = BrainStoolParser(tokens)
     parser.addErrorListener(CompileErrorListener.INSTANCE)
 
     val tree = parser.program()
     CodeGen(outputStream, compileOptions).use {
-        val visitor = BrainLoveVisitorImpl(it)
+        val visitor = BrainStoolVisitorImpl(it)
         visitor.visit(tree)
     }
 }

@@ -3,8 +3,6 @@ package org.ygl
 import org.antlr.v4.runtime.*
 import java.io.File
 import java.io.FileOutputStream
-import java.nio.file.Files
-import java.nio.file.Paths
 
 
 fun main(args: Array<String>) {
@@ -14,9 +12,9 @@ fun main(args: Array<String>) {
         return
     }
 
-    val lexer = BrainLoveLexer(CharStreams.fromFileName(args[0]))
+    val lexer = BrainStoolLexer(CharStreams.fromFileName(args[0]))
     val tokens = CommonTokenStream(lexer)
-    val parser = BrainLoveParser(tokens)
+    val parser = BrainStoolParser(tokens)
     parser.addErrorListener(CompileErrorListener.INSTANCE)
 
     val options = CompileOptions(verbose = true)
@@ -24,7 +22,7 @@ fun main(args: Array<String>) {
     try {
         val tree = parser.program()
         CodeGen(FileOutputStream(File("output.txt")), options).use {
-            val visitor = BrainLoveVisitorImpl(it)
+            val visitor = BrainStoolVisitorImpl(it)
             visitor.visit(tree)
         }
     } catch (e: Exception) {
@@ -36,6 +34,6 @@ fun main(args: Array<String>) {
     //val interpreter = Interpreter()
     //val code = String(Files.readAllBytes(Paths.get("output.txt")))
     //println(interpreter.eval(code))
-    val interpreter = bfInterpreter(File("output.txt"), options=BFOptions(isVerbose = true))
+    val interpreter = bfInterpreter(File("output.txt"), options= InterpreterOptions(isVerbose = true))
     interpreter.eval()
 }

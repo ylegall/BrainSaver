@@ -18,7 +18,7 @@ fun compile(input: String): String {
 
 fun eval(code: String, userInput: String = ""): String {
     val options = if (!userInput.isEmpty()) {
-        BFOptions(predefinedInput = userInput)
+        InterpreterOptions(predefinedInput = userInput)
     } else {
         DEFAULT_OPTIONS
     }

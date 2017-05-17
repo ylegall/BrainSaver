@@ -7,15 +7,15 @@ import java.util.stream.Collectors
 const val MAX_BYTE = 255.toByte()
 const val ZERO_BYTE = 0.toByte()
 
-class BFOptions
+class InterpreterOptions
 (
     val isWrapping: Boolean = false,
-    val isVerbose: Boolean = true,
+    val isVerbose: Boolean = false,
     val predefinedInput: String = "",
     val memorySize: Int = 30000
 )
 
-val DEFAULT_OPTIONS = BFOptions(isVerbose = false)
+val DEFAULT_OPTIONS = InterpreterOptions()
 
 /**
  *
@@ -23,10 +23,10 @@ val DEFAULT_OPTIONS = BFOptions(isVerbose = false)
 class BFInterpreter(
         val text: String,
         val outputStream: OutputStream = System.out,
-        val options: BFOptions = DEFAULT_OPTIONS
+        val options: InterpreterOptions = DEFAULT_OPTIONS
 ) : AutoCloseable
 {
-    constructor(inputStream: InputStream, outputStream: OutputStream = System.out, options: BFOptions) : this(
+    constructor(inputStream: InputStream, outputStream: OutputStream = System.out, options: InterpreterOptions) : this(
             inputStream.use {
                 BufferedReader(InputStreamReader(it))
                     .lines()
@@ -187,13 +187,13 @@ class BFInterpreter(
     }
 }
 
-fun bfInterpreter(infile: File? = null, outfile: File? = null, options: BFOptions = DEFAULT_OPTIONS): BFInterpreter {
+fun bfInterpreter(infile: File? = null, outfile: File? = null, options: InterpreterOptions = DEFAULT_OPTIONS): BFInterpreter {
     val inputStream = if (infile == null) System.`in` else FileInputStream(infile)
     val outputStream = if (outfile == null) System.out else FileOutputStream(outfile)
     return BFInterpreter(inputStream, outputStream, options)
 }
 
-fun bfInterpreter(input: String = "", outputStream: OutputStream, options: BFOptions = DEFAULT_OPTIONS): BFInterpreter {
+fun bfInterpreter(input: String = "", outputStream: OutputStream, options: InterpreterOptions = DEFAULT_OPTIONS): BFInterpreter {
     val inputStream = if (input.isEmpty()) System.`in` else ByteArrayInputStream(input.toByteArray(Charsets.UTF_8))
     return BFInterpreter(inputStream, outputStream, options)
 }

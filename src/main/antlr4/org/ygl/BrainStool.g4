@@ -1,6 +1,6 @@
 // https://github.com/antlr/grammars-v4/blob/master/c/C.g4
 
-grammar BrainLove;
+grammar BrainStool;
 
 
 program
