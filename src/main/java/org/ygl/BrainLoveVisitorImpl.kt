@@ -393,6 +393,8 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
         if (values != null) {
             values.map { Integer.parseInt(it.text) }.
                     forEachIndexed { i, v -> codegen.loadInt(array.offset(i), value = v) }
+        } else {
+            codegen.setZero(array)
         }
         return array
     }
@@ -403,8 +405,12 @@ class BrainLoveVisitorImpl(val codegen: CodeGen) : BrainLoveBaseVisitor<Symbol?>
         val index = checkNotNull(visit(ctx.idx), { "null ${ctx.idx.text}" })
         val value = checkNotNull(visit(ctx.rhs), { "null ${ctx.rhs.text}" })
 
-        if (isConstant(index) && isConstant(value)) {
-            return codegen.loadInt(array.offset(index.value as Int), value.value as Int)
+        if (isConstant(index)) {
+            if (isConstant(value)) {
+                return codegen.loadInt(array.offset(index.value as Int), value.value as Int)
+            } else {
+                return codegen.assign(array.offset(index.value as Int), value)
+            }
         } else {
             codegen.writeArray(array, index, value)
             return null

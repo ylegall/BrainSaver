@@ -14,7 +14,9 @@ data class Symbol(
 ) : Comparable<Symbol>
 {
     override fun toString(): String {
-        return "$name{$address}" + if (value != null && value !is String) "=$value" else ""
+        val addr = if (size > 1) "$address~${address + size - 1}" else "$address"
+        val contents = if (value != null && value !is String) "=$value" else ""
+        return "$name{$addr}$contents"
     }
 
     override fun compareTo(other: Symbol) = address - other.address

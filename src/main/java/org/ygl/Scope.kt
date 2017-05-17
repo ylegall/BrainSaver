@@ -135,5 +135,6 @@ class Scope(val startAddress: Int) {
         }
 
         scopeSize = maxAddress - startAddress + 1
+        tempCounter = 0
     }
 }

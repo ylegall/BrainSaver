@@ -87,10 +87,10 @@ class BFInterpreter(
                     jumpBack()
                 }
             }
-            '@' -> {
+            '`' -> {
                 val sb = StringBuilder()
                 pc++
-                while (text[pc] != '@') {
+                while (text[pc] != '`') {
                     sb.append(text[pc])
                     pc++
                 }

@@ -186,7 +186,7 @@ class CodeGen(
 
     private fun debug(symbol: Symbol, comment: String) {
         moveTo(symbol)
-        emit("\n@$comment@\n")
+        emit("\n`$comment`\n")
     }
 
     // TODO: implement string copy function
@@ -197,6 +197,12 @@ class CodeGen(
     fun setZero(symbol: Symbol): Symbol {
         moveTo(symbol)
         emit("[-]", "zero $symbol")
+        if (symbol.size > 1) {
+            for (i in 1 until symbol.size) {
+                moveTo(symbol.offset(i))
+                emit("[-]")
+            }
+        }
         return symbol
     }
 
