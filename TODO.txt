@@ -1,3 +1,0 @@
-for loops
-loop unfolding
-library functions: stringToInt(), delete()
