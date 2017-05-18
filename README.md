@@ -10,6 +10,7 @@ Inspiration is drawn from
 
 
 ## TODO
+- [x] while loops
 - [] foreach loops
 - [] constant loop unrolling
 - [] algorithms for wrapping implementations
