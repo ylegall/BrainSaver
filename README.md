@@ -2,6 +2,8 @@
 ![BrainSaver Logo](https://github.com/ylegall/BrainSaver/blob/master/logo.png)
 
 # BrainSaver
+[![Build Status](https://travis-ci.org/ylegall/BrainSaver.svg?branch=master)](https://travis-ci.org/ylegall/BrainSaver)
+
 BrainSaver is a toy language that compiles to [BrainFuck](https://en.wikipedia.org/wiki/Brainfuck).
 The compiler code is written in Kotlin and uses the [ANTLR4 parser generator](http://www.antlr.org/).
 Inspiration is drawn from
