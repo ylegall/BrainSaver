@@ -454,7 +454,9 @@ class TreeWalker(val codegen: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
 //    }
 
     private inline fun isConstant(symbol: Symbol): Boolean {
-        return !codegen.currentScope().inConditionalScope() && symbol.value != null
+        return codegen.options.optimize &&
+                !codegen.currentScope().inConditionalScope() &&
+                symbol.value != null
     }
 
 }

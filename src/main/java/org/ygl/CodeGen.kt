@@ -16,7 +16,7 @@ const val COMMENT_MARGIN  = 44
 // https://www.codeproject.com/Articles/558979/BrainFix-the-language-that-translates-to-fluent-Br
 class CodeGen(
         outputStream: OutputStream,
-        val options: CompileOptions = DEFAULT_COMPILE_OPTIONS
+        val options: CompilerOptions = DEFAULT_COMPILE_OPTIONS
 ) : AutoCloseable
 {
 
@@ -30,7 +30,8 @@ class CodeGen(
     val functions = HashMap<String, Function>()
     private val scopes = ArrayList<Scope>()
     private val output: PrintWriter = PrintWriter(outputStream)
-    private val reservedChars = Regex("""[\[\]<>+-,.]""")
+    private val reservedChars = Regex("""[\[\]<>+\-,.]""")
+    private val nonOperativeChars = Regex("""[^\[\]<>+\-,.]""")
 
     override fun close() {
         output.flush()
@@ -293,6 +294,7 @@ class CodeGen(
         setZero(data)                   // zero dataIdx
 
         moveTo(array)
+        newline()
         emit(">[>>>[-<<<<+>>>>]<<[->+<]<[->+<]>-]", "move read head to $index")
         emit(">>>[-<+<<+>>>]<<<[->>>+<<<]>", "")
         emit("[[-<+>]>[-<+>]<<<<[->>>>+<<<<]>>-]<<", "restore read head")
@@ -311,6 +313,7 @@ class CodeGen(
         assign(array.offset(3), value) // copy value to dataIdx
 
         moveTo(array)
+        newline()
         emit(">[>>>[-<<<<+>>>>]<[->+<]<[->+<]<[->+<]>-]", "move read head to $index")
         emit(">>>[-]<[->+<]<", "move $value to $index")
         emit("[[-<+>]<<<[->>>>+<<<<]>>-]<<", "restore read head")
@@ -368,7 +371,11 @@ class CodeGen(
     }
 
     private inline fun write(code: String) {
-        output.print(code)
-        if (options.verbose) print(code)
+        if (options.verbose) {
+            output.print(code)
+            print(code)
+        } else {
+            output.print(code.replace(nonOperativeChars, ""))
+        }
     }
 }

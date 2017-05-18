@@ -1,39 +1,65 @@
 package org.ygl
 
 import org.antlr.v4.runtime.*
+import org.antlr.v4.runtime.misc.ParseCancellationException
+import org.apache.commons.cli.*
 import java.io.File
 import java.io.FileOutputStream
 
+const val VERSION = "1.0"
+
+private inline fun printUsageAndHalt(options: Options) {
+    HelpFormatter().printHelp("brainsaver", options, true)
+    System.exit(1)
+}
 
 fun main(args: Array<String>) {
 
-    if (args.size < 1) {
-        println("missing input file")
-        return
-    }
-
-    val lexer = BrainSaverLexer(CharStreams.fromFileName(args[0]))
-    val tokens = CommonTokenStream(lexer)
-    val parser = BrainSaverParser(tokens)
-    parser.addErrorListener(CompileErrorListener.INSTANCE)
-
-    val options = CompileOptions(verbose = true)
+    val options = configureCommandLine()
 
     try {
+        val commandLine = DefaultParser().parse(options, args)
+        if (commandLine.hasOption("version")) {
+            println("brainsaver version \"$VERSION\"")
+            return
+        }
+        val remainingArgs = commandLine.argList
+        if (remainingArgs.isEmpty()) {
+            printUsageAndHalt(options)
+        }
+
+        // parse and generate the AST:
+        val lexer = BrainSaverLexer(CharStreams.fromFileName(remainingArgs[0]))
+        val tokens = CommonTokenStream(lexer)
+        val parser = BrainSaverParser(tokens)
+        parser.addErrorListener(CompileErrorListener.INSTANCE)
         val tree = parser.program()
-        CodeGen(FileOutputStream(File("output.txt")), options).use {
+
+        val compilerOptions = CompilerOptions(
+                verbose = !commandLine.hasOption("minify"),
+                optimize = !commandLine.hasOption("no-cf")
+        )
+
+        val outputStream = if (commandLine.hasOption("output")) {
+            FileOutputStream(File(commandLine.getOptionValue("output")))
+        } else {
+            System.`out`
+        }
+
+        CodeGen(outputStream, compilerOptions).use {
             val visitor = TreeWalker(it)
             visitor.visit(tree)
         }
-    } catch (e: Exception) {
-        print(e)
-        return
+
+    } catch (e: ParseException) {
+        printUsageAndHalt(options)
+    } catch (e: ParseCancellationException) {
+        println(e)
+        System.exit(1)
     }
 
-    println("\n\n___________________")
-    //val interpreter = Interpreter()
-    //val code = String(Files.readAllBytes(Paths.get("output.txt")))
-    //println(interpreter.eval(code))
-    val interpreter = bfInterpreter(File("output.txt"), options= InterpreterOptions(isVerbose = true))
-    interpreter.eval()
+//    println("\n\n___________________")
+//
+//    val interpreter = bfInterpreter(File("output.txt"), options= InterpreterOptions(isVerbose = true))
+//    interpreter.eval()
 }
