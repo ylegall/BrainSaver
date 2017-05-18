@@ -12,9 +12,9 @@ fun main(args: Array<String>) {
         return
     }
 
-    val lexer = BrainStoolLexer(CharStreams.fromFileName(args[0]))
+    val lexer = BrainSaverLexer(CharStreams.fromFileName(args[0]))
     val tokens = CommonTokenStream(lexer)
-    val parser = BrainStoolParser(tokens)
+    val parser = BrainSaverParser(tokens)
     parser.addErrorListener(CompileErrorListener.INSTANCE)
 
     val options = CompileOptions(verbose = true)
@@ -22,7 +22,7 @@ fun main(args: Array<String>) {
     try {
         val tree = parser.program()
         CodeGen(FileOutputStream(File("output.txt")), options).use {
-            val visitor = BrainStoolVisitorImpl(it)
+            val visitor = TreeWalker(it)
             visitor.visit(tree)
         }
     } catch (e: Exception) {

@@ -37,15 +37,6 @@ class CodeGen(
         output.close()
     }
 
-    fun registerFunction(function: BrainStoolParser.FunctionContext) {
-        if (functions.containsKey(function.name.text)) {
-            throw Exception("duplicate function: ${function.name.text}")
-        } else {
-            val newFunction = Function(function.name.text, function)
-            functions.put(function.name.text, newFunction)
-        }
-    }
-
     fun enterScope() {
         val memorySize = if (scopes.isEmpty()) {
             0

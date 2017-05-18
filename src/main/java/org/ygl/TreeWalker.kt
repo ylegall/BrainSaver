@@ -2,26 +2,32 @@ package org.ygl
 
 import org.antlr.v4.runtime.tree.ParseTree
 import org.antlr.v4.runtime.tree.TerminalNode
-import org.ygl.BrainStoolParser.*
-
+import org.ygl.BrainSaverParser.*
 
 /**
  * http://stackoverflow.com/questions/23092081/antlr4-visitor-pattern-on-simple-arithmetic-example
  */
-class BrainStoolVisitorImpl(val codegen: CodeGen) : BrainStoolBaseVisitor<Symbol?>()
+class TreeWalker(val codegen: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
 {
     private val libraryFunctions = LibraryFunctions(codegen)
 
     /**
      * scan and register functions. look for the org.ygl.main function
      */
-    override fun visitProgram(tree: ProgramContext?): Symbol? {
+    override fun visitProgram(tree: BrainSaverParser.ProgramContext?): Symbol? {
         val functionList = tree!!.getChild(0) as FunctionListContext
         var mainFunction: ParseTree? = null
         for (child in functionList.children) {
             val function = (child as FunctionContext)
-            codegen.registerFunction(function)
-            if (function.name.text == "main") {
+            val functionName = function.name.text
+            if (codegen.functions.containsKey(functionName)) {
+                throw Exception("duplicate function: $functionName")
+            } else {
+                val newFunction = Function(functionName, function)
+                codegen.functions.put(functionName, newFunction)
+            }
+
+            if (functionName == "main") {
                 mainFunction = function
             }
         }
@@ -210,7 +216,7 @@ class BrainStoolVisitorImpl(val codegen: CodeGen) : BrainStoolBaseVisitor<Symbol
         return functionCall(name, args)
     }
 
-    private fun functionCall(funcName: String, args: List<BrainStoolParser.ExpContext>?): Symbol? {
+    private fun functionCall(funcName: String, args: List<BrainSaverParser.ExpContext>?): Symbol? {
         // lookup matching function and its params
         val function = codegen.functions[funcName] ?: throw Exception("unrecognized function: $funcName")
 

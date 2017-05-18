@@ -1,7 +1,7 @@
 package org.ygl
 
 
-typealias ExpList = List<BrainStoolParser.ExpContext>
+typealias ExpList = List<BrainSaverParser.ExpContext>
 typealias Procedure =  (ExpList) -> Unit
 
 class LibraryFunctions(val codegen: CodeGen)
@@ -13,8 +13,8 @@ class LibraryFunctions(val codegen: CodeGen)
 
     private fun readInt(args: ExpList) {
         args.forEach {
-            if (it is BrainStoolParser.AtomIdContext) {
-                val id = it as BrainStoolParser.AtomIdContext
+            if (it is BrainSaverParser.AtomIdContext) {
+                val id = it as BrainSaverParser.AtomIdContext
                 val sym = codegen.currentScope().getOrCreateSymbol(id.text, type = Type.INT)
                 codegen.io.readInt(sym)
             } else {
