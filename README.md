@@ -8,9 +8,14 @@ Inspiration is drawn from
 [BrainFix](https://www.codeproject.com/Articles/558979/BrainFix-the-language-that-translates-to-fluent-Br) and the
 [esolang wiki](https://esolangs.org/wiki/Brainfuck_algorithms).
 
+## Features/Limitations
+- [x] functions (always inlined)
+- [x] static sized arrays
+- [x] while loops
+- [x] basic constant folding and constant branch elimination
 
 ## TODO
-- [x] while loops
-- [] foreach loops
-- [] constant loop unrolling
-- [] algorithms for wrapping implementations
+* foreach loops
+* constant loop unrolling
+* algorithms for wrapping implementations
+* automatic memory management
