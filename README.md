@@ -14,11 +14,10 @@ Inspiration is drawn from
 ## Features/Limitations
 - [x] functions (always inlined)
 - [x] static sized arrays
-- [x] while loops
+- [x] while loops, for loops
 - [x] basic constant folding and constant branch elimination
 
 ## TODO
-* foreach loops
 * constant loop unrolling
 * algorithms for wrapping implementations
 * automatic memory management
