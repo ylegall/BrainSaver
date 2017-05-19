@@ -25,6 +25,6 @@ fun eval(code: String, userInput: String = ""): String {
 
     val outputStream = ByteArrayOutputStream()
     val interpreter = bfInterpreter(code, outputStream, options)
-    interpreter.eval()
+    interpreter.use { it.eval() }
     return outputStream.toString()
 }

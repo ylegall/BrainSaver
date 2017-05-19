@@ -26,7 +26,11 @@ class BFInterpreter(
         val options: InterpreterOptions = DEFAULT_OPTIONS
 ) : AutoCloseable
 {
-    constructor(inputStream: InputStream, outputStream: OutputStream = System.out, options: InterpreterOptions) : this(
+    constructor(
+            inputStream: InputStream,
+            outputStream: OutputStream = System.out,
+            options: InterpreterOptions = DEFAULT_OPTIONS
+    ) : this(
             inputStream.use {
                 BufferedReader(InputStreamReader(it))
                     .lines()
@@ -52,6 +56,7 @@ class BFInterpreter(
     private var opCount = 0
 
     override fun close() {
+        outputStream.flush()
         outputStream.close()
     }
 

@@ -1,12 +1,16 @@
 package org.ygl
 
-import org.antlr.v4.runtime.*
+import org.antlr.v4.runtime.CharStreams
+import org.antlr.v4.runtime.CommonTokenStream
 import org.antlr.v4.runtime.misc.ParseCancellationException
-import org.apache.commons.cli.*
+import org.apache.commons.cli.DefaultParser
+import org.apache.commons.cli.HelpFormatter
+import org.apache.commons.cli.Options
+import org.apache.commons.cli.ParseException
 import java.io.File
+import java.io.FileInputStream
 import java.io.FileOutputStream
 
-const val VERSION = "1.0"
 
 private inline fun printUsageAndHalt(options: Options) {
     HelpFormatter().printHelp("brainsaver", options, true)
@@ -57,5 +61,8 @@ fun main(args: Array<String>) {
         println(e)
         System.exit(1)
     }
+
+    val interpreter = BFInterpreter(inputStream = FileInputStream(File("output.txt")))
+    interpreter.use { it.eval() }
 
 }

@@ -40,6 +40,7 @@ statement
     |   callStatement
     |   ifStatement
     |   whileStatement
+    |   forStatement
     |   arrayInitStatement
     |   arrayWriteStatement
     ;
@@ -50,6 +51,11 @@ ifStatement
 
 whileStatement
     :   WHILE '(' condition=exp ')' '{' body=statementList '}'
+    ;
+
+forStatement
+    :   FOR '(' loopVar=Identifier IN start=atom '..' stop=atom (BY step=atom)? ')'
+        '{' body=statementList '}'
     ;
 
 assignmentStatement
@@ -123,6 +129,9 @@ READINT : 'readInt';
 IF      : 'if';
 ELSE    : 'else';
 WHILE   : 'while';
+FOR     : 'for';
+IN      : 'in';
+BY      : 'by';
 
 // lexer rules
 

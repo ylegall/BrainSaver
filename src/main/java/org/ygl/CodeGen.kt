@@ -166,6 +166,27 @@ class CodeGen(
         commentLine("end while $condition")
     }
 
+    fun startFor(loopVar: Symbol, start: Symbol, stop: Symbol, condition: Symbol) {
+        commentLine("start for $loopVar = $start to $stop")
+        assign(loopVar, start)
+        //debug(loopVar, "loopVar $loopVar = ")
+        assign(condition, math.lessThanEqual(loopVar, stop))
+        //debug(condition, "condition $condition = ")
+        moveTo(condition, comment="move to $condition")
+        startLoop()
+    }
+
+    fun endFor(loopVar: Symbol, stop: Symbol, step: Symbol, condition: Symbol) {
+        math.addTo(loopVar, step)
+        //debug(loopVar, "endFor: loopVar $loopVar = ")
+        //debug(loopVar, "endFor: stop $stop = ")
+        assign(condition, math.lessThanEqual(loopVar, stop))
+        //debug(condition, "endFor: condition $condition")
+        moveTo(condition)
+        endLoop()
+        commentLine("end for $loopVar")
+    }
+
     fun print(symbol: Symbol): Symbol {
         newline()
         moveTo(symbol)

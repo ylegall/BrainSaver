@@ -130,7 +130,7 @@ class TreeWalker(val codegen: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
         ctx ?: throw Exception("null PrintStatementContext")
         val scope = codegen.currentScope()
 
-        val exp = ctx.exp()
+        val exp = if (ctx.exp().childCount == 1 ) ctx.exp().getChild(0) else ctx.exp()
         when (exp) {
             is AtomIdContext -> {
                 val symbol = scope.getSymbol(ctx.exp().text) ?:
@@ -138,8 +138,7 @@ class TreeWalker(val codegen: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
                 return codegen.print(symbol)
             }
             is AtomStrContext -> {
-                val str = (exp as AtomStrContext).text
-                val chars = unescape(str)
+                val chars = unescape(exp.text)
                 codegen.io.printImmediate(chars)
                 return null
             }
@@ -378,6 +377,59 @@ class TreeWalker(val codegen: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
         return null
     }
 
+    override fun visitForStatement(ctx: ForStatementContext?): Symbol? {
+        ctx ?: throw Exception("null ForStatementContext")
+
+        val start = visit(ctx.start)!!
+        val stop = visit(ctx.stop)!!
+        val step = if (ctx.step != null) {
+            visit(ctx.step)!!
+        } else {
+            codegen.loadInt(codegen.currentScope().createSymbol("step${ctx.sourceInterval.a}", value=1), 1)
+        }
+
+        // TODO: hack to prevent temp symbols from being deleted:
+        codegen.currentScope().rename(start, "&${start.name}")
+        codegen.currentScope().rename(stop, "&${stop.name}")
+        codegen.currentScope().rename(step, "&${step.name}")
+
+        val loopVar = codegen.currentScope().createSymbol(ctx.loopVar.text)
+
+        // try to unroll loop
+        if (isConstant(start) && isConstant(stop) && isConstant(step) && canUnrollLoop(ctx.body.statement())) {
+            codegen.commentLine("unrolling loop")
+            codegen.loadInt(loopVar, start.value as Int)
+            for (i in (start.value as Int) .. (stop.value as Int) step (step.value as Int)) {
+                for (stmt in ctx.body.statement()) {
+                    visit(stmt)
+                }
+                codegen.incrementBy(loopVar, step.value as Int)
+            }
+        } else {
+            val condition = codegen.currentScope().pushConditionFlag()
+            codegen.startFor(loopVar, start, stop, condition)
+            for (stmt in ctx.body.statement()) {
+                visit(stmt)
+            }
+            codegen.endFor(loopVar, stop, step, condition)
+            codegen.currentScope().popConditionFlag()
+        }
+        codegen.currentScope().delete(step)
+        codegen.currentScope().delete(start)
+        codegen.currentScope().delete(stop)
+        return null
+    }
+
+    private inline fun canUnrollLoop(body: List<StatementContext>): Boolean {
+        if (body.size > 8) return false
+        for (stmt in body) {
+            val child = stmt.getChild(0)
+            if (child is PrintStatementContext) return false
+            if (child is CallStatementContext)  return false
+        }
+        return true
+    }
+
     override fun visitArrayConstructor(ctx: ArrayConstructorContext?): Symbol? {
         ctx ?: throw Exception("null ArrayConstructorContext")
         val name = ctx.lhs.text
@@ -436,22 +488,6 @@ class TreeWalker(val codegen: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
         }
     }
 
-
-//    private inline fun canUnrollLoop(condition: Symbol, body: List<StatementContext>): Boolean {
-//        if (!isConstant(condition)) return false
-//        if (condition.value as Int > 8) return false // TODO: make this a configurable setting
-//        for (stmt in body) {
-//            if (stmt is PrintStatementContext) return false
-//            if (stmt is CallStatementContext)  return false
-//        }
-//        return true
-//    }
-
-//    private fun unrollLoop(condition: Symbol, body: List<StatementContext>) {
-//        for (i in 1 .. condition.value as Int) {
-//            body.forEach { visit(it) }
-//        }
-//    }
 
     private inline fun isConstant(symbol: Symbol): Boolean {
         return codegen.options.optimize &&

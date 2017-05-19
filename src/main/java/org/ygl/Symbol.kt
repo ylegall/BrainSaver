@@ -6,7 +6,7 @@ enum class Type {
 }
 
 data class Symbol(
-    val name: String,
+    var name: String,
     val size: Int,
     val address: Int,
     val type: Type = Type.INT,

@@ -81,7 +81,7 @@ class IO(val codegen: CodeGen)
         with (codegen) {
             val tmp = currentScope().getTempSymbol()
             moveTo(tmp)
-            for (i in 1..chars.length) {
+            for (i in 0 until chars.length) {
                 setZero(tmp)
                 val intValue = chars[i].toInt()
                 loadInt(tmp, intValue)

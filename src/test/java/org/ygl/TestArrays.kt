@@ -35,7 +35,7 @@ internal class TestArrays
                 x[$idx] = $a;
                 print(x[$idx]);
             }
-        """
+            """
             val result = compileAndEval(program)
             Assertions.assertEquals(a.toString(), result.trim())
         }

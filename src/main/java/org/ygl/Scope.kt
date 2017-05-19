@@ -106,6 +106,12 @@ class Scope(val startAddress: Int) {
 
     fun inConditionalScope() = !conditionFlags.isEmpty()
 
+    fun rename(symbol: Symbol, name: String) {
+        symbolMap.remove(symbol.name)
+        symbol.name = name
+        symbolMap.put(name, symbol)
+    }
+
     fun delete(symbol: Symbol) {
         symbolMap.remove(symbol.name) ?: throw Exception("undefined symbol: ${symbol.name}")
         if (symbol.address + symbol.size == startAddress + scopeSize) {
