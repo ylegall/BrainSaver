@@ -9,7 +9,7 @@ import org.ygl.BrainSaverParser.*
  */
 class TreeWalker(val codegen: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
 {
-    private val libraryFunctions = LibraryFunctions(codegen)
+    private val libraryFunctions = LibraryFunctions(codegen, this)
 
     /**
      * scan and register functions. look for the org.ygl.main function
@@ -135,18 +135,18 @@ class TreeWalker(val codegen: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
             is AtomIdContext -> {
                 val symbol = scope.getSymbol(ctx.exp().text) ?:
                         throw Exception("undefined identifier: ${ctx.exp().text}")
-                return codegen.print(symbol)
+                codegen.io.print(symbol)
             }
             is AtomStrContext -> {
                 val chars = unescape(exp.text)
                 codegen.io.printImmediate(chars)
-                return null
             }
             else -> {
                 val symbol = visit(exp) ?: throw Exception("null argument to print()")
-                return codegen.print(symbol)
+                codegen.io.print(symbol)
             }
         }
+        return null
     }
 
     // TODO: improve
@@ -216,6 +216,13 @@ class TreeWalker(val codegen: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
     }
 
     private fun functionCall(funcName: String, args: List<BrainSaverParser.ExpContext>?): Symbol? {
+
+        if (funcName in libraryFunctions.procedures) {
+            val expList = args?.map { visit(it) } ?: listOf()
+            libraryFunctions.invoke(funcName, expList)
+            return null
+        }
+
         // lookup matching function and its params
         val function = codegen.functions[funcName] ?: throw Exception("unrecognized function: $funcName")
 
@@ -254,7 +261,7 @@ class TreeWalker(val codegen: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
             val cpy = codegen.currentScope().getTempSymbol(result.type, result.size)
             codegen.move(cpy, result)
         } else {
-            return null
+            null
         }
     }
 
@@ -367,6 +374,10 @@ class TreeWalker(val codegen: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
     override fun visitWhileStatement(ctx: WhileStatementContext?): Symbol? {
         ctx ?: throw Exception("null WhileStatementContext")
         var condition = visit(ctx.condition) ?: throw Exception("null condition result")
+
+        if (isConstant(condition) && (condition.value as Int) == 0) {
+            return null
+        }
 
         codegen.startWhile(condition)
         for (stmt in ctx.body.statement()) {

@@ -1,38 +1,24 @@
 package org.ygl
 
 
-typealias ExpList = List<BrainSaverParser.ExpContext>
-typealias Procedure =  (ExpList) -> Unit
+typealias SymbolList = List<Symbol?>
+typealias Procedure =  (SymbolList) -> Unit
 
-class LibraryFunctions(val codegen: CodeGen)
+class LibraryFunctions(val codegen: CodeGen, val tree: TreeWalker)
 {
     val procedures: HashMap<String, Procedure> = hashMapOf(
-            Pair("readInt", this::readInt),
-            Pair("read", this::read)
+            Pair("println", this::println)
     )
 
-    private fun readInt(args: ExpList) {
-        args.forEach {
-            if (it is BrainSaverParser.AtomIdContext) {
-                val id = it as BrainSaverParser.AtomIdContext
-                val sym = codegen.currentScope().getOrCreateSymbol(id.text, type = Type.INT)
-                codegen.io.readInt(sym)
-            } else {
-                throw Exception("invalid argument to readInt(): ${it.text}")
-            }
+    private fun println(args: SymbolList) {
+        args.filterNotNull().forEach {
+            codegen.io.print(it)
+            codegen.io.print("\n")
         }
     }
 
-    private fun read(args: ExpList) {
-        args.forEach {
-            val sym = codegen.currentScope().getOrCreateSymbol(it.text, type = Type.INT)
-            codegen.io.readChar(sym)
-        }
-    }
-
-    fun invokeProcedure(name: String, args: ExpList) {
-        val function = procedures[name]!!
-        function.invoke(args)
+    fun invoke(name: String, args: SymbolList) {
+        procedures[name]?.invoke(args) ?: throw Exception("undefined function $name")
     }
 
 }

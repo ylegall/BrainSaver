@@ -18,6 +18,5 @@ Inspiration is drawn from
 - [x] basic constant folding and constant branch elimination
 
 ## TODO
-* constant loop unrolling
 * algorithms for wrapping implementations
 * automatic memory management

@@ -20,6 +20,20 @@ class IO(val codegen: CodeGen)
         return symbol
     }
 
+    fun <T> print(t: T) {
+        codegen.newline()
+        if (t is Symbol) {
+            codegen.moveTo(t)
+            if (t.type == Type.STRING) {
+                printString(t)
+            } else {
+                printInt(t)
+            }
+        } else if (t is String) {
+            printImmediate(t)
+        }
+    }
+
     fun printInt(symbol: Symbol): Symbol {
         with(codegen) {
             commentLine("print int $symbol")

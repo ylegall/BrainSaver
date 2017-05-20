@@ -169,35 +169,20 @@ class CodeGen(
     fun startFor(loopVar: Symbol, start: Symbol, stop: Symbol, condition: Symbol) {
         commentLine("start for $loopVar = $start to $stop")
         assign(loopVar, start)
-        //debug(loopVar, "loopVar $loopVar = ")
         assign(condition, math.lessThanEqual(loopVar, stop))
-        //debug(condition, "condition $condition = ")
         moveTo(condition, comment="move to $condition")
         startLoop()
     }
 
     fun endFor(loopVar: Symbol, stop: Symbol, step: Symbol, condition: Symbol) {
         math.addTo(loopVar, step)
-        //debug(loopVar, "endFor: loopVar $loopVar = ")
-        //debug(loopVar, "endFor: stop $stop = ")
         assign(condition, math.lessThanEqual(loopVar, stop))
-        //debug(condition, "endFor: condition $condition")
         moveTo(condition)
         endLoop()
         commentLine("end for $loopVar")
     }
 
-    fun print(symbol: Symbol): Symbol {
-        newline()
-        moveTo(symbol)
-        return if (symbol.type == Type.STRING) {
-            io.printString(symbol)
-        } else {
-            io.printInt(symbol)
-        }
-    }
-
-    private fun debug(symbol: Symbol, comment: String) {
+    private inline fun debug(symbol: Symbol, comment: String) {
         moveTo(symbol)
         emit("\n`$comment`\n")
     }
@@ -349,7 +334,7 @@ class CodeGen(
         newline()
     }
 
-    private inline fun newline() {
+    fun newline() {
         write(System.lineSeparator())
         val indent = getIndent()
         col = indent.length
@@ -394,7 +379,7 @@ class CodeGen(
     private inline fun write(code: String) {
         if (options.verbose) {
             output.print(code)
-            print(code)
+            System.`out`.print(code)
         } else {
             output.print(code.replace(nonOperativeChars, ""))
         }
