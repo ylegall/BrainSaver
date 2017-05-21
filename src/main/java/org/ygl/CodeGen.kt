@@ -220,6 +220,7 @@ class CodeGen(
         if (value <= 0) return setZero(symbol) // non wrapping
         setZero(symbol)
         emit("+".repeat(value), "load $symbol = $value")
+        newline()
         return symbol
     }
 

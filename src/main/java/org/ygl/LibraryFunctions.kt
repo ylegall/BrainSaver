@@ -1,24 +1,42 @@
 package org.ygl
 
+import org.antlr.v4.runtime.misc.ParseCancellationException
+
 
 typealias SymbolList = List<Symbol?>
-typealias Procedure =  (SymbolList) -> Unit
+typealias Procedure =  (SymbolList) -> Symbol?
 
 class LibraryFunctions(val codegen: CodeGen, val tree: TreeWalker)
 {
     val procedures: HashMap<String, Procedure> = hashMapOf(
-            Pair("println", this::println)
+            "println" to this::println,
+            "readStr" to this::readStr
     )
 
-    private fun println(args: SymbolList) {
+    private fun println(args: SymbolList): Symbol? {
         args.filterNotNull().forEach {
             codegen.io.print(it)
             codegen.io.print("\n")
         }
+        return null
     }
 
-    fun invoke(name: String, args: SymbolList) {
-        procedures[name]?.invoke(args) ?: throw Exception("undefined function $name")
+    private fun readStr(args: SymbolList): Symbol? {
+        if (args.size != 1 || !tree.isConstant(args[0]!!)) {
+            throw ParseCancellationException("function readStr accepts 1 constant integer argument")
+        }
+        val arg = args[0]!!
+        val len = arg.value as Int
+        val str = codegen.currentScope().getTempSymbol(type = Type.STRING, size = len)
+        for (i in 0 until len) {
+            codegen.io.readChar(str.offset(i))
+        }
+        return str
+    }
+
+    fun invoke(name: String, args: SymbolList): Symbol? {
+        val fn = procedures[name] ?: throw Exception("undefined function $name")
+        return fn.invoke(args)
     }
 
 }

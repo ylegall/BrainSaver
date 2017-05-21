@@ -113,7 +113,13 @@ class TreeWalker(val codegen: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
                 }
             }
             Type.STRING -> {
-                if (isConstant(rhs)) {
+                if (rhs.isTemp()) {
+                    // move operation
+                    codegen.commentLine("rename $rhs to $lhs")
+                    codegen.currentScope().delete(lhsSymbol)
+                    codegen.currentScope().rename(rhs, lhs)
+                    return rhs
+                } else if (isConstant(rhs)) {
                     lhsSymbol.value = rhs.value
                     codegen.loadString(lhsSymbol, rhs.value as String)
                 } else {
@@ -219,8 +225,7 @@ class TreeWalker(val codegen: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
 
         if (funcName in libraryFunctions.procedures) {
             val expList = args?.map { visit(it) } ?: listOf()
-            libraryFunctions.invoke(funcName, expList)
-            return null
+            return libraryFunctions.invoke(funcName, expList)
         }
 
         // lookup matching function and its params
@@ -474,9 +479,16 @@ class TreeWalker(val codegen: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
         val index = checkNotNull(visit(ctx.idx), { "null ${ctx.idx.text}" })
         val value = checkNotNull(visit(ctx.rhs), { "null ${ctx.rhs.text}" })
 
+        // TODO: type checking?
+
         if (isConstant(index)) {
             if (isConstant(value)) {
-                return codegen.loadInt(array.offset(index.value as Int), value.value as Int)
+                if (value.value is String) {
+                    val char = (value.value as String)[0]
+                    return codegen.loadInt(array.offset(index.value as Int), char.toInt())
+                } else {
+                    return codegen.loadInt(array.offset(index.value as Int), value.value as Int)
+                }
             } else {
                 return codegen.assign(array.offset(index.value as Int), value)
             }
@@ -500,7 +512,7 @@ class TreeWalker(val codegen: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
     }
 
 
-    private inline fun isConstant(symbol: Symbol): Boolean {
+    inline fun isConstant(symbol: Symbol): Boolean {
         return codegen.options.optimize &&
                 !codegen.currentScope().inConditionalScope() &&
                 symbol.value != null

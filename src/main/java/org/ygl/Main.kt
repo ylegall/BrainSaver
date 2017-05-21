@@ -54,7 +54,7 @@ fun main(args: Array<String>) {
     } catch (e: ParseException) {
         printUsageAndHalt(options)
     } catch (e: ParseCancellationException) {
-        println(e)
+        println(e.message)
         System.exit(1)
     }
 

@@ -32,3 +32,5 @@ inline fun Symbol.offset(offset: Int, name: String = this.name): Symbol {
 }
 
 inline fun Symbol.isArray(): Boolean = this.size > 1
+
+inline fun Symbol.isTemp(): Boolean = this.name.startsWith("$")
