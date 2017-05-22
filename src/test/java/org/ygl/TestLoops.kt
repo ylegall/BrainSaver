@@ -92,4 +92,22 @@ internal class TestLoops
         val result = compileAndEval(program)
         Assertions.assertEquals(expected, result.trim())
     }
+
+    @Test
+    fun testMultiWhileStatements() {
+        val program = """
+            fn main() {
+                x = 0;
+                y = 0;
+                l = 4;
+                while (x < l) {
+                    x += 1;
+                    y += 1;
+                }
+                println(x, y);
+            }
+        """
+        val result = compileAndEval(program)
+        Assertions.assertEquals("4\n4", result.trim())
+    }
 }

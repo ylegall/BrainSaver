@@ -338,6 +338,7 @@ class TreeWalker(val codegen: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
         return codegen.math.not(right)
     }
 
+    // TODO: rename variables to prevent them from being collected
     override fun visitIfStatement(context: IfStatementContext?): Symbol? {
         val ctx = checkNotNull(context, { "null IfStatementContext" })
         val condition = visit(ctx.condition) ?: throw Exception("null condition result")
@@ -354,6 +355,7 @@ class TreeWalker(val codegen: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
 
         if (ctx.falseStatements != null && !ctx.falseStatements.isEmpty) {
             val tmp = codegen.startIf(condition)
+            codegen.currentScope().rename(tmp, "&${tmp.name}")
             for (stmt in ctx.trueStatements.statement()) {
                 visit(stmt)
             }

@@ -1,7 +1,9 @@
 package org.ygl
 
+import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
+import java.time.Duration
 
 
 internal class TestBranches
@@ -111,6 +113,34 @@ internal class TestBranches
             }
         """
         val result = compileAndEval(program, userInput = b.toString())
+        assertEquals(expected, result.trim())
+    }
+
+    @Test
+    fun testMultiStatements() {
+        Assertions.assertTimeout(Duration.ofSeconds(5), {
+            testMultiStatements(1, "22")
+            testMultiStatements(0, "30")
+        })
+    }
+
+    fun testMultiStatements(a: Int, expected: String) {
+        val program = """
+            fn main() {
+                readInt(x);
+                y = 1;
+                if (x) {
+                    x += 1;
+                    y *= 2;
+                } else {
+                    x += 3;
+                    y -= 1;
+                }
+                print(x);
+                print(y);
+            }
+        """
+        val result = compileAndEval(program, userInput = a.toString())
         assertEquals(expected, result.trim())
     }
 }
