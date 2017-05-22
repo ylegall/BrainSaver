@@ -176,15 +176,18 @@ class CodeGen(
 
     fun endFor(loopVar: Symbol, stop: Symbol, step: Symbol, condition: Symbol) {
         math.addTo(loopVar, step)
+        //debug(loopVar, "$loopVar = ")
         assign(condition, math.lessThanEqual(loopVar, stop))
         moveTo(condition)
         endLoop()
         commentLine("end for $loopVar")
     }
 
-    private inline fun debug(symbol: Symbol, comment: String) {
+    inline fun debug(symbol: Symbol, comment: String) {
         moveTo(symbol)
-        emit("\n`$comment`\n")
+        newline()
+        emit("`$comment`")
+        newline()
     }
 
     // TODO: implement string copy function
@@ -276,7 +279,7 @@ class CodeGen(
             val returnSymbol = currentScope().getReturnSymbol()
             assign(returnSymbol, sym)
         }
-        moveTo(currentScope().getZeroSymbol())
+        moveTo(currentScope().getZeroSymbol(), comment = "move to &0")
         emit("[", "return $sym")
         nestLevel = Math.min(nestLevel + 1, 10)
     }
@@ -284,6 +287,7 @@ class CodeGen(
     fun closeFunction(func: String = "") {
         val count = currentScope().returnCount
         nestLevel -= count
+        moveTo(currentScope().getZeroSymbol(), comment = "move to &0")
         emit("]".repeat(count))
         currentScope().returnCount = 0
         commentLine("end function $func\n")

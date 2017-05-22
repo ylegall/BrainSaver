@@ -7,26 +7,6 @@ import org.junit.jupiter.api.Assertions.assertEquals
  */
 internal class TestConstantMath {
 
-    companion object {
-        @BeforeAll
-        @JvmStatic
-        fun init() {
-        }
-
-        @AfterAll
-        @JvmStatic
-        fun afterAll() {
-        }
-    }
-
-    @BeforeEach
-    fun setUp() {
-    }
-
-    @AfterEach
-    fun tearDown() {
-    }
-
     @Test
     fun testConstantAddition() {
         test(2, 3, "+", 5)

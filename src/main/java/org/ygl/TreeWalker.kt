@@ -260,14 +260,10 @@ class TreeWalker(val codegen: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
         // execute statements in function body:
         visit(function.ctx)
 
-        val result = codegen.currentScope().getSymbol(org.ygl.returnSymbolName)
+        val result = codegen.currentScope().getSymbol(returnSymbolName)!!
         codegen.exitScope()
-        return if (result != null) {
-            val cpy = codegen.currentScope().getTempSymbol(result.type, result.size)
-            codegen.move(cpy, result)
-        } else {
-            null
-        }
+        val cpy = codegen.currentScope().getTempSymbol(result.type, result.size)
+        return codegen.move(cpy, result)
     }
 
     override fun visitReturnStatement(ctx: ReturnStatementContext?): Symbol? {
@@ -384,12 +380,15 @@ class TreeWalker(val codegen: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
             return null
         }
 
+        codegen.currentScope().rename(condition, "&" + condition.name)
         codegen.startWhile(condition)
         for (stmt in ctx.body.statement()) {
             visit(stmt)
         }
-        condition = visit(ctx.condition) ?: throw Exception("null condition result")
+        val c2 = visit(ctx.condition) ?: throw Exception("null condition result")
+        codegen.assign(condition, c2)
         codegen.endWhile(condition)
+        codegen.currentScope().delete(condition)
         return null
     }
 
@@ -405,14 +404,19 @@ class TreeWalker(val codegen: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
         }
 
         // TODO: hack to prevent temp symbols from being deleted:
-        codegen.currentScope().rename(start, "&${start.name}")
-        codegen.currentScope().rename(stop, "&${stop.name}")
-        codegen.currentScope().rename(step, "&${step.name}")
+        val deleteSet = HashSet<Symbol>()
+        listOf(start, stop, step).forEach {
+            val sym = codegen.currentScope().getSymbol(it.name)!!
+            if (sym.isTemp()) {
+                codegen.currentScope().rename(sym, "&${sym.name}")
+                deleteSet.add(it)
+            }
+        }
 
         val loopVar = codegen.currentScope().createSymbol(ctx.loopVar.text)
 
         // try to unroll loop
-        if (isConstant(start) && isConstant(stop) && isConstant(step) && canUnrollLoop(ctx.body.statement())) {
+        if (canUnrollLoop(start, stop, step, ctx.body.statement())) {
             codegen.commentLine("unrolling loop")
             codegen.loadInt(loopVar, start.value as Int)
             for (i in (start.value as Int) .. (stop.value as Int) step (step.value as Int)) {
@@ -430,18 +434,23 @@ class TreeWalker(val codegen: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
             codegen.endFor(loopVar, stop, step, condition)
             codegen.currentScope().popConditionFlag()
         }
-        codegen.currentScope().delete(step)
-        codegen.currentScope().delete(start)
-        codegen.currentScope().delete(stop)
+        // TODO: can't delete these if they refer to an existing symbol
+        deleteSet.forEach { codegen.currentScope()::delete }
         return null
     }
 
-    private inline fun canUnrollLoop(body: List<StatementContext>): Boolean {
+    private fun canUnrollLoop(start: Symbol, stop: Symbol, step: Symbol, body: List<StatementContext>): Boolean {
         if (body.size > 8) return false
+        if (!isConstant(start) || !isConstant(stop) || !isConstant(step)) return false
+        if ((stop.value as Int - start.value as Int) / step.value as Int >= 10) return false
         for (stmt in body) {
             val child = stmt.getChild(0)
-            if (child is PrintStatementContext) return false
-            if (child is CallStatementContext)  return false
+            when (child) {
+                is PrintStatementContext -> return false
+                is CallStatementContext  -> return false
+                is ForStatementContext   -> return false
+                is WhileStatementContext -> return false
+            }
         }
         return true
     }
@@ -511,6 +520,17 @@ class TreeWalker(val codegen: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
         }
     }
 
+    override fun visitDebugStatement(ctx: DebugStatementContext?): Symbol? {
+        ctx ?: throw Exception("null DebugStatementContext")
+        ctx.idList.Identifier().map {
+            codegen.currentScope().getSymbol( it.text )
+        }
+        .filterNotNull()
+        .forEach {
+            codegen.debug(it, "$it = ")
+        }
+        return null
+    }
 
     inline fun isConstant(symbol: Symbol): Boolean {
         return codegen.options.optimize &&

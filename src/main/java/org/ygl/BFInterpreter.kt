@@ -4,8 +4,8 @@ import java.io.*
 import java.util.*
 import java.util.stream.Collectors
 
-const val MAX_BYTE = 255.toByte()
-const val ZERO_BYTE = 0.toByte()
+const val MAX: Short  = 255
+const val ZERO: Short = 0
 
 class InterpreterOptions
 (
@@ -43,7 +43,7 @@ class BFInterpreter(
 
     private var pc = 0
     private var col = 0
-    private var memory = ByteArray(options.memorySize)
+    private var memory = ShortArray(options.memorySize)
     private var userInput = ArrayDeque<Char>(options.predefinedInput.length)
 
     init {
@@ -83,12 +83,12 @@ class BFInterpreter(
             '.' -> printChar()
             ',' -> readChar()
             '[' -> {
-                if (memory[dp] == ZERO_BYTE) {
+                if (memory[dp] == ZERO) {
                     jumpForward()
                 }
             }
             ']' -> {
-                if (memory[dp] != ZERO_BYTE) {
+                if (memory[dp] != ZERO) {
                     jumpBack()
                 }
             }
@@ -99,7 +99,7 @@ class BFInterpreter(
                     sb.append(text[pc])
                     pc++
                 }
-                print(sb.toString())
+                print("debug ${sb.toString()}")
                 println(memory[dp].toString())
             }
             else -> {
@@ -150,10 +150,10 @@ class BFInterpreter(
         if (!userInput.isEmpty()) {
             val c = userInput.pop()
             //println("read value '$c'")
-            memory[dp] = c?.toByte() ?: throw Exception("null input char")
+            memory[dp] = c?.toShort() ?: throw Exception("null input char")
         } else {
             print("waiting for input: ")
-            val c = System.`in`.read().toByte()
+            val c = System.`in`.read().toShort()
             memory[dp] = c
             println()
         }
@@ -165,28 +165,28 @@ class BFInterpreter(
 
     private fun inc() {
         if (options.isWrapping) {
-            memory[dp] = if (memory[dp] == MAX_BYTE) {
-                0.toByte()
+            memory[dp] = if (memory[dp] == MAX) {
+                ZERO
             } else {
-                (memory[dp] + 1).toByte()
+                (memory[dp] + 1).toShort()
             }
         } else {
-            memory[dp] = Math.max(MAX_BYTE.toInt(), (memory[dp] + 1)).toByte()
+            memory[dp] = Math.min(MAX.toInt(), (memory[dp] + 1).toInt()).toShort()
         }
     }
 
     private fun dec() {
         if (options.isWrapping) {
-            memory[dp] = if (memory[dp] == ZERO_BYTE) {
-                MAX_BYTE
+            memory[dp] = if (memory[dp] == ZERO) {
+                MAX
             } else {
-                (memory[dp] - 1).toByte()
+                (memory[dp] - 1).toShort()
             }
         } else {
-            memory[dp] = if (memory[dp] == ZERO_BYTE) {
-                ZERO_BYTE
+            memory[dp] = if (memory[dp] == ZERO) {
+                ZERO
             } else {
-                (memory[dp] - 1).toByte()
+                (memory[dp] - 1).toShort()
             }
         }
     }
@@ -204,7 +204,7 @@ fun bfInterpreter(input: String = "", outputStream: OutputStream, options: Inter
 }
 
 fun main(args: Array<String>) {
-    val inputFile = if (args.size > 0) File(args[0]) else null
+    val inputFile = if (args.isNotEmpty()) File(args[0]) else null
     val outputFile = if (args.size > 1) File(args[1]) else null
 
     val interpreter = bfInterpreter(inputFile, outputFile)

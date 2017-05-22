@@ -80,7 +80,7 @@ class Scope(val startAddress: Int) {
             scopeSize += size
         }
 
-        var symbol = Symbol(name, size, address, type, value)
+        val symbol = Symbol(name, size, address, type, value)
         symbolMap.put(name, symbol)
         return symbol
     }

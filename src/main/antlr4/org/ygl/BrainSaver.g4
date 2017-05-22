@@ -43,6 +43,11 @@ statement
     |   forStatement
     |   arrayInitStatement
     |   arrayWriteStatement
+    |   debugStatement
+    ;
+
+debugStatement
+    :   'debug' '(' idList=identifierList ')' ';'
     ;
 
 ifStatement
