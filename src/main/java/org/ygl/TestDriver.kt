@@ -58,9 +58,11 @@ fun main(args: Array<String>) {
     } catch (e: ParseException) {
         printUsageAndHalt(options)
     } catch (e: ParseCancellationException) {
-        println(e)
+        println("compilation error: ${e.message}")
         System.exit(1)
     }
+
+    println("\n______________")
 
     val interpreter = BFInterpreter(inputStream = FileInputStream(File("output.txt")))
     interpreter.use { it.eval() }

@@ -1,5 +1,6 @@
 package org.ygl
 
+import org.antlr.v4.runtime.misc.ParseCancellationException
 import org.antlr.v4.runtime.tree.ParseTree
 import org.antlr.v4.runtime.tree.TerminalNode
 import org.ygl.BrainSaverParser.*
@@ -20,10 +21,11 @@ class TreeWalker(val codegen: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
         for (child in functionList.children) {
             val function = (child as FunctionContext)
             val functionName = function.name.text
+            val isVoid = function.functionBody().ret == null
             if (codegen.functions.containsKey(functionName)) {
                 throw Exception("duplicate function: $functionName")
             } else {
-                val newFunction = Function(functionName, function)
+                val newFunction = Function(functionName, function, isVoid)
                 codegen.functions.put(functionName, newFunction)
             }
 
@@ -34,12 +36,6 @@ class TreeWalker(val codegen: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
         mainFunction ?: throw Exception("no main function found")
         codegen.enterScope()
         return visit(mainFunction)
-    }
-
-    override fun visitFunction(ctx: FunctionContext?): Symbol? {
-        val result = visitChildren(ctx)
-        codegen.closeFunction(ctx?.name?.text ?: "")
-        return result
     }
 
     override fun visitStatement(ctx: StatementContext?): Symbol? {
@@ -102,28 +98,31 @@ class TreeWalker(val codegen: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
             codegen.currentScope().delete(lhsSymbol)
             lhsSymbol = codegen.currentScope().createSymbol(lhs, rhs)
         }
+        return assign(lhsSymbol, rhs)
+    }
 
+    private fun assign(lhs: Symbol, rhs: Symbol): Symbol {
         return when (rhs.type) {
             Type.INT -> {
                 if (isConstant(rhs)) {
-                    lhsSymbol.value = rhs.value
-                    codegen.loadInt(lhsSymbol, rhs.value as Int)
+                    lhs.value = rhs.value
+                    codegen.loadInt(lhs, rhs.value as Int)
                 } else {
-                    codegen.assign(lhsSymbol, rhs)
+                    codegen.assign(lhs, rhs)
                 }
             }
             Type.STRING -> {
                 if (rhs.isTemp()) {
                     // move operation
                     codegen.commentLine("rename $rhs to $lhs")
-                    codegen.currentScope().delete(lhsSymbol)
-                    codegen.currentScope().rename(rhs, lhs)
+                    codegen.currentScope().delete(lhs)
+                    codegen.currentScope().rename(rhs, lhs.name)
                     return rhs
                 } else if (isConstant(rhs)) {
-                    lhsSymbol.value = rhs.value
-                    codegen.loadString(lhsSymbol, rhs.value as String)
+                    lhs.value = rhs.value
+                    codegen.loadString(lhs, rhs.value as String)
                 } else {
-                    codegen.copyString(lhsSymbol, rhs)
+                    codegen.copyString(lhs, rhs)
                 }
             }
             else -> {
@@ -211,31 +210,44 @@ class TreeWalker(val codegen: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
     override fun visitCallStatement(ctx: CallStatementContext?): Symbol? {
         val name = ctx?.funcName?.text ?: throw Exception("null CallStatementContext")
         val args = ctx.expList().exp()
-        functionCall(name, args)
+
+        if (name in libraryFunctions.procedures) {
+            val expList = args?.map { visit(it) } ?: listOf()
+            return libraryFunctions.invoke(name, expList)
+        }
+
+        // lookup matching function and its params
+        val function = codegen.functions[name] ?: throw Exception("unrecognized function: $name")
+
+        functionCall(function, args)
         return null
     }
 
     override fun visitCallExp(ctx: CallExpContext?): Symbol? {
         val name = ctx?.funcName?.text ?: throw Exception("null CallExpContext")
         val args = ctx.expList()?.exp()
-        return functionCall(name, args)
-    }
 
-    private fun functionCall(funcName: String, args: List<BrainSaverParser.ExpContext>?): Symbol? {
-
-        if (funcName in libraryFunctions.procedures) {
+        if (name in libraryFunctions.procedures) {
             val expList = args?.map { visit(it) } ?: listOf()
-            return libraryFunctions.invoke(funcName, expList)
+            return libraryFunctions.invoke(name, expList)
         }
 
         // lookup matching function and its params
-        val function = codegen.functions[funcName] ?: throw Exception("unrecognized function: $funcName")
+        val function = codegen.functions[name] ?: throw Exception("unrecognized function: $name")
+        if (function.isVoid) {
+            throw ParseCancellationException("line ${ctx.start.line}: function '$name' is void")
+        }
+
+        return functionCall(function, args)
+    }
+
+    private fun functionCall(function: Function, args: List<BrainSaverParser.ExpContext>?): Symbol? {
 
         // collect arguments for function call
         if (args != null) {
             val params = function.ctx.params?.identifierList()?.Identifier()
             if (params == null || args.size != params.size) {
-                throw Exception("wrong number of arguments to $funcName")
+                throw Exception("wrong number of arguments to ${function.name}")
             }
 
             val arguments = ArrayList<Symbol>(params.size)
@@ -245,31 +257,34 @@ class TreeWalker(val codegen: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
             }
 
             codegen.enterScope()
-            codegen.commentLine("call $funcName")
+            codegen.commentLine("call ${function.name}")
             // create new scope and copy expression args into function param variables
             for (i in 0 until params.size) {
                 val param = params[i]
                 val sym = codegen.currentScope().createSymbol(param.text, arguments[i])
-                codegen.assign(sym, arguments[i])
+                assign(sym, arguments[i])
             }
         } else {
             codegen.enterScope()
-            codegen.commentLine("call $funcName")
+            codegen.commentLine("call ${function.name}")
         }
 
         // execute statements in function body:
-        visit(function.ctx)
+        function.ctx.body.stmts?.let { visit(it) }
 
-        val result = codegen.currentScope().getSymbol(returnSymbolName)!!
-        codegen.exitScope()
-        val cpy = codegen.currentScope().getTempSymbol(result.type, result.size)
-        return codegen.move(cpy, result)
+        var result: Symbol? = null
+        if (function.ctx.body.ret != null) {
+            val ret = visit(function.ctx.body.ret) ?: throw Exception("null return value")
+            codegen.exitScope()
+            val cpy = codegen.currentScope().getTempSymbol(ret.type, ret.size)
+            result = codegen.move(cpy, ret)
+        }
+        codegen.commentLine("end call ${function.name}")
+        return result
     }
 
     override fun visitReturnStatement(ctx: ReturnStatementContext?): Symbol? {
-        val ret = visit(ctx?.exp())
-        codegen.emitReturn(ret)
-        return ret
+        return visit(ctx?.exp())
     }
 
     override fun visitOpExp(context: OpExpContext?): Symbol? {
@@ -436,7 +451,7 @@ class TreeWalker(val codegen: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
             codegen.endFor(loopVar, stop, step, condition)
             codegen.currentScope().popConditionFlag()
         }
-        // TODO: can't delete these if they refer to an existing symbol
+        // can't delete these if they refer to an existing symbol
         deleteSet.forEach { codegen.currentScope()::delete }
         return null
     }

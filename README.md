@@ -19,4 +19,4 @@ Inspiration is drawn from
 
 ## TODO
 * algorithms for wrapping implementations
-* automatic memory management
+* breaks, jumps, and nested returns

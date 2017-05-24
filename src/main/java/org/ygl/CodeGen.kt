@@ -273,26 +273,6 @@ class CodeGen(
         newline()
     }
 
-    fun emitReturn(sym: Symbol?) {
-        currentScope().returnCount += 1
-        if (sym != null) {
-            val returnSymbol = currentScope().getReturnSymbol()
-            assign(returnSymbol, sym)
-        }
-        moveTo(currentScope().getZeroSymbol(), comment = "move to &0")
-        emit("[", "return $sym")
-        nestLevel = Math.min(nestLevel + 1, 10)
-    }
-
-    fun closeFunction(func: String = "") {
-        val count = currentScope().returnCount
-        nestLevel -= count
-        moveTo(currentScope().getZeroSymbol(), comment = "move to &0")
-        emit("]".repeat(count))
-        currentScope().returnCount = 0
-        commentLine("end function $func\n")
-    }
-
     // TODO
     fun readArray(array: Symbol, index: Symbol): Symbol {
         commentLine("read array $array($index)")

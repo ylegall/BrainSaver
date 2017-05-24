@@ -99,7 +99,7 @@ class BFInterpreter(
                     sb.append(text[pc])
                     pc++
                 }
-                print("debug ${sb.toString()}")
+                print("debug $sb")
                 println(memory[dp].toString())
             }
             else -> {

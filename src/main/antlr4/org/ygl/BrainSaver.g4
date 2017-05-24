@@ -24,7 +24,7 @@ identifierList
     ;
 
 functionBody
-    :   '{' statement* '}'
+    :   '{' stmts=statement* ret=returnStatement? '}'
     ;
 
 statementList
@@ -33,8 +33,7 @@ statementList
 
 // TODO
 statement
-    :   returnStatement
-    |   printStatement
+    :   printStatement
     |   readStatement
     |   assignmentStatement
     |   callStatement

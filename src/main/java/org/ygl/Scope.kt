@@ -11,7 +11,6 @@ const val zeroSymbolName = "#0"
 class Scope(val startAddress: Int) {
 
     private var tempCounter = 0
-    var returnCount = 0
 
     var scopeSize = 0
         private set
