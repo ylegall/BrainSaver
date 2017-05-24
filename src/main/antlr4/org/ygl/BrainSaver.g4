@@ -24,7 +24,7 @@ identifierList
     ;
 
 functionBody
-    :   '{' stmts=statement* ret=returnStatement? '}'
+    :   '{' statement* ret=returnStatement? '}'
     ;
 
 statementList

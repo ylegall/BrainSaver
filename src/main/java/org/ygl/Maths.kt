@@ -36,12 +36,12 @@ class Maths(val codegen: CodeGen)
             commentLine("add $s2 to $s1")
             val tmp = currentScope().getTempSymbol()
             assign(tmp, s2)
-            moveTo(tmp)
-            startLoop()
+
+            loop(tmp, {
                 emit("-")
                 inc(s1)
-                moveTo(tmp)
-            endLoop()
+            })
+
             currentScope().delete(tmp)
             commentLine("end add $s2 to $s1")
             return s1
@@ -54,12 +54,12 @@ class Maths(val codegen: CodeGen)
 
             val tmp = currentScope().getTempSymbol()
             assign(tmp, s2)
-            moveTo(tmp)
-            startLoop()
+
+            loop(tmp, {
                 emit("-")
                 dec(s1)
-                moveTo(tmp)
-            endLoop()
+            })
+
             currentScope().delete(tmp)
             return s1
         }
@@ -75,12 +75,10 @@ class Maths(val codegen: CodeGen)
             assign(t2, s2)
             setZero(s1)
 
-            moveTo(t2)
-            startLoop()
+            loop(t2, {
                 emit("-")
                 addTo(s1, t1)
-                moveTo(t2)
-            endLoop()
+            })
 
             currentScope().delete(t2)
             currentScope().delete(t1)
@@ -100,23 +98,21 @@ class Maths(val codegen: CodeGen)
             setZero(flag)
 
             assign(cpy, s1)
-            moveTo(cpy)
-            startLoop()
+
+            loop(cpy, {
                 subtractFrom(cpy, s2)
                 inc(div)
-                moveTo(cpy)
-            endLoop()
+            })
+
             currentScope().delete(cpy)
 
             val remainder = multiply(div, s2)
             subtractFrom(remainder, s1)
 
-            moveTo(remainder)
-            startLoop()
-                setZero(remainder)
+            onlyIf(remainder, {
                 inc(flag)
                 moveTo(remainder)
-            endLoop()
+            })
 
             currentScope().delete(remainder)
             subtractFrom(div, flag)
@@ -159,22 +155,19 @@ class Maths(val codegen: CodeGen)
 
             assign(x, lhs)
             math.subtractFrom(x, rhs)
-            moveTo(x)
-            startLoop()
+
+            onlyIf(x, {
                 setZero(z)
-                setZero(x)
-            endLoop()
+            })
 
             assign(x, rhs)
             math.subtractFrom(x, lhs)
-            moveTo(x)
-            startLoop()
+
+            onlyIf(x, {
                 setZero(z)
-                setZero(x)
-            endLoop()
+            })
 
             currentScope().delete(x)
-
             return z
         }
     }
@@ -187,11 +180,9 @@ class Maths(val codegen: CodeGen)
 
             loadInt(result, 1)
 
-            moveTo(x)
-            startLoop()
+            onlyIf(x, {
                 setZero(result)
-                setZero(x)
-            endLoop()
+            })
 
             currentScope().delete(x)
             return result
@@ -210,20 +201,17 @@ class Maths(val codegen: CodeGen)
             assign(x, lhs)
             math.subtractFrom(x, rhs)
 
-            moveTo(x)
-            startLoop()
+            onlyIf(x, {
                 setZero(ret)
-                setZero(x)
-            endLoop()
+            })
 
             assign(x, rhs)
             math.subtractFrom(x, lhs)
 
-            moveTo(x)
-            startLoop()
+            onlyIf(x, {
                 loadInt(ret, 1)
-                setZero(x)
-            endLoop()
+            })
+
             commentLine("end $lhs less than $rhs")
             return ret
         }
@@ -240,11 +228,9 @@ class Maths(val codegen: CodeGen)
             assign(x, lhs)
             math.subtractFrom(x, rhs)
 
-            moveTo(x)
-            startLoop()
+            onlyIf(x, {
                 setZero(ret)
-                setZero(x)
-            endLoop()
+            })
 
             return ret
         }
@@ -263,11 +249,11 @@ class Maths(val codegen: CodeGen)
             val ret = currentScope().getTempSymbol()
             setZero(ret)
             val z = math.subtract(lhs, rhs)
-            moveTo(z)
-            startLoop()
+
+            onlyIf(z, {
                 loadInt(ret, 1)
-                setZero(z)
-            endLoop()
+            })
+
             currentScope().delete(z)
 
             return ret
@@ -308,18 +294,16 @@ class Maths(val codegen: CodeGen)
             val ret = currentScope().getTempSymbol()
 
             assign(x, lhs)
-            moveTo(x)
-            startLoop()
+
+            onlyIf(x, {
                 loadInt(ret, 1)
-                setZero(x)
-            endLoop()
+            })
 
             assign(x, rhs)
-            moveTo(x)
-            startLoop()
+
+            onlyIf(x, {
                 loadInt(ret, 1)
-                setZero(x)
-            endLoop()
+            })
 
             currentScope().delete(x)
 
@@ -335,11 +319,9 @@ class Maths(val codegen: CodeGen)
             assign(tmp, rhs)
             loadInt(ret, 1)
 
-            moveTo(tmp)
-            startLoop()
+            onlyIf(tmp, {
                 setZero(ret)
-                setZero(tmp)
-            endLoop()
+            })
 
             currentScope().delete(tmp)
 

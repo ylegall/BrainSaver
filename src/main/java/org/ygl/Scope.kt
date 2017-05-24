@@ -2,8 +2,6 @@ package org.ygl
 
 import java.util.*
 
-const val returnSymbolName = "#return"
-const val zeroSymbolName = "#0"
 
 /**
  *
@@ -19,21 +17,8 @@ class Scope(val startAddress: Int) {
     private val freeSlots = ArrayDeque<Symbol>()
     private val conditionFlags = ArrayDeque<Symbol>()
 
-    init {
-        createSymbol(zeroSymbolName, size = 1, type = Type.INT, value = 0)
-        createSymbol(returnSymbolName, size = 1, type = Type.INT, value = 0)
-    }
-
     fun getSymbol(name: String): Symbol? {
         return symbolMap[name]
-    }
-
-    fun getReturnSymbol(): Symbol {
-        return symbolMap[returnSymbolName]!!
-    }
-
-    fun getZeroSymbol(): Symbol {
-        return symbolMap[zeroSymbolName]!!
     }
 
     fun getOrCreateSymbol(name: String, size: Int = 1, type: Type = Type.INT): Symbol {
