@@ -47,7 +47,7 @@ class CodeGen(
         }
         val newScope = Scope(memorySize)
         scopes.add(newScope)
-        setZero(newScope.getZeroSymbol())
+        //setZero(newScope.getZeroSymbol())
     }
 
     fun exitScope(): Scope {
@@ -62,14 +62,14 @@ class CodeGen(
      * moves rhs to lhs. rhs is not preserved
      */
     fun move(lhs: Symbol, rhs: Symbol): Symbol {
+        if (rhs.address == lhs.address) return lhs
         commentLine("move $rhs to $lhs")
 
         setZero(lhs)
-        moveTo(rhs)
-        startLoop()
+        loop(rhs, {
             inc(lhs)
             dec(rhs)
-        endLoop()
+        })
 
         return lhs
     }
@@ -88,21 +88,18 @@ class CodeGen(
         val tmp = currentScope().getTempSymbol()
         setZero(lhs)
         setZero(tmp)
-        moveTo(rhs)
 
-        startLoop()
+        loop(rhs, {
             emit("-")
             inc(lhs)
             inc(tmp)
-            moveTo(rhs)
-        endLoop()
+        })
 
-        moveTo(tmp)
-        startLoop()
+        loop(tmp, {
             emit("-")
             inc(rhs)
-            moveTo(tmp)
-        endLoop()
+        })
+
         currentScope().delete(tmp)
         commentLine("end assign $rhs to $lhs")
         return lhs
@@ -115,12 +112,10 @@ class CodeGen(
 
         val tmp = currentScope().getTempSymbol()
         assign(tmp, condition)
-        moveTo(tmp)
-        startLoop("zero else flag if $tmp is true")
-            setZero(tmp)
+
+        onlyIf(tmp, comment = "zero else flag if $tmp is true", body = {
             setZero(elseFlag)
-            moveTo(tmp)
-        endLoop()
+        })
 
         assign(tmp, condition)
 
@@ -271,6 +266,23 @@ class CodeGen(
         newline()
         emit("]", comment)
         newline()
+    }
+
+    inline fun loop(symbol: Symbol, body: () -> Unit, comment: String = "") {
+        moveTo(symbol)
+        startLoop(comment)
+            body()
+            moveTo(symbol)
+        endLoop()
+    }
+
+    inline fun onlyIf(symbol: Symbol, body: () -> Unit, comment: String = "") {
+        moveTo(symbol)
+        startLoop(comment)
+            setZero(symbol)
+            body()
+            moveTo(symbol)
+        endLoop()
     }
 
     // TODO

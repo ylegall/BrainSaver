@@ -155,7 +155,7 @@ class TreeWalker(val codegen: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
     }
 
     // TODO: improve
-    private inline fun unescape(str: String): String {
+    private fun unescape(str: String): String {
         val withoutQuotes = str.trim().substring(1 .. str.length-2)
         val result = withoutQuotes.replace("\\n", "\n").replace("\\t", "\t")
         return result
@@ -270,7 +270,9 @@ class TreeWalker(val codegen: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
         }
 
         // execute statements in function body:
-        function.ctx.body.stmts?.let { visit(it) }
+        function.ctx.body.statement()?.forEach {
+            visit(it)
+        }
 
         var result: Symbol? = null
         if (function.ctx.body.ret != null) {
@@ -354,8 +356,9 @@ class TreeWalker(val codegen: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
     }
 
     // TODO: rename variables to prevent them from being collected
-    override fun visitIfStatement(context: IfStatementContext?): Symbol? {
-        val ctx = checkNotNull(context, { "null IfStatementContext" })
+    override fun visitIfStatement(ctx: IfStatementContext?): Symbol? {
+        ctx ?: throw Exception("null IfStatementContext")
+
         val condition = visit(ctx.condition) ?: throw Exception("null condition result")
 
         // constant branch elimination
