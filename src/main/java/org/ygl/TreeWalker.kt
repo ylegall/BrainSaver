@@ -4,6 +4,7 @@ import org.antlr.v4.runtime.misc.ParseCancellationException
 import org.antlr.v4.runtime.tree.ParseTree
 import org.antlr.v4.runtime.tree.TerminalNode
 import org.ygl.BrainSaverParser.*
+import javax.swing.plaf.nimbus.State
 
 /**
  * http://stackoverflow.com/questions/23092081/antlr4-visitor-pattern-on-simple-arithmetic-example
@@ -372,24 +373,53 @@ class TreeWalker(val codegen: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
         }
 
         if (ctx.falseStatements != null && !ctx.falseStatements.isEmpty) {
-            val tmp = codegen.startIf(condition)
-            codegen.currentScope().rename(tmp, "&${tmp.name}")
-            for (stmt in ctx.trueStatements.statement()) {
-                visit(stmt)
-            }
-            codegen.endIf(tmp)
-            codegen.startElse(condition)
-            for (stmt in ctx.falseStatements.statement()) {
-                visit(stmt)
-            }
-            codegen.endElse(condition)
+            doIfElse(condition, ctx.trueStatements, ctx.falseStatements)
         } else {
-            val ifFlag = codegen.startIf(condition)
-            visit(ctx.trueStatements)
-            codegen.endIf(ifFlag)
+            doIf(condition, ctx.trueStatements)
         }
-        codegen.currentScope().popConditionFlag()
+
         return null
+    }
+
+    private inline fun doIf(condition: Symbol, stmts: StatementListContext) {
+        with (codegen) {
+            val cpy = currentScope().createSymbol("&${condition.name}")
+            assign(cpy, condition)
+
+            startIf(cpy)
+            visit(stmts)
+            endIf(cpy)
+
+            currentScope().delete(cpy)
+        }
+    }
+
+    private inline fun doIfElse(condition: Symbol,
+                                trueStmts: StatementListContext,
+                                falseStmts: StatementListContext
+    ) {
+        with (codegen) {
+            val cpy = currentScope().createSymbol("&${condition.name}")
+            assign(cpy, condition)
+
+            val elseFlag = currentScope().createSymbol("${cpy.name}_else")
+            loadInt(elseFlag, 1)
+            onlyIf(cpy, {
+                setZero(elseFlag)
+            })
+            assign(cpy, condition)
+
+            startIf(cpy)
+            visit(trueStmts)
+            endIf(cpy)
+
+            startElse(elseFlag)
+            visit(falseStmts)
+            endElse(elseFlag)
+
+            currentScope().delete(cpy)
+            currentScope().delete(elseFlag)
+        }
     }
 
     override fun visitWhileStatement(ctx: WhileStatementContext?): Symbol? {

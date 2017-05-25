@@ -105,46 +105,31 @@ class CodeGen(
         return lhs
     }
 
-    fun startIf(condition: Symbol): Symbol {
+    fun startIf(condition: Symbol) {
         commentLine("if $condition")
-        val elseFlag = currentScope().pushConditionFlag()
-        loadInt(elseFlag, 1)    // loadInt else to 1
-
-        val tmp = currentScope().getTempSymbol()
-        assign(tmp, condition)
-
-        onlyIf(tmp, comment = "zero else flag if $tmp is true", body = {
-            setZero(elseFlag)
-        })
-
-        assign(tmp, condition)
-
-        moveTo(tmp)
+        moveTo(condition)
         startLoop()
-        setZero(tmp)
-        return tmp
+        setZero(condition)
     }
 
     // is passed the tmp variable from the startIf
-    fun endIf(tmp: Symbol) {
-        moveTo(tmp)
+    fun endIf(condition: Symbol) {
+        moveTo(condition)
         endLoop()
         commentLine("end if")
     }
 
-    fun startElse(condition: Symbol) {
-        val elseFlag = currentScope().getConditionFlag()
-        commentLine("else $condition")
+    fun startElse(elseFlag: Symbol) {
+        commentLine("else $elseFlag")
         moveTo(elseFlag)
         startLoop()
         setZero(elseFlag)
     }
 
-    fun endElse(condition: Symbol) {
-        val elseFlag = currentScope().getConditionFlag()
+    fun endElse(elseFlag: Symbol) {
         moveTo(elseFlag)
         endLoop()
-        commentLine("end else $condition")
+        commentLine("end else $elseFlag")
     }
 
     fun startWhile(condition: Symbol) {
