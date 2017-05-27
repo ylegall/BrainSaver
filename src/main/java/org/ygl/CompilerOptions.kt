@@ -20,6 +20,12 @@ fun configureCommandLine(): Options {
             .desc("generate minimal compact output")
             .build()
 
+    val margin = Option.builder()
+            .longOpt("margin")
+            .desc("minified margin size")
+            .hasArg(true)
+            .build()
+
     val noOptimization = Option.builder()
             .longOpt("no-cf")
             .desc("disables constant folding optimizations")
@@ -40,6 +46,7 @@ fun configureCommandLine(): Options {
     options.addOption(noOptimization)
     options.addOption(verbose)
     options.addOption(version)
+    options.addOption(margin)
     options.addOption(Option("help", "print this message"))
     return options
 }

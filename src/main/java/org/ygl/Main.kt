@@ -40,10 +40,18 @@ fun main(args: Array<String>) {
                 optimize = !commandLine.hasOption("no-cf")
         )
 
-        val outputStream = if (commandLine.hasOption("output")) {
+        var outputStream = if (commandLine.hasOption("output")) {
             FileOutputStream(File(commandLine.getOptionValue("output")))
         } else {
             System.`out`
+        }
+
+        if (commandLine.hasOption("minify")) {
+            val margin = if (commandLine.hasOption("margin"))
+                commandLine.getOptionValue("margin").toInt()
+            else
+                0
+            outputStream = MinifyingOutputStream(outputStream, margin)
         }
 
         CodeGen(outputStream, compilerOptions).use {

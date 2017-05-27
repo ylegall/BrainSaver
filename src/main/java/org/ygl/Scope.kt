@@ -15,7 +15,7 @@ class Scope(val startAddress: Int) {
 
     private val symbolMap = HashMap<String, Symbol>()
     private val freeSlots = ArrayDeque<Symbol>()
-    private val conditionFlags = ArrayDeque<Symbol>()
+    private val loopContexts = ArrayDeque<LoopContext>()
 
     fun getSymbol(name: String): Symbol? {
         return symbolMap[name]
@@ -73,22 +73,15 @@ class Scope(val startAddress: Int) {
         return createSymbol(name, other.size, other.type, other.value)
     }
 
-    fun pushConditionFlag(): Symbol {
-        val flag = createSymbol("&" + conditionFlags.size)
-        conditionFlags.push(flag)
-        return flag
+    fun inConditionalScope() = !loopContexts.isEmpty()
+
+    fun pushLoopContext(ctx: LoopContext) {
+        loopContexts.push(ctx)
     }
 
-    fun getConditionFlag(): Symbol {
-        return conditionFlags.peek() ?: throw Exception("condition flags empty")
+    fun popLoopContext(): LoopContext {
+        return loopContexts.pop()
     }
-
-    fun popConditionFlag() {
-        val flag = conditionFlags.pop()
-        delete(flag)
-    }
-
-    fun inConditionalScope() = !conditionFlags.isEmpty()
 
     fun rename(symbol: Symbol, name: String) {
         symbolMap.remove(symbol.name)

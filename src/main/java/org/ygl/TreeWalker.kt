@@ -4,7 +4,6 @@ import org.antlr.v4.runtime.misc.ParseCancellationException
 import org.antlr.v4.runtime.tree.ParseTree
 import org.antlr.v4.runtime.tree.TerminalNode
 import org.ygl.BrainSaverParser.*
-import javax.swing.plaf.nimbus.State
 
 /**
  * http://stackoverflow.com/questions/23092081/antlr4-visitor-pattern-on-simple-arithmetic-example
@@ -103,14 +102,18 @@ class TreeWalker(val codegen: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
     }
 
     private fun assign(lhs: Symbol, rhs: Symbol): Symbol {
+        return if (isConstant(rhs)) {
+            assignConstant(lhs, rhs)
+        } else {
+            assignVariable(lhs, rhs)
+        }
+    }
+
+    private fun assignVariable(lhs: Symbol, rhs: Symbol): Symbol {
+        lhs.value = null
         return when (rhs.type) {
             Type.INT -> {
-                if (isConstant(rhs)) {
-                    lhs.value = rhs.value
-                    codegen.loadInt(lhs, rhs.value as Int)
-                } else {
-                    codegen.assign(lhs, rhs)
-                }
+                codegen.assign(lhs, rhs)
             }
             Type.STRING -> {
                 if (rhs.isTemp()) {
@@ -118,12 +121,32 @@ class TreeWalker(val codegen: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
                     codegen.commentLine("rename $rhs to $lhs")
                     codegen.currentScope().delete(lhs)
                     codegen.currentScope().rename(rhs, lhs.name)
-                    return rhs
-                } else if (isConstant(rhs)) {
-                    lhs.value = rhs.value
-                    codegen.loadString(lhs, rhs.value as String)
+                    rhs
                 } else {
                     codegen.copyString(lhs, rhs)
+                }
+            }
+            else -> {
+                throw Exception("unsupported type")
+            }
+        }
+    }
+
+    private fun assignConstant(lhs: Symbol, rhs: Symbol): Symbol {
+        lhs.value = rhs.value
+        return when (rhs.type) {
+            Type.INT -> {
+                codegen.loadInt(lhs, rhs.value as Int)
+            }
+            Type.STRING -> {
+                if (rhs.isTemp()) {
+                    // move operation
+                    codegen.commentLine("rename $rhs to $lhs")
+                    codegen.currentScope().delete(lhs)
+                    codegen.currentScope().rename(rhs, lhs.name)
+                    rhs
+                } else {
+                    codegen.loadString(lhs, rhs.value as String)
                 }
             }
             else -> {
@@ -259,12 +282,14 @@ class TreeWalker(val codegen: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
 
             codegen.enterScope()
             codegen.commentLine("call ${function.name}")
+
             // create new scope and copy expression args into function param variables
             for (i in 0 until params.size) {
                 val param = params[i]
                 val sym = codegen.currentScope().createSymbol(param.text, arguments[i])
-                assign(sym, arguments[i])
+                assignVariable(sym, arguments[i])
             }
+
         } else {
             codegen.enterScope()
             codegen.commentLine("call ${function.name}")
@@ -386,9 +411,11 @@ class TreeWalker(val codegen: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
             val cpy = currentScope().createSymbol("&${condition.name}")
             assign(cpy, condition)
 
+            currentScope().pushLoopContext(LoopContext())
             startIf(cpy)
             visit(stmts)
             endIf(cpy)
+            currentScope().popLoopContext()
 
             currentScope().delete(cpy)
         }
@@ -409,6 +436,7 @@ class TreeWalker(val codegen: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
             })
             assign(cpy, condition)
 
+            currentScope().pushLoopContext(LoopContext())
             startIf(cpy)
             visit(trueStmts)
             endIf(cpy)
@@ -416,9 +444,11 @@ class TreeWalker(val codegen: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
             startElse(elseFlag)
             visit(falseStmts)
             endElse(elseFlag)
+            currentScope().popLoopContext()
 
             currentScope().delete(cpy)
             currentScope().delete(elseFlag)
+
         }
     }
 
@@ -430,15 +460,27 @@ class TreeWalker(val codegen: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
             return null
         }
 
-        codegen.currentScope().rename(condition, "&" + condition.name)
-        codegen.startWhile(condition)
+        var cpy = codegen.currentScope().createSymbol("&${ctx.sourceInterval.a}")
+        if (condition.isTemp()) {
+            codegen.move(cpy, condition)
+        } else {
+            codegen.assign(cpy, condition)
+        }
+
+        codegen.startWhile(cpy)
         for (stmt in ctx.body.statement()) {
             visit(stmt)
         }
-        val c2 = visit(ctx.condition) ?: throw Exception("null condition result")
-        codegen.assign(condition, c2)
-        codegen.endWhile(condition)
-        codegen.currentScope().delete(condition)
+
+        condition = visit(ctx.condition) ?: throw Exception("null condition result")
+        if (condition.isTemp()) {
+            codegen.move(cpy, condition)
+        } else {
+            codegen.assign(cpy, condition)
+        }
+        codegen.endWhile(cpy)
+
+        codegen.currentScope().delete(cpy)
         return null
     }
 
@@ -452,6 +494,8 @@ class TreeWalker(val codegen: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
         } else {
             codegen.loadInt(codegen.currentScope().createSymbol("step${ctx.sourceInterval.a}", value=1), 1)
         }
+
+        val condition = codegen.currentScope().createSymbol("&${ctx.sourceInterval.a}")
 
         // TODO: hack to prevent temp symbols from being deleted:
         val deleteSet = HashSet<Symbol>()
@@ -476,16 +520,15 @@ class TreeWalker(val codegen: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
                 codegen.incrementBy(loopVar, step.value as Int)
             }
         } else {
-            val condition = codegen.currentScope().pushConditionFlag()
             codegen.startFor(loopVar, start, stop, condition)
             for (stmt in ctx.body.statement()) {
                 visit(stmt)
             }
             codegen.endFor(loopVar, stop, step, condition)
-            codegen.currentScope().popConditionFlag()
         }
         // can't delete these if they refer to an existing symbol
         deleteSet.forEach { codegen.currentScope()::delete }
+        codegen.currentScope().delete(condition)
         return null
     }
 

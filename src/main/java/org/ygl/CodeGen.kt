@@ -134,15 +134,15 @@ class CodeGen(
 
     fun startWhile(condition: Symbol) {
         commentLine("start while $condition")
-        val flag = currentScope().pushConditionFlag()
+        currentScope().pushLoopContext(LoopContext())
         moveTo(condition)
         startLoop()
     }
 
     fun endWhile(condition: Symbol) {
-        currentScope().popConditionFlag()
         moveTo(condition, comment="move to $condition")
         endLoop()
+        currentScope().popLoopContext()
         commentLine("end while $condition")
     }
 
@@ -150,16 +150,17 @@ class CodeGen(
         commentLine("start for $loopVar = $start to $stop")
         assign(loopVar, start)
         assign(condition, math.lessThanEqual(loopVar, stop))
+        currentScope().pushLoopContext(LoopContext())
         moveTo(condition, comment="move to $condition")
         startLoop()
     }
 
     fun endFor(loopVar: Symbol, stop: Symbol, step: Symbol, condition: Symbol) {
         math.addTo(loopVar, step)
-        //debug(loopVar, "$loopVar = ")
         assign(condition, math.lessThanEqual(loopVar, stop))
         moveTo(condition)
         endLoop()
+        currentScope().popLoopContext()
         commentLine("end for $loopVar")
     }
 
