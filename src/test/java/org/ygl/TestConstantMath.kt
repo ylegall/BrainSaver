@@ -52,8 +52,7 @@ internal class TestConstantMath {
                 print(x);
             }
         """
-        val code = compile(program)
-        val result = eval(code)
+        val result = compileAndEval(program)
         assertEquals(expected.toString(), result.trim())
     }
 

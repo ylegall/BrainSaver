@@ -8,11 +8,9 @@ internal class TestLoops
 {
     @Test
     fun testConstantWhile() {
-        Assertions.assertTimeout(Duration.ofSeconds(5), {
-            testConstantWhile(0, "i < 4", "i += 1", "0123")
-            testConstantWhile(0, "i < 5", "i += 2", "024")
-            testConstantWhile(3, "i > 0", "i -= 1", "321")
-        })
+        testConstantWhile(0, "i < 4", "i += 1", "0123")
+        testConstantWhile(0, "i < 5", "i += 2", "024")
+        testConstantWhile(3, "i > 0", "i -= 1", "321")
     }
 
     fun testConstantWhile(start: Int, condition: String, inc: String, expected: String) {
@@ -25,8 +23,10 @@ internal class TestLoops
                 }
             }
         """
-        val result = compileAndEval(program)
-        Assertions.assertEquals(expected, result.trim())
+        Assertions.assertTimeout(Duration.ofSeconds(5), {
+            val result = compileAndEval(program)
+            Assertions.assertEquals(expected, result.trim())
+        })
     }
 
     @Test

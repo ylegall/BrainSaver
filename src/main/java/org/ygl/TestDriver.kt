@@ -64,7 +64,10 @@ fun main(args: Array<String>) {
 
     println("\n______________")
 
-    val interpreter = BFInterpreter(inputStream = FileInputStream(File("output.txt")))
+    val evalOptions = InterpreterOptions(
+    )
+
+    val interpreter = BFInterpreter(inputStream = FileInputStream(File("output.txt")), options = evalOptions)
     interpreter.use { it.eval() }
 
 }

@@ -21,8 +21,7 @@ internal class TestAssignment
                 print(y);
             }
         """
-        val code = compile(program)
-        val result = eval(code)
+        val result = compileAndEval(program)
         Assertions.assertEquals(expected, result.trim())
     }
 }

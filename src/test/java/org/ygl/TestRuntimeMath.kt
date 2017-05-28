@@ -44,8 +44,7 @@ internal class TestRuntimeMath
                 print(x);
             }
         """
-        val code = compile(program)
-        val result = eval(code, userInput = a.toString())
+        var result = compileAndEval(program, userInput = a.toString())
         assertEquals(expected.toString(), result.trim())
     }
 }

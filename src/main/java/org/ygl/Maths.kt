@@ -38,7 +38,7 @@ class Maths(val codegen: CodeGen)
             assign(tmp, s2)
 
             loop(tmp, {
-                emit("-")
+                dec(tmp)
                 inc(s1)
             })
 
@@ -56,7 +56,7 @@ class Maths(val codegen: CodeGen)
             assign(tmp, s2)
 
             loop(tmp, {
-                emit("-")
+                dec(tmp)
                 dec(s1)
             })
 
@@ -76,7 +76,7 @@ class Maths(val codegen: CodeGen)
             setZero(s1)
 
             loop(t2, {
-                emit("-")
+                dec(t2)
                 addTo(s1, t1)
             })
 

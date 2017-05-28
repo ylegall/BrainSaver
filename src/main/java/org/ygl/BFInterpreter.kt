@@ -207,6 +207,9 @@ fun main(args: Array<String>) {
     val inputFile = if (args.isNotEmpty()) File(args[0]) else null
     val outputFile = if (args.size > 1) File(args[1]) else null
 
-    val interpreter = bfInterpreter(inputFile, outputFile)
+    val options = InterpreterOptions(
+    )
+
+    val interpreter = bfInterpreter(inputFile, outputFile, options)
     interpreter.eval()
 }

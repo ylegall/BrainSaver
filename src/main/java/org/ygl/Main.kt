@@ -1,10 +1,16 @@
 package org.ygl
 
-import org.antlr.v4.runtime.*
+import org.antlr.v4.runtime.CharStreams
+import org.antlr.v4.runtime.CommonTokenStream
 import org.antlr.v4.runtime.misc.ParseCancellationException
-import org.apache.commons.cli.*
+import org.apache.commons.cli.DefaultParser
+import org.apache.commons.cli.HelpFormatter
+import org.apache.commons.cli.Options
+import org.apache.commons.cli.ParseException
 import java.io.File
+import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.io.InputStream
 
 const val VERSION = "1.0"
 
@@ -12,6 +18,29 @@ private inline fun printUsageAndHalt(options: Options) {
     HelpFormatter().printHelp("brainsaver", options, true)
     System.exit(1)
 }
+
+fun compile(input: InputStream, options: CompilerOptions = DEFAULT_COMPILE_OPTIONS) {
+    // parse and generate the AST:
+    val lexer = BrainSaverLexer(CharStreams.fromStream(input))
+    val tokens = CommonTokenStream(lexer)
+    val parser = BrainSaverParser(tokens)
+    parser.addErrorListener(CompileErrorListener.INSTANCE)
+    val tree = parser.program()
+
+    var output = options.output
+    if (options.minify) {
+        output = MinifyingOutputStream(
+                output,
+                options.margin
+        )
+    }
+
+    CodeGen(output, options).use {
+        val visitor = TreeWalker(it)
+        visitor.visit(tree)
+    }
+}
+
 
 fun main(args: Array<String>) {
 
@@ -28,36 +57,19 @@ fun main(args: Array<String>) {
             printUsageAndHalt(options)
         }
 
-        // parse and generate the AST:
-        val lexer = BrainSaverLexer(CharStreams.fromFileName(remainingArgs[0]))
-        val tokens = CommonTokenStream(lexer)
-        val parser = BrainSaverParser(tokens)
-        parser.addErrorListener(CompileErrorListener.INSTANCE)
-        val tree = parser.program()
-
         val compilerOptions = CompilerOptions(
                 verbose = !commandLine.hasOption("minify"),
-                optimize = !commandLine.hasOption("no-cf")
+                optimize = !commandLine.hasOption("no-cf"),
+                minify = commandLine.hasOption("minify"),
+                output = if (commandLine.hasOption("output")) {
+                    FileOutputStream(File(commandLine.getOptionValue("output")))
+                } else {
+                    System.`out`
+                },
+                margin = commandLine.getOptionValue("margin")?.toInt() ?: 64
         )
 
-        var outputStream = if (commandLine.hasOption("output")) {
-            FileOutputStream(File(commandLine.getOptionValue("output")))
-        } else {
-            System.`out`
-        }
-
-        if (commandLine.hasOption("minify")) {
-            val margin = if (commandLine.hasOption("margin"))
-                commandLine.getOptionValue("margin").toInt()
-            else
-                0
-            outputStream = MinifyingOutputStream(outputStream, margin)
-        }
-
-        CodeGen(outputStream, compilerOptions).use {
-            val visitor = TreeWalker(it)
-            visitor.visit(tree)
-        }
+        compile(FileInputStream(remainingArgs[0]), compilerOptions)
 
     } catch (e: ParseException) {
         printUsageAndHalt(options)

@@ -80,4 +80,31 @@ internal class TestFunctions
         val result = compileAndEval(program)
         assertEquals("8", result.trim())
     }
+
+    @Test
+    fun testLoopParams() {
+        val program = """
+            fn isEven(x) {
+                ret = 0;
+                if ((x % 2) == 0) {
+                    ret = 1;
+                } else {
+                    ret = 0;
+                }
+                return ret;
+            }
+
+            fn main() {
+                i = 1;
+                while (i <= 6) {
+                    if (isEven(i)) {
+                        print(i);
+                    }
+                    i += 1;
+                }
+            }
+        """
+        val result = compileAndEval(program)
+        assertEquals("246", result.trim())
+    }
 }

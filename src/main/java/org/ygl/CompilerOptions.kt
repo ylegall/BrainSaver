@@ -2,12 +2,16 @@ package org.ygl
 
 import org.apache.commons.cli.Option
 import org.apache.commons.cli.Options
+import java.io.OutputStream
 
 
 class CompilerOptions(
-    val verbose: Boolean = false,
-    val commentChar: String = "#",
-    val optimize: Boolean = true
+        val verbose: Boolean = false,
+        val commentChar: String = "#",
+        val optimize: Boolean = true,
+        val minify: Boolean = false,
+        val output: OutputStream = System.`out`,
+        val margin: Int = 64
 )
 
 val DEFAULT_COMPILE_OPTIONS = CompilerOptions()
