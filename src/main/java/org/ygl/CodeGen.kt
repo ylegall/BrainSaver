@@ -1,7 +1,7 @@
 package org.ygl
 
+import java.io.FileOutputStream
 import java.io.OutputStream
-import java.io.PrintWriter
 import java.util.*
 
 
@@ -9,16 +9,15 @@ typealias ConstFunction = (Int, Int) -> Int
 typealias SymbolFunction = (Symbol, Symbol) -> Symbol
 typealias BinaryOp = (Symbol, Symbol) -> Symbol
 
-const val MARGIN  = 40
-const val COMMENT_MARGIN  = 44
-
 // https://esolangs.org/wiki/Brainfuck_algorithms
 // https://www.codeproject.com/Articles/558979/BrainFix-the-language-that-translates-to-fluent-Br
 class CodeGen(
-        outputStream: OutputStream,
+        outputStream: OutputStream? = null,
         val options: CompilerOptions = DEFAULT_COMPILE_OPTIONS
 ) : AutoCloseable
 {
+
+    constructor(options: CompilerOptions = DEFAULT_COMPILE_OPTIONS): this(null, options)
 
     private var col = 0
     private var nestLevel = 0
@@ -29,9 +28,37 @@ class CodeGen(
 
     val functions = HashMap<String, Function>()
     private val scopes = ArrayList<Scope>()
-    private val output: PrintWriter = PrintWriter(outputStream)
+
+    private val output: OutputStream = buildOutputStream(outputStream, options)
+
+    private fun buildOutputStream(outputStream: OutputStream?, options: CompilerOptions): OutputStream {
+
+        val stream = if (outputStream != null) {
+            if (options.output.isNotEmpty()) {
+                MultiOutputStream(outputStream, FileOutputStream(options.output))
+            } else {
+                outputStream
+            }
+        } else {
+            if (options.output.isNotEmpty()) {
+                FileOutputStream(options.output)
+            } else {
+                System.`out`
+            }
+        }
+
+        return if (options.minify) {
+            MinifyingOutputStream(stream)
+        } else {
+            stream
+        }
+    }
+
     private val reservedChars = Regex("""[\[\]<>+\-,.]""")
-    private val nonOperativeChars = Regex("""[^\[\]<>+\-,.]""")
+    //private val nonOperativeChars = Regex("""[^\[\]<>+\-,.]""")
+
+    private val MARGIN = options.margin
+    private val COMMENT_MARGIN = MARGIN + 4
 
     override fun close() {
         output.flush()
@@ -164,7 +191,7 @@ class CodeGen(
         commentLine("end for $loopVar")
     }
 
-    inline fun debug(symbol: Symbol, comment: String) {
+    inline fun debug(symbol: Symbol, comment: String = "") {
         moveTo(symbol)
         newline()
         emit("`$comment`")
@@ -212,7 +239,7 @@ class CodeGen(
         if (value == 0) return symbol
         val ch = if (value < 0) "-" else "+"
         moveTo(symbol)
-        emit(ch.repeat(Math.abs(value)), "increment $symbol by $value")
+        emit(ch.repeat(Math.abs(value)))
         return symbol
     }
 
@@ -327,7 +354,7 @@ class CodeGen(
     private inline fun getIndent() = "  ".repeat(nestLevel)
 
     fun emit(code: String, comment: String = "") {
-        if (options.verbose) {
+        if (!options.minify) {
 
             var text = code
             var cmt = comment
@@ -360,11 +387,6 @@ class CodeGen(
     }
 
     private inline fun write(code: String) {
-        if (options.verbose) {
-            output.print(code)
-            System.`out`.print(code)
-        } else {
-            output.print(code.replace(nonOperativeChars, ""))
-        }
+        output.write(code.toByteArray(Charsets.UTF_8))
     }
 }

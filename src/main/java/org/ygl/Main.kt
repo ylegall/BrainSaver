@@ -7,10 +7,9 @@ import org.apache.commons.cli.DefaultParser
 import org.apache.commons.cli.HelpFormatter
 import org.apache.commons.cli.Options
 import org.apache.commons.cli.ParseException
-import java.io.File
 import java.io.FileInputStream
-import java.io.FileOutputStream
 import java.io.InputStream
+import java.io.OutputStream
 
 const val VERSION = "1.0"
 
@@ -19,7 +18,7 @@ private inline fun printUsageAndHalt(options: Options) {
     System.exit(1)
 }
 
-fun compile(input: InputStream, options: CompilerOptions = DEFAULT_COMPILE_OPTIONS) {
+fun compile(input: InputStream, outputStream: OutputStream? = null, options: CompilerOptions = DEFAULT_COMPILE_OPTIONS) {
     // parse and generate the AST:
     val lexer = BrainSaverLexer(CharStreams.fromStream(input))
     val tokens = CommonTokenStream(lexer)
@@ -27,15 +26,7 @@ fun compile(input: InputStream, options: CompilerOptions = DEFAULT_COMPILE_OPTIO
     parser.addErrorListener(CompileErrorListener.INSTANCE)
     val tree = parser.program()
 
-    var output = options.output
-    if (options.minify) {
-        output = MinifyingOutputStream(
-                output,
-                options.margin
-        )
-    }
-
-    CodeGen(output, options).use {
+    CodeGen(outputStream, options).use {
         val visitor = TreeWalker(it)
         visitor.visit(tree)
     }
@@ -58,18 +49,14 @@ fun main(args: Array<String>) {
         }
 
         val compilerOptions = CompilerOptions(
-                verbose = !commandLine.hasOption("minify"),
                 optimize = !commandLine.hasOption("no-cf"),
                 minify = commandLine.hasOption("minify"),
-                output = if (commandLine.hasOption("output")) {
-                    FileOutputStream(File(commandLine.getOptionValue("output")))
-                } else {
-                    System.`out`
-                },
+                wrapping = commandLine.hasOption("wrapping"),
+                output = commandLine.getOptionValue("output") ?: "",
                 margin = commandLine.getOptionValue("margin")?.toInt() ?: 64
         )
 
-        compile(FileInputStream(remainingArgs[0]), compilerOptions)
+        compile(FileInputStream(remainingArgs[0]), options = compilerOptions)
 
     } catch (e: ParseException) {
         printUsageAndHalt(options)

@@ -52,22 +52,52 @@ class Maths(val codegen: CodeGen)
         with (codegen) {
             commentLine("subtract $s2 from $s1")
 
-            val tmp = currentScope().getTempSymbol()
-            assign(tmp, s2)
+            if (codegen.options.wrapping) {
+                val breakFlag = currentScope().getTempSymbol()
+                val tmp = currentScope().getTempSymbol()
+                val tmp2 = currentScope().getTempSymbol()
+                assign(tmp, s2)
 
-            loop(tmp, {
-                dec(tmp)
-                dec(s1)
-            })
+                loop(tmp, {
 
-            currentScope().delete(tmp)
+                    loadInt(breakFlag, 1)
+                    assign(tmp2, s1)
+
+                    onlyIf(tmp2, {
+                        dec(s1)
+                        dec(tmp)
+                        setZero(breakFlag)
+                    })
+
+                    onlyIf(breakFlag, {
+                        setZero(tmp)
+                    })
+
+                })
+
+                currentScope().delete(tmp2)
+                currentScope().delete(tmp)
+                currentScope().delete(breakFlag)
+            } else {
+                val tmp = currentScope().getTempSymbol()
+                assign(tmp, s2)
+
+                loop(tmp, {
+                    dec(s1)
+                    dec(tmp)
+                })
+
+                currentScope().delete(tmp)
+            }
+
+            commentLine("end subtract $s2 from $s1")
             return s1
         }
     }
 
     fun multiplyBy(s1: Symbol, s2: Symbol): Symbol {
         with (codegen) {
-            commentLine("$s1 *= $s2")
+            commentLine("multiply $s1 by $s2")
 
             val t1 = currentScope().getTempSymbol()
             val t2 = currentScope().getTempSymbol()
@@ -82,6 +112,7 @@ class Maths(val codegen: CodeGen)
 
             currentScope().delete(t2)
             currentScope().delete(t1)
+            commentLine("end multiply $s1 by $s2")
             return s1
         }
     }

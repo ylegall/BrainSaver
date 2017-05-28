@@ -6,12 +6,12 @@ import java.io.OutputStream
 
 
 class CompilerOptions(
-        val verbose: Boolean = false,
         val commentChar: String = "#",
         val optimize: Boolean = true,
         val minify: Boolean = false,
-        val output: OutputStream = System.`out`,
-        val margin: Int = 64
+        val output: String = "",
+        val margin: Int = 48,
+        val wrapping: Boolean = false
 )
 
 val DEFAULT_COMPILE_OPTIONS = CompilerOptions()
@@ -19,7 +19,7 @@ val DEFAULT_COMPILE_OPTIONS = CompilerOptions()
 fun configureCommandLine(): Options {
     val options = Options()
 
-    val verbose = Option.builder("m")
+    val minify = Option.builder("m")
             .longOpt("minify")
             .desc("generate minimal compact output")
             .build()
@@ -41,6 +41,11 @@ fun configureCommandLine(): Options {
             .hasArg(true)
             .build()
 
+    val wrapping = Option.builder("w")
+            .longOpt("wrapping")
+            .desc("generate code for wrapping interpreters")
+            .build()
+
     val version = Option.builder()
             .longOpt("version")
             .desc("print the compiler version")
@@ -48,7 +53,8 @@ fun configureCommandLine(): Options {
 
     options.addOption(output)
     options.addOption(noOptimization)
-    options.addOption(verbose)
+    options.addOption(wrapping)
+    options.addOption(minify)
     options.addOption(version)
     options.addOption(margin)
     options.addOption(Option("help", "print this message"))

@@ -40,17 +40,12 @@ fun main(args: Array<String>) {
         val tree = parser.program()
 
         val compilerOptions = CompilerOptions(
-                verbose = !commandLine.hasOption("minify"),
-                optimize = !commandLine.hasOption("no-cf")
+                minify = commandLine.hasOption("minify"),
+                optimize = !commandLine.hasOption("no-cf"),
+                output = commandLine.getOptionValue("output")
         )
 
-        val outputStream = if (commandLine.hasOption("output")) {
-            FileOutputStream(File(commandLine.getOptionValue("output")))
-        } else {
-            System.`out`
-        }
-
-        CodeGen(outputStream, compilerOptions).use {
+        CodeGen(compilerOptions).use {
             val visitor = TreeWalker(it)
             visitor.visit(tree)
         }

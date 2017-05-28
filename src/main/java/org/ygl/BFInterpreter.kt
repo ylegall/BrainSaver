@@ -99,8 +99,10 @@ class BFInterpreter(
                     sb.append(text[pc])
                     pc++
                 }
-                print("debug $sb")
-                println(memory[dp].toString())
+                //print("debug $sb")
+                //println(memory[dp].toString())
+                this.outputStream.write(sb.toString().toByteArray())
+                this.outputStream.write(memory[dp].toString().toByteArray())
             }
             else -> {
                 opCount--
@@ -189,6 +191,14 @@ class BFInterpreter(
                 (memory[dp] - 1).toShort()
             }
         }
+    }
+
+    fun getCellValue(idx: Int): Int {
+        return memory[idx].toInt()
+    }
+
+    fun getCellChar(idx: Int): Char {
+        return memory[idx].toChar()
     }
 }
 
