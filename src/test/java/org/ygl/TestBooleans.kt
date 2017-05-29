@@ -42,7 +42,6 @@ internal class TestBooleans
         val r = when(op) {
             "&&" -> cg.math.and(x, y)
             "||" -> cg.math.or(x, y)
-            "!" -> cg.math.not(x)
             else -> throw Exception("unsupported op $op")
         }
 
