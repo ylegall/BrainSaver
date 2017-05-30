@@ -44,9 +44,6 @@ class TreeWalker(val cg: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
         return result
     }
 
-    /**
-     * 
-     */
     override fun visitAssignmentStatement(ctx: AssignmentStatementContext?): Symbol? {
         ctx ?: throw Exception("null AssignmentStatementContext")
         val lhs = ctx.lhs.text
@@ -61,7 +58,6 @@ class TreeWalker(val cg: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
 
         with (cg) {
             val lhsSymbol = currentScope().getSymbol(lhs) ?: throw Exception("undefined identifier $lhs")
-
             return when (op) {
                 "+=" -> {
                     if (isConstant(expResult)) {
@@ -79,10 +75,44 @@ class TreeWalker(val cg: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
                         math.subtractFrom(lhsSymbol, expResult)
                     }
                 }
-                "*=" -> math.multiplyBy(lhsSymbol, expResult)
-                "/=" -> math.divideBy(lhsSymbol, expResult)
+                "*=" -> if (isConstant(expResult)) {
+                    stregnthReduce(lhsSymbol, op, expResult)
+                } else {
+                    math.multiplyBy(lhsSymbol, expResult)
+                }
+                "/=" -> if (isConstant(expResult)) {
+                    stregnthReduce(lhsSymbol, op, expResult)
+                } else {
+                    math.divideBy(lhsSymbol, expResult)
+                }
                 "%=" -> math.modBy(lhsSymbol, expResult)
                 else -> {
+                    throw Exception("invalid assignment operator: " + op)
+                }
+            }
+        }
+    }
+
+    private fun stregnthReduce(lhs: Symbol, op: String, rhs: Symbol): Symbol {
+        return when (Pair(op, rhs.value)) {
+            Pair("*=", 0) -> {
+                cg.setZero(lhs)
+            }
+            Pair("*=", 1) -> {
+                lhs // no-op
+            }
+            Pair("*=", 2) -> {
+                cg.math.addTo(lhs, lhs)
+            }
+            Pair("/=", 1) -> {
+                lhs // no-op
+            }
+            else -> {
+                if (op == "*=") {
+                    cg.math.multiplyBy(lhs, rhs)
+                } else if (op == "/=") {
+                    cg.math.divideBy(lhs, rhs)
+                } else {
                     throw Exception("invalid assignment operator: " + op)
                 }
             }
@@ -97,6 +127,9 @@ class TreeWalker(val cg: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
         } else if (lhsSymbol.size != rhs.size) {
             cg.currentScope().delete(lhsSymbol)
             lhsSymbol = cg.currentScope().createSymbol(lhs, rhs)
+        } else if (lhs == rhs.name) {
+            // no-op
+            return lhsSymbol
         }
         return assign(lhsSymbol, rhs)
     }
@@ -497,7 +530,7 @@ class TreeWalker(val cg: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
 
         val condition = cg.currentScope().createSymbol("&${ctx.sourceInterval.a}")
 
-        // TODO: hack to prevent temp symbols from being deleted:
+        // hack to prevent temp symbols from being deleted:
         val deleteSet = HashSet<Symbol>()
         listOf(start, stop, step).forEach {
             val sym = cg.currentScope().getSymbol(it.name)!!
