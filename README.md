@@ -18,5 +18,5 @@ Inspiration is drawn from
 - [x] basic constant folding and constant branch elimination
 
 ## TODO
-* algorithms for wrapping implementations
+* more compile optimization passes, dead code elimination
 * breaks, jumps, and nested returns
