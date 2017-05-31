@@ -164,11 +164,7 @@
                                     <exclude>org.antlr:ST4:*</exclude>
                                 </excludes>
                             </artifactSet>
-                            <transformers>
-                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>org.ygl.MainKt</mainClass>
-                                </transformer>
-                            </transformers>
+
                         </configuration>
                     </execution>
                 </executions>
