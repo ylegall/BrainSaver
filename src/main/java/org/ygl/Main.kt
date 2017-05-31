@@ -44,10 +44,13 @@ fun compile(input: InputStream, outStream: OutputStream, options: CompilerOption
     parser.addErrorListener(CompileErrorListener.INSTANCE)
     val tree = parser.program()
 
+    val start = System.currentTimeMillis()
     val cg = CodeGen(outStream, options)
     val visitor = TreeWalker(cg)
     visitor.visit(tree)
     cg.flush()
+    val elapsed = System.currentTimeMillis() - start
+    println("compiled in $elapsed ms")
 }
 
 

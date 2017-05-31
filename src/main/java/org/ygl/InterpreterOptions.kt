@@ -17,12 +17,6 @@ val DEFAULT_INTERPRETER_OPTIONS = InterpreterOptions()
 fun configureInterpreterOptions(): Options {
     val options = Options()
 
-    val input = Option.builder("i")
-            .longOpt("input")
-            .desc("pre-specify program input")
-            .hasArg()
-            .build()
-
     val noOptimization = Option.builder()
             .longOpt("no-opt")
             .desc("disable optimizations")
@@ -48,7 +42,6 @@ fun configureInterpreterOptions(): Options {
         addOption(noOptimization)
         addOption(wrapping)
         addOption(debug)
-        addOption(input)
         addOption(size)
         addOption(Option("help", "print this message"))
     }

@@ -287,5 +287,5 @@ fun main(args: Array<String>) {
     val start = System.currentTimeMillis()
     eval(File(remainingArgs[0]), options)
     val elapsed = System.currentTimeMillis() - start
-    println("elapsed: $elapsed ms")
+    println("elapsed: ${formatElapsed(elapsed)}")
 }
