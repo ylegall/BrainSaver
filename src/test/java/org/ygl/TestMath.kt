@@ -23,9 +23,11 @@ internal class TestMath {
         test(3, "-", 5, 0, false)
         test(0, "-", 0, 0, false)
         test(1, "-", 1, 0, false)
+
         test(5, "-", 3, 2, true)
         test(3, "-", 5, 0, true)
         test(0, "-", 0, 0, true)
+        test(1, "-", 1, 0, true)
     }
 
     @Test
@@ -79,7 +81,7 @@ internal class TestMath {
             else -> throw Exception("unsupported op $op")
         }
 
-        val interpreter = ctx.eval(InterpreterOptions(isWrapping = wrapping))
+        val interpreter = ctx.eval(InterpreterOptions(wrap = wrapping))
         assertEquals(expected, interpreter.getCellValue(r.address))
     }
 

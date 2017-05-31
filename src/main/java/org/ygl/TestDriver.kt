@@ -45,10 +45,9 @@ fun main(args: Array<String>) {
                 output = commandLine.getOptionValue("output")
         )
 
-        CodeGen(compilerOptions).use {
-            val visitor = TreeWalker(it)
-            visitor.visit(tree)
-        }
+        val cg = CodeGen(options = compilerOptions)
+        val visitor = TreeWalker(cg)
+        visitor.visit(tree)
 
     } catch (e: ParseException) {
         printUsageAndHalt(options)
@@ -60,9 +59,8 @@ fun main(args: Array<String>) {
     println("\n______________")
 
     val evalOptions = InterpreterOptions(
+            debug = true
     )
 
-    val interpreter = BFInterpreter(inputStream = FileInputStream(File("output.txt")), options = evalOptions)
-    interpreter.use { it.eval() }
-
+    eval(File("output.txt"), options = evalOptions)
 }

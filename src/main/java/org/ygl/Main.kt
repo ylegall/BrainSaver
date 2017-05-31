@@ -7,9 +7,7 @@ import org.apache.commons.cli.DefaultParser
 import org.apache.commons.cli.HelpFormatter
 import org.apache.commons.cli.Options
 import org.apache.commons.cli.ParseException
-import java.io.FileInputStream
-import java.io.InputStream
-import java.io.OutputStream
+import java.io.*
 
 const val VERSION = "1.0"
 
@@ -18,7 +16,27 @@ private inline fun printUsageAndHalt(options: Options) {
     System.exit(1)
 }
 
-fun compile(input: InputStream, outputStream: OutputStream? = null, options: CompilerOptions = DEFAULT_COMPILE_OPTIONS) {
+fun compile(str: String, outStream: OutputStream, options: CompilerOptions = DEFAULT_COMPILE_OPTIONS) {
+    val inputStream = ByteArrayInputStream(str.toByteArray(Charsets.UTF_8))
+    inputStream.use { input ->
+        compile(input, outStream, options)
+    }
+}
+
+fun compile(infile: File, options: CompilerOptions = DEFAULT_COMPILE_OPTIONS) {
+    val inputStream = FileInputStream(infile)
+    inputStream.use { input ->
+        if (options.output.isNotEmpty()) {
+            FileOutputStream(options.output).use { output ->
+                compile(input, output, options)
+            }
+        } else {
+            compile(input, System.`out`, options)
+        }
+    }
+}
+
+fun compile(input: InputStream, outStream: OutputStream, options: CompilerOptions = DEFAULT_COMPILE_OPTIONS) {
     // parse and generate the AST:
     val lexer = BrainSaverLexer(CharStreams.fromStream(input))
     val tokens = CommonTokenStream(lexer)
@@ -26,15 +44,14 @@ fun compile(input: InputStream, outputStream: OutputStream? = null, options: Com
     parser.addErrorListener(CompileErrorListener.INSTANCE)
     val tree = parser.program()
 
-    CodeGen(outputStream, options).use {
-        val visitor = TreeWalker(it)
-        visitor.visit(tree)
-    }
+    val cg = CodeGen(outStream, options)
+    val visitor = TreeWalker(cg)
+    visitor.visit(tree)
+    cg.flush()
 }
 
 
 fun main(args: Array<String>) {
-
     val options = configureCommandLine()
 
     try {
@@ -56,7 +73,7 @@ fun main(args: Array<String>) {
                 margin = commandLine.getOptionValue("margin")?.toInt() ?: 64
         )
 
-        compile(FileInputStream(remainingArgs[0]), options = compilerOptions)
+        compile(File(remainingArgs[0]), options = compilerOptions)
 
     } catch (e: ParseException) {
         printUsageAndHalt(options)
@@ -64,5 +81,4 @@ fun main(args: Array<String>) {
         println(e.message)
         System.exit(1)
     }
-
 }

@@ -1,6 +1,5 @@
 package org.ygl
 
-import java.io.FileOutputStream
 import java.io.OutputStream
 import java.util.*
 
@@ -12,12 +11,9 @@ typealias BinaryOp = (Symbol, Symbol) -> Symbol
 // https://esolangs.org/wiki/Brainfuck_algorithms
 // https://www.codeproject.com/Articles/558979/BrainFix-the-language-that-translates-to-fluent-Br
 class CodeGen(
-        outputStream: OutputStream? = null,
+        outputStream: OutputStream = System.`out`,
         val options: CompilerOptions = DEFAULT_COMPILE_OPTIONS
-) : AutoCloseable
-{
-
-    constructor(options: CompilerOptions = DEFAULT_COMPILE_OPTIONS): this(null, options)
+) {
 
     private var col = 0
     private var nestLevel = 0
@@ -29,29 +25,10 @@ class CodeGen(
     val functions = HashMap<String, Function>()
     private val scopes = ArrayList<Scope>()
 
-    private val output: OutputStream = buildOutputStream(outputStream, options)
-
-    private fun buildOutputStream(outputStream: OutputStream?, options: CompilerOptions): OutputStream {
-
-        val stream = if (outputStream != null) {
-            if (options.output.isNotEmpty()) {
-                MultiOutputStream(outputStream, FileOutputStream(options.output))
-            } else {
-                outputStream
-            }
-        } else {
-            if (options.output.isNotEmpty()) {
-                FileOutputStream(options.output)
-            } else {
-                System.`out`
-            }
-        }
-
-        return if (options.minify) {
-            MinifyingOutputStream(stream)
-        } else {
-            stream
-        }
+    private val output: OutputStream = if (options.minify) {
+        MinifyingOutputStream(outputStream)
+    } else {
+        outputStream
     }
 
     private val reservedChars = Regex("""[\[\]<>+\-,.]""")
@@ -60,9 +37,8 @@ class CodeGen(
     private val MARGIN = options.margin
     private val COMMENT_MARGIN = MARGIN + 4
 
-    override fun close() {
+    fun flush() {
         output.flush()
-        output.close()
     }
 
     fun enterScope() {
@@ -74,7 +50,6 @@ class CodeGen(
         }
         val newScope = Scope(memorySize)
         scopes.add(newScope)
-        //setZero(newScope.getZeroSymbol())
     }
 
     fun exitScope(): Scope {

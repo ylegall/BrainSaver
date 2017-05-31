@@ -102,7 +102,7 @@ internal class TestComparisons {
             else -> throw Exception("unsupported op $op")
         }
 
-        val interpreter = ctx.eval(InterpreterOptions(isWrapping = wrapping))
+        val interpreter = ctx.eval(InterpreterOptions(wrap = wrapping))
         assertEquals(expected, interpreter.getCellValue(r.address))
     }
 

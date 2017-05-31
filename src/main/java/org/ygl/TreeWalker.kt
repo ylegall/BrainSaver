@@ -35,7 +35,9 @@ class TreeWalker(val cg: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
         }
         mainFunction ?: throw Exception("no main function found")
         cg.enterScope()
-        return visit(mainFunction)
+        val ret = visit(mainFunction)
+        cg.flush()
+        return ret
     }
 
     override fun visitStatement(ctx: StatementContext?): Symbol? {

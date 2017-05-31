@@ -51,12 +51,14 @@ fun configureCommandLine(): Options {
             .desc("print the compiler version")
             .build()
 
-    options.addOption(output)
-    options.addOption(noOptimization)
-    options.addOption(wrapping)
-    options.addOption(minify)
-    options.addOption(version)
-    options.addOption(margin)
-    options.addOption(Option("help", "print this message"))
+    with (options) {
+        addOption(output)
+        addOption(noOptimization)
+        addOption(wrapping)
+        addOption(minify)
+        addOption(version)
+        addOption(margin)
+        addOption(Option("help", "print this message"))
+    }
     return options
 }
