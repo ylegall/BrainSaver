@@ -62,4 +62,25 @@ internal class TestStrings
         val result = eval(code, userInput = "five")
         Assertions.assertEquals("fine", result.trim())
     }
+
+//    @Test()
+//    fun testRuntimeConditionalRead() {
+//        val program = """
+//            fn main() {
+//                readInt(c);
+//                x = readStr(4);
+//                if (c) {
+//                    x[2] = "n";  // fine
+//                    debug(x);
+//                } else {
+//                    x[2] = "l";  // file
+//                    debug(x);
+//                }
+//                print(x);
+//            }
+//        """
+//        val code = compile(program)
+//        val result = eval(code, userInput = "1five")
+//        Assertions.assertEquals("fine", result.trim())
+//    }
 }

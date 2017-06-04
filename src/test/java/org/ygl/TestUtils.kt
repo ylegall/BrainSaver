@@ -43,7 +43,7 @@ class TestContext(wrapping: Boolean = false)
     }
 
     fun eval(options: InterpreterOptions = DEFAULT_INTERPRETER_OPTIONS): Interpreter {
-        cg.flush()
+        cg.close()
         output.flush()
         output.close()
         val str = output.toString()
