@@ -11,6 +11,7 @@ class CompilerOptions(
         val minify: Boolean = false,
         val output: String = "",
         val margin: Int = 48,
+        val verbose: Boolean = false,
         val wrapping: Boolean = false
 )
 
@@ -26,7 +27,7 @@ fun configureCommandLine(): Options {
 
     val margin = Option.builder()
             .longOpt("margin")
-            .desc("minified margin size")
+            .desc("generated code margin width")
             .hasArg(true)
             .build()
 
@@ -39,6 +40,11 @@ fun configureCommandLine(): Options {
             .longOpt("output")
             .desc("specifies the output file")
             .hasArg(true)
+            .build()
+
+    val verbose = Option.builder("v")
+            .longOpt("verbose")
+            .desc("generate verbose output during compilation")
             .build()
 
     val wrapping = Option.builder("w")
@@ -57,6 +63,7 @@ fun configureCommandLine(): Options {
         addOption(wrapping)
         addOption(minify)
         addOption(version)
+        addOption(verbose)
         addOption(margin)
         addOption(Option("help", "print this message"))
     }
