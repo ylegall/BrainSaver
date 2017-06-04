@@ -36,7 +36,6 @@ class TreeWalker(val cg: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
         mainFunction ?: throw Exception("no main function found")
         cg.enterScope()
         val ret = visit(mainFunction)
-        cg.flush()
         return ret
     }
 
@@ -122,6 +121,8 @@ class TreeWalker(val cg: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
     }
 
     private fun assign(lhs: String, rhs: Symbol): Symbol {
+        if (lhs == rhs.name) return rhs // no-op
+
         // reassign symbol if sizes don't match
         var lhsSymbol = cg.currentScope().getSymbol(lhs)
         if (lhsSymbol == null) {
@@ -129,16 +130,17 @@ class TreeWalker(val cg: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
         } else if (lhsSymbol.size != rhs.size) {
             cg.currentScope().delete(lhsSymbol)
             lhsSymbol = cg.currentScope().createSymbol(lhs, rhs)
-        } else if (lhs == rhs.name) {
-            // no-op
-            return lhsSymbol
         }
         return assign(lhsSymbol, rhs)
     }
 
     private fun assign(lhs: Symbol, rhs: Symbol): Symbol {
         return if (isConstant(rhs)) {
-            assignConstant(lhs, rhs)
+            if (rhs.isTemp()) {
+                constantMove(lhs, rhs)
+            } else {
+                assignConstant(lhs, rhs)
+            }
         } else {
             assignVariable(lhs, rhs)
         }
@@ -147,47 +149,28 @@ class TreeWalker(val cg: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
     private fun assignVariable(lhs: Symbol, rhs: Symbol): Symbol {
         lhs.value = null
         return when (rhs.type) {
-            Type.INT -> {
-                cg.assign(lhs, rhs)
-            }
-            Type.STRING -> {
-                if (rhs.isTemp()) {
-                    // move operation
-                    cg.commentLine("rename $rhs to $lhs")
-                    cg.currentScope().delete(lhs)
-                    cg.currentScope().rename(rhs, lhs.name)
-                    rhs
-                } else {
-                    cg.copyString(lhs, rhs)
-                }
-            }
-            else -> {
-                throw Exception("unsupported type")
-            }
+            Type.INT    -> cg.assign(lhs, rhs)
+            Type.STRING -> if (rhs.isTemp()) constantMove(lhs, rhs) else cg.copyString(lhs, rhs)
+            else        -> throw Exception("unsupported type")
         }
     }
 
     private fun assignConstant(lhs: Symbol, rhs: Symbol): Symbol {
         lhs.value = rhs.value
         return when (rhs.type) {
-            Type.INT -> {
-                cg.loadInt(lhs, rhs.value as Int)
-            }
-            Type.STRING -> {
-                if (rhs.isTemp()) {
-                    // move operation
-                    cg.commentLine("rename $rhs to $lhs")
-                    cg.currentScope().delete(lhs)
-                    cg.currentScope().rename(rhs, lhs.name)
-                    rhs
-                } else {
-                    cg.loadString(lhs, rhs.value as String)
-                }
-            }
-            else -> {
-                throw Exception("unsupported type")
-            }
+            Type.INT    -> cg.loadInt(lhs, rhs.value as Int)
+            Type.STRING -> cg.loadString(lhs, rhs.value as String)
+            else        -> throw Exception("unsupported type")
         }
+    }
+
+    private fun constantMove(lhs: Symbol, rhs: Symbol): Symbol {
+        with (cg) {
+            commentLine("rename $rhs to $lhs")
+            currentScope().delete(lhs)
+            currentScope().rename(rhs, lhs.name)
+        }
+        return rhs
     }
 
     override fun visitPrintStatement(ctx: PrintStatementContext?): Symbol? {
@@ -461,7 +444,8 @@ class TreeWalker(val cg: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
                                 falseStmts: StatementListContext
     ) {
         with (cg) {
-            val cpy = currentScope().createSymbol("&${condition.name}")
+            val cs = currentScope()
+            val cpy = cs.createSymbol("&${condition.name}")
             assign(cpy, condition)
 
             val elseFlag = currentScope().createSymbol("${cpy.name}_else")
@@ -471,7 +455,7 @@ class TreeWalker(val cg: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
             })
             assign(cpy, condition)
 
-            currentScope().pushLoopContext(LoopContext())
+            cs.pushLoopContext(LoopContext())
             startIf(cpy)
             visit(trueStmts)
             endIf(cpy)
@@ -479,11 +463,10 @@ class TreeWalker(val cg: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
             startElse(elseFlag)
             visit(falseStmts)
             endElse(elseFlag)
-            currentScope().popLoopContext()
+            cs.popLoopContext()
 
-            currentScope().delete(cpy)
-            currentScope().delete(elseFlag)
-
+            cs.delete(cpy)
+            cs.delete(elseFlag)
         }
     }
 
@@ -655,7 +638,10 @@ class TreeWalker(val cg: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
         }
         .filterNotNull()
         .forEach {
-            cg.debug(it, "$it = ")
+            for (i in 0 until it.size) {
+                val c = it.offset(i)
+                cg.debug(c, "$c = ")
+            }
         }
         return null
     }

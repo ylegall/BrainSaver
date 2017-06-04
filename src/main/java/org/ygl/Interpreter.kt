@@ -99,6 +99,13 @@ class Interpreter(
                 '>' -> {
                     sb.append(c)
                 }
+                '@' -> {
+                    sb.append(c)
+                    do {
+                        val ci = stream.read().toChar()
+                        sb.append(ci)
+                    } while (ci != '@')
+                }
             }
             ch = stream.read()
         }
@@ -177,8 +184,10 @@ class Interpreter(
                         pc++
                         while (text[pc] != '@') {
                             sb.append(text[pc])
+                            pc++
                         }
-                        println("[debug]: $sb")
+                        print("[debug]: $sb")
+                        println("${memory[dp]} '${memory[dp].toChar()}'")
                     }
                 }
             }
@@ -215,10 +224,12 @@ class Interpreter(
             val c = userInput.pop()
             memory[dp] = c?.toInt() ?: throw Exception("null input char")
         } else {
-            print("waiting for input: ")
+            if (System.`in`.available() == 0) {
+                print("waiting for input: ")
+                //println()
+            }
             val c = System.`in`.read()
             memory[dp] = c
-            println()
         }
     }
 

@@ -13,7 +13,7 @@ typealias BinaryOp = (Symbol, Symbol) -> Symbol
 class CodeGen(
         outputStream: OutputStream = System.`out`,
         val options: CompilerOptions = DEFAULT_COMPILE_OPTIONS
-) {
+): AutoCloseable {
 
     private var col = 0
     private var nestLevel = 0
@@ -26,7 +26,7 @@ class CodeGen(
     private val scopes = ArrayList<Scope>()
 
     private val output: OutputStream = if (options.minify) {
-        MinifyingOutputStream(outputStream)
+        MinifyingOutputStream(outputStream, options.margin)
     } else {
         outputStream
     }
@@ -37,7 +37,7 @@ class CodeGen(
     private val MARGIN = options.margin
     private val COMMENT_MARGIN = MARGIN + 4
 
-    fun flush() {
+    override fun close() {
         output.flush()
     }
 
@@ -167,10 +167,10 @@ class CodeGen(
     }
 
     inline fun debug(symbol: Symbol, comment: String = "") {
+        newline()
         moveTo(symbol)
-        newline()
-        emit("`$comment`")
-        newline()
+        emit("@$comment@")
+        //newline()
     }
 
     // TODO: implement string copy function
@@ -228,8 +228,8 @@ class CodeGen(
         emit("-", comment)
     }
 
-    fun moveTo(symbol: Symbol, offset: Int = 0, comment: String = "") {
-        return moveToAddress(symbol.address + offset, comment)
+    fun moveTo(symbol: Symbol, comment: String = "") {
+        return moveToAddress(symbol.address, comment)
     }
 
     fun moveToAddress(address: Int, comment: String = "") {
@@ -280,8 +280,8 @@ class CodeGen(
         val ret = currentScope().getTempSymbol()
         val data = array.offset(3)
 
-        assign(array.offset(2), index)  // copy idx to readIdx
-        assign(array.offset(1), index)  // copy idx to writeIdx
+        assignInt(array.offset(2), index)  // copy idx to readIdx
+        assignInt(array.offset(1), index)  // copy idx to writeIdx
         setZero(data)                   // zero dataIdx
 
         moveTo(array)
@@ -299,9 +299,9 @@ class CodeGen(
     fun writeArray(array: Symbol, index: Symbol, value: Symbol) {
         commentLine("write array $array($index) = $value")
 
-        assign(array.offset(2), index) // copy idx to readIdx
-        assign(array.offset(1), index) // copy idx to writeIdx
-        assign(array.offset(3), value) // copy value to dataIdx
+        assignInt(array.offset(2), index) // copy idx to readIdx
+        assignInt(array.offset(1), index) // copy idx to writeIdx
+        assignInt(array.offset(3), value) // copy value to dataIdx
 
         moveTo(array)
         newline()

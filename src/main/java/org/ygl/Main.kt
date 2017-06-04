@@ -44,13 +44,11 @@ fun compile(input: InputStream, outStream: OutputStream, options: CompilerOption
     parser.addErrorListener(CompileErrorListener.INSTANCE)
     val tree = parser.program()
 
-    val start = System.currentTimeMillis()
     val cg = CodeGen(outStream, options)
-    val visitor = TreeWalker(cg)
-    visitor.visit(tree)
-    cg.flush()
-    val elapsed = System.currentTimeMillis() - start
-    println("compiled in $elapsed ms")
+    cg.use {
+        val visitor = TreeWalker(it)
+        visitor.visit(tree)
+    }
 }
 
 
@@ -73,10 +71,14 @@ fun main(args: Array<String>) {
                 minify = commandLine.hasOption("minify"),
                 wrapping = commandLine.hasOption("wrapping"),
                 output = commandLine.getOptionValue("output") ?: "",
-                margin = commandLine.getOptionValue("margin")?.toInt() ?: 64
+                margin = commandLine.getOptionValue("margin")?.toInt() ?: 64,
+                verbose = commandLine.hasOption("verbose")
         )
 
-        compile(File(remainingArgs[0]), options = compilerOptions)
+        val elapsed = time({
+            compile(File(remainingArgs[0]), options = compilerOptions)
+        })
+        println("compiled in $elapsed ms")
 
     } catch (e: ParseException) {
         printUsageAndHalt(options)

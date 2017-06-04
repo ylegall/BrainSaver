@@ -1,66 +1,39 @@
 package org.ygl
 
-import org.antlr.v4.runtime.CharStreams
-import org.antlr.v4.runtime.CommonTokenStream
 import org.antlr.v4.runtime.misc.ParseCancellationException
-import org.apache.commons.cli.DefaultParser
-import org.apache.commons.cli.HelpFormatter
-import org.apache.commons.cli.Options
 import org.apache.commons.cli.ParseException
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.nio.file.Files
 
-
-private inline fun printUsageAndHalt(options: Options) {
-    HelpFormatter().printHelp("brainsaver", options, true)
-    System.exit(1)
-}
 
 fun main(args: Array<String>) {
 
-    val options = configureCommandLine()
+    val compilerOptions = CompilerOptions(
+            minify = false,
+            optimize = true,
+            output = "output.txt"
+    )
 
-    try {
-        val commandLine = DefaultParser().parse(options, args)
-        if (commandLine.hasOption("version")) {
-            println("brainsaver version \"$VERSION\"")
-            return
+    val outputFile = File("output.txt")
+    val inStream  = FileInputStream(File("input.txt"))
+    val outStream = TeeOutputStream(FileOutputStream(outputFile))
+
+    inStream.use { input ->
+        outStream.use { output ->
+            compile(input, output, compilerOptions)
         }
-        val remainingArgs = commandLine.argList
-        if (remainingArgs.isEmpty()) {
-            printUsageAndHalt(options)
-        }
-
-        // parse and generate the AST:
-        val lexer = BrainSaverLexer(CharStreams.fromFileName(remainingArgs[0]))
-        val tokens = CommonTokenStream(lexer)
-        val parser = BrainSaverParser(tokens)
-        parser.addErrorListener(CompileErrorListener.INSTANCE)
-        val tree = parser.program()
-
-        val compilerOptions = CompilerOptions(
-                minify = commandLine.hasOption("minify"),
-                optimize = !commandLine.hasOption("no-cf"),
-                output = commandLine.getOptionValue("output")
-        )
-
-        val cg = CodeGen(options = compilerOptions)
-        val visitor = TreeWalker(cg)
-        visitor.visit(tree)
-
-    } catch (e: ParseException) {
-        printUsageAndHalt(options)
-    } catch (e: ParseCancellationException) {
-        println("compilation error: ${e.message}")
-        System.exit(1)
     }
+
+    //println(String(Files.readAllBytes(outputFile.toPath())))
 
     println("\n______________")
 
     val evalOptions = InterpreterOptions(
-            debug = true
+            debug = true,
+            predefinedInput = "1five"
     )
 
-    eval(File("output.txt"), options = evalOptions)
+    eval(outputFile, options = evalOptions)
 }
