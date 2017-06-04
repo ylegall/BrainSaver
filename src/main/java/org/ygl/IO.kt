@@ -86,7 +86,7 @@ class IO(val cg: CodeGen)
         with (cg) {
             commentLine("print str $symbol")
             for (i in 0 until symbol.size) {
-                printChar(symbol, i)
+                printChar(symbol.offset(i))
             }
         }
         return symbol
@@ -107,9 +107,9 @@ class IO(val cg: CodeGen)
         }
     }
 
-    fun printChar(symbol: Symbol, offset: Int = 0): Symbol {
+    fun printChar(symbol: Symbol): Symbol {
         with (cg) {
-            moveTo(symbol, offset)
+            moveTo(symbol)
             emit(".", "print char $symbol")
         }
         return symbol
