@@ -10,3 +10,9 @@ fun formatElapsed(msecs: Long): String {
         "$msecs ms"
     }
 }
+
+fun time(body: () -> Unit): Long {
+    val elapsed = System.currentTimeMillis()
+    body()
+    return System.currentTimeMillis() - elapsed
+}
