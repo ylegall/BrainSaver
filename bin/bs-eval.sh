@@ -22,6 +22,4 @@ do
   CLASSPATH=${CLASSPATH}:${i}
 done
 
-echo "cp=$CLASSPATH"
-
 java -cp ${CLASSPATH} org.ygl.InterpreterKt "$@"
