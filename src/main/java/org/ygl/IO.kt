@@ -1,9 +1,9 @@
 package org.ygl
 
-class IO(val codegen: CodeGen)
+class IO(val cg: CodeGen)
 {
     fun readChar(symbol: Symbol): Symbol {
-        with (codegen) {
+        with (cg) {
             moveTo(symbol)
             emit(",", "read char $symbol")
         }
@@ -11,7 +11,7 @@ class IO(val codegen: CodeGen)
     }
 
     fun readInt(symbol: Symbol): Symbol {
-        with (codegen) {
+        with (cg) {
             commentLine("read int $symbol")
             moveTo(symbol)
             emit(",")
@@ -21,9 +21,9 @@ class IO(val codegen: CodeGen)
     }
 
     fun <T> print(t: T) {
-        codegen.newline()
+        cg.newline()
         if (t is Symbol) {
-            codegen.moveTo(t)
+            cg.moveTo(t)
             if (t.type == Type.STRING) {
                 printString(t)
             } else {
@@ -35,14 +35,15 @@ class IO(val codegen: CodeGen)
     }
 
     fun printInt(symbol: Symbol): Symbol {
-        with(codegen) {
+        with(cg) {
             commentLine("print int $symbol")
+            val cs = currentScope()
 
-            val cpy = currentScope().createSymbol("cpy")
+            val cpy = cs.createSymbol("cpy")
             assign(cpy, symbol)
 
             val asciiOffset = 48
-            val ten = currentScope().createSymbol("ten")
+            val ten = cs.createSymbol("ten")
             loadInt(ten, 10)
 
             val d3 = math.mod(cpy, ten)
@@ -73,16 +74,16 @@ class IO(val codegen: CodeGen)
             incrementBy(d3, asciiOffset)
             printChar(d3)
 
-            currentScope().delete(d3)
-            currentScope().delete(d2)
-            currentScope().delete(ten)
-            currentScope().delete(cpy)
+            cs.delete(d3)
+            cs.delete(d2)
+            cs.delete(ten)
+            cs.delete(cpy)
         }
         return symbol
     }
 
     fun printString(symbol: Symbol): Symbol {
-        with (codegen) {
+        with (cg) {
             commentLine("print str $symbol")
             for (i in 0 until symbol.size) {
                 printChar(symbol, i)
@@ -92,8 +93,9 @@ class IO(val codegen: CodeGen)
     }
 
     fun printImmediate(chars: String) {
-        with (codegen) {
-            val tmp = currentScope().getTempSymbol()
+        with (cg) {
+            val cs = currentScope()
+            val tmp = cs.getTempSymbol()
             moveTo(tmp)
             for (i in 0 until chars.length) {
                 setZero(tmp)
@@ -101,12 +103,12 @@ class IO(val codegen: CodeGen)
                 loadInt(tmp, intValue)
                 emit(".")
             }
-            currentScope().delete(tmp)
+            cs.delete(tmp)
         }
     }
 
     fun printChar(symbol: Symbol, offset: Int = 0): Symbol {
-        with (codegen) {
+        with (cg) {
             moveTo(symbol, offset)
             emit(".", "print char $symbol")
         }

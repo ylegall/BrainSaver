@@ -6,7 +6,7 @@ import org.antlr.v4.runtime.misc.ParseCancellationException
 typealias SymbolList = List<Symbol?>
 typealias Procedure =  (SymbolList) -> Symbol?
 
-class LibraryFunctions(val codegen: CodeGen, val tree: TreeWalker)
+class LibraryFunctions(val cg: CodeGen, val tree: TreeWalker)
 {
     val procedures: HashMap<String, Procedure> = hashMapOf(
             "println" to this::println,
@@ -15,8 +15,8 @@ class LibraryFunctions(val codegen: CodeGen, val tree: TreeWalker)
 
     private fun println(args: SymbolList): Symbol? {
         args.filterNotNull().forEach {
-            codegen.io.print(it)
-            codegen.io.print("\n")
+            cg.io.print(it)
+            cg.io.print("\n")
         }
         return null
     }
@@ -27,9 +27,9 @@ class LibraryFunctions(val codegen: CodeGen, val tree: TreeWalker)
         }
         val arg = args[0]!!
         val len = arg.value as Int
-        val str = codegen.currentScope().getTempSymbol(type = Type.STRING, size = len)
+        val str = cg.currentScope().getTempSymbol(type = Type.STRING, size = len)
         for (i in 0 until len) {
-            codegen.io.readChar(str.offset(i))
+            cg.io.readChar(str.offset(i))
         }
         return str
     }
