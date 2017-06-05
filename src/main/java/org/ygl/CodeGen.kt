@@ -166,11 +166,10 @@ class CodeGen(
         commentLine("end for $loopVar")
     }
 
-    inline fun debug(symbol: Symbol, comment: String = "") {
+    fun debug(symbol: Symbol, comment: String = "") {
         newline()
         moveTo(symbol)
         emit("@$comment@")
-        //newline()
     }
 
     // TODO: implement string copy function

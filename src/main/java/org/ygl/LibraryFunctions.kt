@@ -14,9 +14,13 @@ class LibraryFunctions(val cg: CodeGen, val tree: TreeWalker)
     )
 
     private fun println(args: SymbolList): Symbol? {
-        args.filterNotNull().forEach {
-            cg.io.print(it)
+        if (args.isEmpty()) {
             cg.io.print("\n")
+        } else {
+            args.filterNotNull().forEach {
+                cg.io.print(it)
+                cg.io.print("\n")
+            }
         }
         return null
     }

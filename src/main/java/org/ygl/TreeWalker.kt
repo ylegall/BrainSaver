@@ -137,7 +137,7 @@ class TreeWalker(val cg: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
     private fun assign(lhs: Symbol, rhs: Symbol): Symbol {
         return if (isConstant(rhs)) {
             if (rhs.isTemp()) {
-                constantMove(lhs, rhs)
+                rename(rhs, lhs)
             } else {
                 assignConstant(lhs, rhs)
             }
@@ -150,7 +150,7 @@ class TreeWalker(val cg: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
         lhs.value = null
         return when (rhs.type) {
             Type.INT    -> cg.assign(lhs, rhs)
-            Type.STRING -> if (rhs.isTemp()) constantMove(lhs, rhs) else cg.copyString(lhs, rhs)
+            Type.STRING -> if (rhs.isTemp()) rename(rhs, lhs) else cg.copyString(lhs, rhs)
             else        -> throw Exception("unsupported type")
         }
     }
@@ -164,9 +164,9 @@ class TreeWalker(val cg: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
         }
     }
 
-    private fun constantMove(lhs: Symbol, rhs: Symbol): Symbol {
+    private fun rename(rhs: Symbol, lhs: Symbol): Symbol {
         with (cg) {
-            commentLine("rename $rhs to $lhs")
+            commentLine("rename $rhs to ${lhs.name}")
             currentScope().delete(lhs)
             currentScope().rename(rhs, lhs.name)
         }
@@ -638,9 +638,12 @@ class TreeWalker(val cg: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
         }
         .filterNotNull()
         .forEach {
-            for (i in 0 until it.size) {
-                val c = it.offset(i)
-                cg.debug(c, "$c = ")
+            if (it.size == 1) {
+                cg.debug(it, "$it = ")
+            } else {
+                (0 until it.size)
+                        .map { i -> it.offset(i) }
+                        .forEach { cg.debug(it, "$it = ") }
             }
         }
         return null
