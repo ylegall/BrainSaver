@@ -182,11 +182,17 @@ class TreeWalker(val cg: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
             is AtomIdContext -> {
                 val symbol = scope.getSymbol(ctx.exp().text) ?:
                         throw Exception("undefined identifier: ${ctx.exp().text}")
-                cg.io.print(symbol)
+                if (isConstant(symbol) && symbol.type == Type.INT) {
+                    cg.io.printImmediate(symbol.value.toString())
+                } else {
+                    cg.io.print(symbol)
+                }
             }
             is AtomStrContext -> {
-                val chars = unescape(exp.text)
-                cg.io.printImmediate(chars)
+                cg.io.printImmediate(unescape(exp.text))
+            }
+            is AtomIntContext -> {
+                cg.io.printImmediate(exp.text)
             }
             else -> {
                 val symbol = visit(exp) ?: throw Exception("null argument to print()")
