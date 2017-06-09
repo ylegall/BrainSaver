@@ -59,6 +59,11 @@ class TreeWalker(val cg: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
 
         with (cg) {
             val lhsSymbol = currentScope().getSymbol(lhs) ?: throw Exception("undefined identifier $lhs")
+
+            if (isConstant(lhsSymbol) && isConstant(expResult)) {
+                return constantAssignOp(lhsSymbol, expResult, op)
+            }
+
             return when (op) {
                 "+=" -> {
                     if (isConstant(expResult)) {
@@ -344,7 +349,12 @@ class TreeWalker(val cg: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
         val op = ctx.op.text
         val left  = visit(ctx.left)  ?: throw Exception("null exp result")
         val right = visit(ctx.right) ?: throw Exception("null exp result")
+        return evalOpExp(left, op, right)
+    }
 
+    private fun evalOpExp(left: Symbol, op: String, right: Symbol): Symbol? {
+
+        // TODO: explicit error for string types:
         if (isConstant(left) && isConstant(right)) {
             return constantFold(left, right, op)
         }
@@ -369,7 +379,27 @@ class TreeWalker(val cg: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
         }
     }
 
-    private inline fun constantFold(lhs: Symbol, rhs: Symbol, op: String): Symbol {
+    private fun constantAssignOp(lhs: Symbol, rhs: Symbol, op: String): Symbol {
+        val left = lhs.value as Int
+        val right = rhs.value as Int
+
+        var result = when (op) {
+            "+=" -> left + right
+            "-=" -> left - right
+            "*=" -> left * right
+            "/=" -> left / right
+            "%=" -> left % right
+            else -> throw Exception("invalid op $op")
+        }
+
+        result = Math.min(result, 255)
+        result = Math.max(result, 0)
+
+        lhs.value = result
+        return cg.loadInt(lhs, result)
+    }
+
+    private fun constantFold(lhs: Symbol, rhs: Symbol, op: String): Symbol {
         val left = lhs.value as Int
         val right = rhs.value as Int
 
@@ -405,7 +435,6 @@ class TreeWalker(val cg: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
         return cg.math.not(right)
     }
 
-    // TODO: rename variables to prevent them from being collected
     override fun visitIfStatement(ctx: IfStatementContext?): Symbol? {
         ctx ?: throw Exception("null IfStatementContext")
 
