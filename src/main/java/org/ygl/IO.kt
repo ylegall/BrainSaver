@@ -22,15 +22,20 @@ class IO(val cg: CodeGen)
 
     fun <T> print(t: T) {
         cg.newline()
-        if (t is Symbol) {
-            cg.moveTo(t)
-            if (t.type == Type.STRING) {
-                printString(t)
-            } else {
-                printInt(t)
+        when (t) {
+            is Symbol -> {
+                if (t.type == Type.STRING) {
+                    printString(t)
+                } else {
+                    printInt(t)
+                }
             }
-        } else if (t is String) {
-            printImmediate(t)
+            is String -> {
+                printImmediate(t)
+            }
+            is Int -> {
+                printImmediate(t.toString())
+            }
         }
     }
 
@@ -96,9 +101,8 @@ class IO(val cg: CodeGen)
         with (cg) {
             val cs = currentScope()
             val tmp = cs.getTempSymbol()
-            moveTo(tmp)
+            moveTo(tmp, "print immediate '$chars'")
             for (i in 0 until chars.length) {
-                setZero(tmp)
                 val intValue = chars[i].toInt()
                 loadInt(tmp, intValue)
                 emit(".")

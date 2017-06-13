@@ -38,7 +38,7 @@ class TestContext(wrapping: Boolean = false)
     private fun buildCodegen(wrapping: Boolean): CodeGen {
         val options = CompilerOptions(minify = true, wrapping = wrapping)
         val cg = CodeGen(output, options)
-        cg.enterScope()
+        cg.enterScope("")
         return cg
     }
 

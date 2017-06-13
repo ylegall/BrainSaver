@@ -1,55 +1,59 @@
 package org.ygl
 
+import org.antlr.v4.runtime.ParserRuleContext
 import org.antlr.v4.runtime.misc.ParseCancellationException
-import org.antlr.v4.runtime.tree.ParseTree
 import org.antlr.v4.runtime.tree.TerminalNode
 import org.ygl.BrainSaverParser.*
+import java.util.*
 
 /**
  * http://stackoverflow.com/questions/23092081/antlr4-visitor-pattern-on-simple-arithmetic-example
  */
-class TreeWalker(val cg: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
+class TreeWalker(
+        val cg: CodeGen,
+        val usageInfo: UsageInfoMap
+) : BrainSaverBaseVisitor<Symbol?>()
 {
     private val libraryFunctions = LibraryFunctions(cg, this)
+    private val staleSymbols = ArrayList<String>()
 
     /**
      * scan and register functions. look for the org.ygl.main function
      */
     override fun visitProgram(tree: BrainSaverParser.ProgramContext?): Symbol? {
-        val functionList = tree!!.getChild(0) as FunctionListContext
-        var mainFunction: ParseTree? = null
-        for (child in functionList.children) {
-            val function = (child as FunctionContext)
-            val functionName = function.name.text
-            val isVoid = function.functionBody().ret == null
-            if (cg.functions.containsKey(functionName)) {
-                throw Exception("duplicate function: $functionName")
-            } else {
-                val newFunction = Function(functionName, function, isVoid)
-                cg.functions.put(functionName, newFunction)
-            }
-
-            if (functionName == "main") {
-                mainFunction = function
-            }
-        }
-        mainFunction ?: throw Exception("no main function found")
-        cg.enterScope()
+        val mainFunction = usageInfo["main"]!!.function.ctx
+        cg.enterScope("main")
         val ret = visit(mainFunction)
         return ret
     }
 
     override fun visitStatement(ctx: StatementContext?): Symbol? {
+        ctx ?: throw Exception("null StatementContext")
         val result = super.visitStatement(ctx)
         cg.currentScope().deleteTemps()
+        if (cg.options.optimize) {
+            val staleVariables = usageInfo[currentFunction()]?.lastSymbolsUsedMap?.get(ctx)
+            staleVariables?.let {
+                if (cg.options.verbose) {
+                    println("line ${ctx.start.line}: auto deleting $staleVariables")
+                }
+                scheduleDeletion(it)
+            }
+        }
         return result
     }
 
     override fun visitAssignmentStatement(ctx: AssignmentStatementContext?): Symbol? {
         ctx ?: throw Exception("null AssignmentStatementContext")
+
         val lhs = ctx.lhs.text
         val op = ctx.op.text
         val rhs = ctx.exp()
+
+        if (lhs in usageInfo[currentFunction()]!!.unusedSymbols) {
+            if (cg.options.verbose) println("ignoring unused symbol $lhs")
+            return null
+        }
 
         val expResult = this.visit(rhs) ?: throw Exception("null rhs expression result")
 
@@ -64,12 +68,13 @@ class TreeWalker(val cg: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
                 return constantAssignOp(lhsSymbol, expResult, op)
             }
 
+            lhsSymbol.value = null
+
             return when (op) {
                 "+=" -> {
                     if (isConstant(expResult)) {
                         incrementBy(lhsSymbol, expResult.value as Int)
                     } else {
-                        lhsSymbol.value = null
                         math.addTo(lhsSymbol, expResult)
                     }
                 }
@@ -77,17 +82,16 @@ class TreeWalker(val cg: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
                     if (isConstant(expResult)) {
                         incrementBy(lhsSymbol, -(expResult.value as Int))
                     } else {
-                        lhsSymbol.value = null
                         math.subtractFrom(lhsSymbol, expResult)
                     }
                 }
                 "*=" -> if (isConstant(expResult)) {
-                    stregnthReduce(lhsSymbol, op, expResult)
+                    strengthReduce(lhsSymbol, op, expResult)
                 } else {
                     math.multiplyBy(lhsSymbol, expResult)
                 }
                 "/=" -> if (isConstant(expResult)) {
-                    stregnthReduce(lhsSymbol, op, expResult)
+                    strengthReduce(lhsSymbol, op, expResult)
                 } else {
                     math.divideBy(lhsSymbol, expResult)
                 }
@@ -99,7 +103,7 @@ class TreeWalker(val cg: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
         }
     }
 
-    private fun stregnthReduce(lhs: Symbol, op: String, rhs: Symbol): Symbol {
+    private fun strengthReduce(lhs: Symbol, op: String, rhs: Symbol): Symbol {
         return when (Pair(op, rhs.value)) {
             Pair("*=", 0) -> {
                 cg.setZero(lhs)
@@ -140,9 +144,15 @@ class TreeWalker(val cg: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
     }
 
     private fun assign(lhs: Symbol, rhs: Symbol): Symbol {
+        val lc = cg.currentScope().loopContexts
         return if (isConstant(rhs)) {
-            if (rhs.isTemp()) {
-                rename(rhs, lhs)
+            if ( lc.isEmpty() || (lc.peek() !is IfStatementContext)) {
+                lhs.value = rhs.value
+                if (rhs.isTemp()) {
+                    rename(rhs, lhs)
+                } else {
+                    assignConstant(lhs, rhs)
+                }
             } else {
                 assignConstant(lhs, rhs)
             }
@@ -161,7 +171,6 @@ class TreeWalker(val cg: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
     }
 
     private fun assignConstant(lhs: Symbol, rhs: Symbol): Symbol {
-        lhs.value = rhs.value
         return when (rhs.type) {
             Type.INT    -> cg.loadInt(lhs, rhs.value as Int)
             Type.STRING -> cg.loadString(lhs, rhs.value as String)
@@ -207,7 +216,6 @@ class TreeWalker(val cg: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
         return null
     }
 
-    // TODO: improve
     private fun unescape(str: String): String {
         val withoutQuotes = str.trim().substring(1 .. str.length-2)
         val result = withoutQuotes.replace("\\n", "\n").replace("\\t", "\t")
@@ -270,7 +278,7 @@ class TreeWalker(val cg: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
         }
 
         // lookup matching function and its params
-        val function = cg.functions[name] ?: throw Exception("unrecognized function: $name")
+        val function = usageInfo[name]?.function ?: throw Exception("unrecognized function: $name")
 
         functionCall(function, args)
         return null
@@ -286,7 +294,7 @@ class TreeWalker(val cg: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
         }
 
         // lookup matching function and its params
-        val function = cg.functions[name] ?: throw Exception("unrecognized function: $name")
+        val function = usageInfo[name]?.function ?: throw Exception("unrecognized function: $name")
         if (function.isVoid) {
             throw ParseCancellationException("line ${ctx.start.line}: function '$name' is void")
         }
@@ -309,7 +317,7 @@ class TreeWalker(val cg: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
                 arguments.add(expResult)
             }
 
-            cg.enterScope()
+            cg.enterScope(function.name)
             cg.commentLine("call ${function.name}")
 
             // create new scope and copy expression args into function param variables
@@ -320,7 +328,7 @@ class TreeWalker(val cg: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
             }
 
         } else {
-            cg.enterScope()
+            cg.enterScope(function.name)
             cg.commentLine("call ${function.name}")
         }
 
@@ -451,33 +459,31 @@ class TreeWalker(val cg: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
         }
 
         if (ctx.falseStatements != null && !ctx.falseStatements.isEmpty) {
-            doIfElse(condition, ctx.trueStatements, ctx.falseStatements)
+            doIfElse(condition, ctx)
         } else {
-            doIf(condition, ctx.trueStatements)
+            doIf(condition, ctx)
         }
 
         return null
     }
 
-    private inline fun doIf(condition: Symbol, stmts: StatementListContext) {
+    private fun doIf(condition: Symbol, ctx: IfStatementContext) {
         with (cg) {
-            val cpy = currentScope().createSymbol("&${condition.name}")
+            val scope = currentScope()
+            val cpy = scope.createSymbol("&${condition.name}")
             assign(cpy, condition)
 
-            currentScope().pushLoopContext(LoopContext())
+            scope.loopContexts.push(ctx)
             startIf(cpy)
-            visit(stmts)
+            visit(ctx.trueStatements)
             endIf(cpy)
-            currentScope().popLoopContext()
+            scope.loopContexts.pop()
 
-            currentScope().delete(cpy)
+            scope.delete(cpy)
         }
     }
 
-    private inline fun doIfElse(condition: Symbol,
-                                trueStmts: StatementListContext,
-                                falseStmts: StatementListContext
-    ) {
+    private fun doIfElse(condition: Symbol, ctx: IfStatementContext) {
         with (cg) {
             val cs = currentScope()
             val cpy = cs.createSymbol("&${condition.name}")
@@ -490,15 +496,15 @@ class TreeWalker(val cg: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
             })
             assign(cpy, condition)
 
-            cs.pushLoopContext(LoopContext())
+            cs.loopContexts.push(ctx)
             startIf(cpy)
-            visit(trueStmts)
+            visit(ctx.trueStatements)
             endIf(cpy)
 
             startElse(elseFlag)
-            visit(falseStmts)
+            visit(ctx.falseStatements)
             endElse(elseFlag)
-            cs.popLoopContext()
+            cs.loopContexts.pop()
 
             cs.delete(cpy)
             cs.delete(elseFlag)
@@ -513,7 +519,7 @@ class TreeWalker(val cg: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
             return null
         }
 
-        var cpy = cg.currentScope().createSymbol("&${ctx.sourceInterval.a}")
+        val cpy = cg.currentScope().createSymbol("&${ctx.sourceInterval.a}")
         if (condition.isTemp()) {
             cg.move(cpy, condition)
         } else {
@@ -521,6 +527,7 @@ class TreeWalker(val cg: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
         }
 
         cg.startWhile(cpy)
+        cg.currentScope().loopContexts.push(ctx)
         for (stmt in ctx.body.statement()) {
             visit(stmt)
         }
@@ -531,6 +538,7 @@ class TreeWalker(val cg: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
         } else {
             cg.assign(cpy, condition)
         }
+        cg.currentScope().loopContexts.pop()
         cg.endWhile(cpy)
 
         cg.currentScope().delete(cpy)
@@ -574,10 +582,12 @@ class TreeWalker(val cg: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
             }
         } else {
             cg.startFor(loopVar, start, stop, condition)
+            cg.currentScope().loopContexts.push(ctx)
             for (stmt in ctx.body.statement()) {
                 visit(stmt)
             }
             cg.endFor(loopVar, stop, step, condition)
+            cg.currentScope().loopContexts.pop()
         }
         // can't delete these if they refer to an existing symbol
         deleteSet.forEach { cg.currentScope()::delete }
@@ -616,7 +626,7 @@ class TreeWalker(val cg: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
         return createArray(name, size, values)
     }
 
-    private inline fun createArray(name: String, size: Int, values: List<TerminalNode>? = null): Symbol {
+    private fun createArray(name: String, size: Int, values: List<TerminalNode>? = null): Symbol {
         if (size < 1 || size >= 256) throw Exception("array size must be between 1 and 256")
         val array = cg.currentScope().createSymbol(name, size + 4, Type.INT)
         if (values != null) {
@@ -684,10 +694,29 @@ class TreeWalker(val cg: CodeGen) : BrainSaverBaseVisitor<Symbol?>()
         return null
     }
 
-    inline fun isConstant(symbol: Symbol): Boolean {
-        return cg.options.optimize &&
-                !cg.currentScope().inConditionalScope() &&
-                symbol.value != null
+    private fun scheduleDeletion(symbolNames: Iterable<String>) {
+        staleSymbols.addAll(symbolNames)
+        if (cg.currentScope().loopContexts.isEmpty()) {
+            staleSymbols.forEach { name ->
+                cg.currentScope().getSymbol(name)?.let {
+                    cg.currentScope().delete(it)
+                }
+            }
+        }
     }
+
+    fun isConstant(symbol: Symbol): Boolean {
+        if (!cg.options.optimize) return false
+        if (symbol.value == null) return false
+        if (cg.currentScope().loopContexts.isNotEmpty()) {
+            cg.currentScope().loopContexts.forEach { ctx ->
+                val modifiedSymbols = usageInfo[currentFunction()]!!.loopSymbolsWritten[ctx]
+                if (modifiedSymbols != null && symbol.name in modifiedSymbols) return false
+            }
+        }
+        return true
+    }
+
+    private inline fun currentFunction() = cg.currentScope().functionName
 
 }

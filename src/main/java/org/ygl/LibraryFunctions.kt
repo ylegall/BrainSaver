@@ -18,7 +18,11 @@ class LibraryFunctions(val cg: CodeGen, val tree: TreeWalker)
             cg.io.print("\n")
         } else {
             args.filterNotNull().forEach {
-                cg.io.print(it)
+                if (tree.isConstant(it)) {
+                    cg.io.print(it.value)
+                } else {
+                    cg.io.print(it)
+                }
                 cg.io.print("\n")
             }
         }

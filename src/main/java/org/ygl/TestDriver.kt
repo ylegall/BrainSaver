@@ -32,7 +32,7 @@ fun main(args: Array<String>) {
 
     val evalOptions = InterpreterOptions(
             debug = true,
-            predefinedInput = "1five"
+            predefinedInput = "1"
     )
 
     eval(outputFile, options = evalOptions)

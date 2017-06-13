@@ -22,7 +22,6 @@ class CodeGen(
     val io = IO(this)
     val math = Maths(this)
 
-    val functions = HashMap<String, Function>()
     private val scopes = ArrayList<Scope>()
 
     private val output: OutputStream = if (options.minify) {
@@ -41,14 +40,14 @@ class CodeGen(
         output.flush()
     }
 
-    fun enterScope() {
+    fun enterScope(functionName: String) {
         val memorySize = if (scopes.isEmpty()) {
             0
         } else {
             val lastScope = scopes[scopes.size - 1]
             lastScope.startAddress + lastScope.scopeSize
         }
-        val newScope = Scope(memorySize)
+        val newScope = Scope(memorySize, functionName)
         scopes.add(newScope)
     }
 
@@ -136,7 +135,6 @@ class CodeGen(
 
     fun startWhile(condition: Symbol) {
         commentLine("start while $condition")
-        currentScope().pushLoopContext(LoopContext())
         moveTo(condition)
         startLoop()
     }
@@ -144,7 +142,6 @@ class CodeGen(
     fun endWhile(condition: Symbol) {
         moveTo(condition, comment="move to $condition")
         endLoop()
-        currentScope().popLoopContext()
         commentLine("end while $condition")
     }
 
@@ -152,7 +149,6 @@ class CodeGen(
         commentLine("start for $loopVar = $start to $stop")
         assign(loopVar, start)
         assign(condition, math.lessThanEqual(loopVar, stop))
-        currentScope().pushLoopContext(LoopContext())
         moveTo(condition, comment="move to $condition")
         startLoop()
     }
@@ -162,7 +158,6 @@ class CodeGen(
         assign(condition, math.lessThanEqual(loopVar, stop))
         moveTo(condition)
         endLoop()
-        currentScope().popLoopContext()
         commentLine("end for $loopVar")
     }
 
@@ -205,7 +200,7 @@ class CodeGen(
         if (value <= 0) return setZero(symbol) // non wrapping
         setZero(symbol)
         emit("+".repeat(value), "load $symbol = $value")
-        newline()
+        //newline()
         return symbol
     }
 

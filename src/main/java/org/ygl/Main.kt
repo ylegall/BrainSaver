@@ -44,9 +44,11 @@ fun compile(input: InputStream, outStream: OutputStream, options: CompilerOption
     parser.addErrorListener(CompileErrorListener.INSTANCE)
     val tree = parser.program()
 
+    val analysisInfoMap = analysisPass(tree, options)
+
     val cg = CodeGen(outStream, options)
     cg.use {
-        val visitor = TreeWalker(it)
+        val visitor = TreeWalker(it, analysisInfoMap)
         visitor.visit(tree)
     }
 }

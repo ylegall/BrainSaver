@@ -1,12 +1,13 @@
 package org.ygl
 
+import org.antlr.v4.runtime.ParserRuleContext
 import java.util.*
 
 
 /**
  *
  */
-class Scope(val startAddress: Int) {
+class Scope(val startAddress: Int, val functionName: String = "") {
 
     private var tempCounter = 0
 
@@ -15,7 +16,7 @@ class Scope(val startAddress: Int) {
 
     private val symbolMap = HashMap<String, Symbol>()
     private val freeSlots = ArrayDeque<Symbol>()
-    private val loopContexts = ArrayDeque<LoopContext>()
+    val loopContexts = ArrayDeque<ParserRuleContext>()
 
     fun getSymbol(name: String): Symbol? {
         return symbolMap[name]
@@ -73,16 +74,6 @@ class Scope(val startAddress: Int) {
         return createSymbol(name, other.size, other.type, other.value)
     }
 
-    fun inConditionalScope() = !loopContexts.isEmpty()
-
-    fun pushLoopContext(ctx: LoopContext) {
-        loopContexts.push(ctx)
-    }
-
-    fun popLoopContext(): LoopContext {
-        return loopContexts.pop()
-    }
-
     fun rename(symbol: Symbol, name: String) {
         symbolMap.remove(symbol.name)
         symbol.name = name
@@ -120,4 +111,5 @@ class Scope(val startAddress: Int) {
         scopeSize = maxAddress - startAddress + 1
         tempCounter = 0
     }
+
 }
