@@ -1,6 +1,5 @@
 package org.ygl
 
-import org.antlr.v4.runtime.ParserRuleContext
 import org.antlr.v4.runtime.misc.ParseCancellationException
 import org.antlr.v4.runtime.tree.TerminalNode
 import org.ygl.BrainSaverParser.*
@@ -23,8 +22,7 @@ class TreeWalker(
     override fun visitProgram(tree: BrainSaverParser.ProgramContext?): Symbol? {
         val mainFunction = usageInfo["main"]!!.function.ctx
         cg.enterScope("main")
-        val ret = visit(mainFunction)
-        return ret
+        return visit(mainFunction)
     }
 
     override fun visitStatement(ctx: StatementContext?): Symbol? {
@@ -118,12 +116,10 @@ class TreeWalker(
                 lhs // no-op
             }
             else -> {
-                if (op == "*=") {
-                    cg.math.multiplyBy(lhs, rhs)
-                } else if (op == "/=") {
-                    cg.math.divideBy(lhs, rhs)
-                } else {
-                    throw Exception("invalid assignment operator: " + op)
+                when (op) {
+                    "*=" -> cg.math.multiplyBy(lhs, rhs)
+                    "/=" -> cg.math.divideBy(lhs, rhs)
+                    else -> throw Exception("invalid assignment operator: " + op)
                 }
             }
         }
@@ -166,7 +162,6 @@ class TreeWalker(
         return when (rhs.type) {
             Type.INT    -> cg.assign(lhs, rhs)
             Type.STRING -> if (rhs.isTemp()) rename(rhs, lhs) else cg.copyString(lhs, rhs)
-            else        -> throw Exception("unsupported type")
         }
     }
 
@@ -174,7 +169,6 @@ class TreeWalker(
         return when (rhs.type) {
             Type.INT    -> cg.loadInt(lhs, rhs.value as Int)
             Type.STRING -> cg.loadString(lhs, rhs.value as String)
-            else        -> throw Exception("unsupported type")
         }
     }
 
@@ -216,23 +210,19 @@ class TreeWalker(
         return null
     }
 
-    private fun unescape(str: String): String {
-        val withoutQuotes = str.trim().substring(1 .. str.length-2)
-        val result = withoutQuotes.replace("\\n", "\n").replace("\\t", "\t")
-        return result
-    }
-
     override fun visitReadStatement(ctx: ReadStatementContext?): Symbol? {
         ctx ?: throw Exception("null ReadStatementContext")
         val id = ctx.Identifier().text
-        return if (ctx.rd != null) {
-            val sym = cg.currentScope().getOrCreateSymbol(id, type = Type.INT)
-            cg.io.readChar(sym)
-        } else if (ctx.rdint != null) {
-            val sym = cg.currentScope().getOrCreateSymbol(id, type = Type.INT)
-            cg.io.readInt(sym)
-        } else {
-            throw Exception("unsupported read call")
+        return when {
+            ctx.rd != null -> {
+                val sym = cg.currentScope().getOrCreateSymbol(id, type = Type.INT)
+                cg.io.readChar(sym)
+            }
+            ctx.rdint != null -> {
+                val sym = cg.currentScope().getOrCreateSymbol(id, type = Type.INT)
+                cg.io.readInt(sym)
+            }
+            else -> throw Exception("unsupported read call")
         }
     }
 
@@ -240,8 +230,7 @@ class TreeWalker(
         val scope = cg.currentScope()
         val symbolName = ctx?.Identifier()?.text ?: throw Exception("null atom identifier")
         // check for undefined identifier
-        val symbol = scope.getSymbol(symbolName) ?: throw Exception("undefined identifier: $symbolName")
-        return symbol
+        return scope.getSymbol(symbolName) ?: throw Exception("undefined identifier: $symbolName")
     }
 
     override fun visitAtomStr(ctx: AtomStrContext?): Symbol? {
@@ -590,7 +579,7 @@ class TreeWalker(
             cg.currentScope().loopContexts.pop()
         }
         // can't delete these if they refer to an existing symbol
-        deleteSet.forEach { cg.currentScope()::delete }
+        deleteSet.forEach { it -> cg.currentScope().delete(it) }
         cg.currentScope().delete(condition)
         return null
     }
@@ -647,15 +636,15 @@ class TreeWalker(
         // TODO: type checking?
 
         if (isConstant(index)) {
-            if (isConstant(value)) {
+            return if (isConstant(value)) {
                 if (value.value is String) {
                     val char = (value.value as String)[0]
-                    return cg.loadInt(array.offset(index.value as Int), char.toInt())
+                    cg.loadInt(array.offset(index.value as Int), char.toInt())
                 } else {
-                    return cg.loadInt(array.offset(index.value as Int), value.value as Int)
+                    cg.loadInt(array.offset(index.value as Int), value.value as Int)
                 }
             } else {
-                return cg.assign(array.offset(index.value as Int), value)
+                cg.assign(array.offset(index.value as Int), value)
             }
         } else {
             cg.writeArray(array, index, value)
@@ -668,11 +657,11 @@ class TreeWalker(
         val array = checkNotNull(cg.currentScope().getSymbol(ctx.array.text), { "null ${ctx.array.text}" })
         val index = checkNotNull(visit(ctx.idx), { "null ${ctx.idx.text}" })
 
-        if (isConstant(index)) {
+        return if (isConstant(index)) {
             val ret = cg.currentScope().getTempSymbol()
-            return cg.assign(ret, array.offset(index.value as Int))
+            cg.assign(ret, array.offset(index.value as Int))
         } else {
-            return cg.readArray(array, index)
+            cg.readArray(array, index)
         }
     }
 

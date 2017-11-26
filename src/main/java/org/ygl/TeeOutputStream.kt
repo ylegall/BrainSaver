@@ -2,7 +2,7 @@ package org.ygl
 
 import java.io.OutputStream
 
-class TeeOutputStream(val stream: OutputStream): OutputStream()
+class TeeOutputStream(private val stream: OutputStream): OutputStream()
 {
     override fun write(i: Int) {
         stream.write(i)

@@ -18,9 +18,7 @@ class Scope(val startAddress: Int, val functionName: String = "") {
     private val freeSlots = ArrayDeque<Symbol>()
     val loopContexts = ArrayDeque<ParserRuleContext>()
 
-    fun getSymbol(name: String): Symbol? {
-        return symbolMap[name]
-    }
+    fun getSymbol(name: String): Symbol? = symbolMap[name]
 
     fun getOrCreateSymbol(name: String, size: Int = 1, type: Type = Type.INT): Symbol {
         return symbolMap[name] ?: createSymbol(name, size, type)

@@ -5,12 +5,12 @@ import java.io.OutputStream
 
 
 class MinifyingOutputStream(
-        val output: OutputStream,
-        val marginSize: Int = 64) : OutputStream(), Closeable
+        private val output: OutputStream,
+        private val marginSize: Int = 64) : OutputStream(), Closeable
 {
-    var bi = 0
-    val buffer = ByteArray(1024)
-    val validSet: Set<Char> = "[]<>+-,.".toSet()
+    private var bi = 0
+    private val buffer = ByteArray(1024)
+    private val validSet: Set<Char> = "[]<>+-,.".toSet()
 
     init {
         if (marginSize <= 0) throw Exception("positive margin size required")
