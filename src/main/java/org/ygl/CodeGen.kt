@@ -3,25 +3,19 @@ package org.ygl
 import java.io.OutputStream
 import java.util.*
 
-
-typealias ConstFunction = (Int, Int) -> Int
-typealias SymbolFunction = (Symbol, Symbol) -> Symbol
 typealias BinaryOp = (Symbol, Symbol) -> Symbol
 
 // https://esolangs.org/wiki/Brainfuck_algorithms
 // https://www.codeproject.com/Articles/558979/BrainFix-the-language-that-translates-to-fluent-Br
 class CodeGen(
         outputStream: OutputStream = System.`out`,
-        val options: CompilerOptions = DEFAULT_COMPILE_OPTIONS
+        val options: CompilerOptions = DEFAULT_COMPILE_OPTIONS,
+        globals: Set<Symbol> = HashSet()
 ): AutoCloseable {
 
     private var col = 0
     private var nestLevel = 0
     private var dataPointer = 0
-
-    val io = IO(this)
-    val math = Maths(this)
-
     private val scopes = ArrayList<Scope>()
 
     private val output: OutputStream = if (options.minify) {
@@ -30,8 +24,19 @@ class CodeGen(
         outputStream
     }
 
+    init {
+        val globalScope = Scope(0, "")
+        for (global in globals) {
+            globalScope.createSymbol(global.name, global)
+        }
+        scopes.add(globalScope)
+    }
+
+    val io = IO(this)
+    val math = Maths(this)
+
+
     private val reservedChars = Regex("""[\[\]<>+\-,.]""")
-    //private val nonOperativeChars = Regex("""[^\[\]<>+\-,.]""")
 
     private val MARGIN = options.margin
     private val COMMENT_MARGIN = MARGIN + 4
@@ -55,8 +60,12 @@ class CodeGen(
         return scopes.removeAt(scopes.size-1)
     }
 
-    fun currentScope(): Scope {
-        return scopes[scopes.size - 1]
+    fun currentScope() = scopes[scopes.size - 1]
+    private fun globalScope() = scopes[0]
+    private fun getTempSymbol() = currentScope().getTempSymbol()
+
+    fun getSymbol(name: String): Symbol? {
+        return globalScope().getSymbol(name) ?: currentScope().getSymbol(name)
     }
 
     /**
@@ -83,10 +92,10 @@ class CodeGen(
         return lhs
     }
 
-    fun assignInt(lhs: Symbol, rhs: Symbol): Symbol {
+    private fun assignInt(lhs: Symbol, rhs: Symbol): Symbol {
         commentLine("assign $rhs to $lhs")
 
-        val tmp = currentScope().getTempSymbol()
+        val tmp = getTempSymbol()
         setZero(lhs)
         setZero(tmp)
 
@@ -226,7 +235,7 @@ class CodeGen(
         return moveToAddress(symbol.address, comment)
     }
 
-    fun moveToAddress(address: Int, comment: String = "") {
+    private fun moveToAddress(address: Int, comment: String = "") {
         val diff = Math.abs(address - dataPointer)
         if (diff != 0) {
             val dir = if (address > dataPointer) ">" else "<"
@@ -271,7 +280,7 @@ class CodeGen(
     fun readArray(array: Symbol, index: Symbol): Symbol {
         commentLine("read array $array($index)")
 
-        val ret = currentScope().getTempSymbol()
+        val ret = getTempSymbol()
         val data = array.offset(3)
 
         assignInt(array.offset(2), index)  // copy idx to readIdx
@@ -355,7 +364,7 @@ class CodeGen(
         }
     }
 
-    private inline fun write(code: String) {
+    private fun write(code: String) {
         output.write(code.toByteArray(Charsets.UTF_8))
     }
 }

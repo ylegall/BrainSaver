@@ -9,8 +9,8 @@ import java.util.*
  * http://stackoverflow.com/questions/23092081/antlr4-visitor-pattern-on-simple-arithmetic-example
  */
 class TreeWalker(
-        val cg: CodeGen,
-        val usageInfo: UsageInfoMap
+        private val cg: CodeGen,
+        private val usageInfo: UsageInfoMap
 ) : BrainSaverBaseVisitor<Symbol?>()
 {
     private val libraryFunctions = LibraryFunctions(cg, this)
@@ -20,9 +20,9 @@ class TreeWalker(
      * scan and register functions. look for the org.ygl.main function
      */
     override fun visitProgram(tree: BrainSaverParser.ProgramContext?): Symbol? {
-        val mainFunction = usageInfo["main"]!!.function.ctx
+        val mainFunction = usageInfo["main"] ?: throw Exception("main not found")
         cg.enterScope("main")
-        return visit(mainFunction)
+        return visit(mainFunction.function.ctx)
     }
 
     override fun visitStatement(ctx: StatementContext?): Symbol? {
@@ -60,7 +60,7 @@ class TreeWalker(
         }
 
         with (cg) {
-            val lhsSymbol = currentScope().getSymbol(lhs) ?: throw Exception("undefined identifier $lhs")
+            val lhsSymbol = getSymbol(lhs) ?: throw Exception("undefined identifier $lhs")
 
             if (isConstant(lhsSymbol) && isConstant(expResult)) {
                 return constantAssignOp(lhsSymbol, expResult, op)
@@ -129,7 +129,7 @@ class TreeWalker(
         if (lhs == rhs.name) return rhs // no-op
 
         // reassign symbol if sizes don't match
-        var lhsSymbol = cg.currentScope().getSymbol(lhs)
+        var lhsSymbol = cg.getSymbol(lhs)
         if (lhsSymbol == null) {
             lhsSymbol = cg.currentScope().createSymbol(lhs, rhs)
         } else if (lhsSymbol.size != rhs.size) {
@@ -183,12 +183,11 @@ class TreeWalker(
 
     override fun visitPrintStatement(ctx: PrintStatementContext?): Symbol? {
         ctx ?: throw Exception("null PrintStatementContext")
-        val scope = cg.currentScope()
 
         val exp = if (ctx.exp().childCount == 1 ) ctx.exp().getChild(0) else ctx.exp()
         when (exp) {
             is AtomIdContext -> {
-                val symbol = scope.getSymbol(ctx.exp().text) ?:
+                val symbol = cg.getSymbol(ctx.exp().text) ?:
                         throw Exception("undefined identifier: ${ctx.exp().text}")
                 if (isConstant(symbol) && symbol.type == Type.INT) {
                     cg.io.printImmediate(symbol.value.toString())
@@ -227,10 +226,9 @@ class TreeWalker(
     }
 
     override fun visitAtomId(ctx: AtomIdContext?): Symbol? {
-        val scope = cg.currentScope()
         val symbolName = ctx?.Identifier()?.text ?: throw Exception("null atom identifier")
         // check for undefined identifier
-        return scope.getSymbol(symbolName) ?: throw Exception("undefined identifier: $symbolName")
+        return cg.getSymbol(symbolName) ?: throw Exception("undefined identifier: $symbolName")
     }
 
     override fun visitAtomStr(ctx: AtomStrContext?): Symbol? {
@@ -585,18 +583,19 @@ class TreeWalker(
     }
 
     private fun canUnrollLoop(start: Symbol, stop: Symbol, step: Symbol, body: List<StatementContext>): Boolean {
+        // TODO: parameterize this magic number:
         if (body.size > 8) return false
         if (!isConstant(start) || !isConstant(stop) || !isConstant(step)) return false
         if ((stop.value as Int - start.value as Int) / step.value as Int >= 10) return false
-        for (stmt in body) {
-            val child = stmt.getChild(0)
-            when (child) {
-                is PrintStatementContext -> return false
-                is CallStatementContext  -> return false
-                is ForStatementContext   -> return false
-                is WhileStatementContext -> return false
+        body.map { it.getChild(0) }
+            .forEach {
+                when (it) {
+                    is PrintStatementContext -> return false
+                    is CallStatementContext  -> return false
+                    is ForStatementContext   -> return false
+                    is WhileStatementContext -> return false
+                }
             }
-        }
         return true
     }
 
@@ -667,10 +666,9 @@ class TreeWalker(
 
     override fun visitDebugStatement(ctx: DebugStatementContext?): Symbol? {
         ctx ?: throw Exception("null DebugStatementContext")
-        ctx.idList.Identifier().map {
-            cg.currentScope().getSymbol( it.text )
+        ctx.idList.Identifier().mapNotNull {
+            cg.getSymbol(it.text)
         }
-        .filterNotNull()
         .forEach {
             if (it.size == 1) {
                 cg.debug(it, "$it = ")

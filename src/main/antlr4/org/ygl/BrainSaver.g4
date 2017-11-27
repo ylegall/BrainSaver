@@ -4,11 +4,15 @@ grammar BrainSaver;
 
 
 program
-    : functionList
+    : declList
     ;
 
-functionList
-    :   function+
+declList
+    :   (function | globalConstant)+
+    ;
+
+globalConstant
+    :   Identifier '=' rhs=atom ';'
     ;
 
 function

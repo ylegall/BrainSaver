@@ -4,30 +4,40 @@ import org.antlr.v4.runtime.ParserRuleContext
 import org.ygl.BrainSaverParser.*
 import java.util.stream.Collectors
 
+/**
+ * information returned from walking tree nodes
+ */
 class SymbolInfo {
     val readSymbols    = HashSet<String>()
     val writtenSymbols = HashSet<String>()
 }
 
+/**
+ * Finalized info passed to the code generation phase
+ */
 class AnalysisInfo (
     val function: Function,
     val unusedSymbols: Set<String>,
     val lastSymbolsUsedMap: Map<ParserRuleContext, Set<String>>,
     val loopSymbolsWritten: Map<ParserRuleContext, Set<String>>
-//    val loopSymbolsRead: Map<ParserRuleContext, Set<String>>
 )
 
 typealias UsageInfoMap = Map<String, AnalysisInfo>
 
+/**
+ *
+ */
 private class TempAnalysisInfo(val function: Function)
 {
     val assignedSymbols = HashSet<String>()
     val loopSymbolsWritten = HashMap<ParserRuleContext, HashSet<String>>()
-//    val loopSymbolsRead = HashMap<ParserRuleContext, HashSet<String>>()
     val lastSymbolsUsedMap = HashMap<ParserRuleContext, HashSet<String>>()
     val symbolUseMap = HashMap<String, ParserRuleContext>()
 }
 
+/**
+ *
+ */
 fun analysisPass(tree: ProgramContext, options: CompilerOptions): UsageInfoMap {
     val visitor = AnalyzingVisitor()
     visitor.visit(tree)
@@ -45,11 +55,17 @@ fun analysisPass(tree: ProgramContext, options: CompilerOptions): UsageInfoMap {
     return analysisInfoMap
 }
 
+/**
+ * Walks the tree to collect symbol usage info
+ */
 class AnalyzingVisitor : BrainSaverBaseVisitor<SymbolInfo>()
 {
-    var currentFunction = ""
+    private var currentFunction = ""
     private val functionInfo = HashMap<String, TempAnalysisInfo>()
 
+    /**
+     *
+     */
     fun getAnalysisInfo(): Map<String, AnalysisInfo> {
 
         fun buildAnalysisInfo(tempInfo: TempAnalysisInfo): AnalysisInfo {
@@ -58,7 +74,6 @@ class AnalyzingVisitor : BrainSaverBaseVisitor<SymbolInfo>()
                     tempInfo.assignedSymbols.subtract(tempInfo.symbolUseMap.keys),
                     tempInfo.lastSymbolsUsedMap,
                     tempInfo.loopSymbolsWritten
-//                    tempInfo.loopSymbolsRead
             )
         }
 
@@ -66,7 +81,8 @@ class AnalyzingVisitor : BrainSaverBaseVisitor<SymbolInfo>()
                 .collect(Collectors.toMap(
                         { entry -> entry.key },
                         { entry -> buildAnalysisInfo(entry.value) }
-                        ))
+                    )
+                )
     }
 
     override fun visitFunction(ctx: FunctionContext?): SymbolInfo {
@@ -92,7 +108,6 @@ class AnalyzingVisitor : BrainSaverBaseVisitor<SymbolInfo>()
         val symbolInfo = visitChildren(ctx)
         val scopeInfo = functionInfo[currentFunction] ?: throw Exception("unregistered function: $currentFunction")
         scopeInfo.loopSymbolsWritten[ctx] = symbolInfo.writtenSymbols
-//        scopeInfo.loopSymbolsRead[ctx] = symbolInfo.readSymbols
         return symbolInfo
     }
 
@@ -101,13 +116,12 @@ class AnalyzingVisitor : BrainSaverBaseVisitor<SymbolInfo>()
         val symbolInfo = visitChildren(ctx)
         val scopeInfo = functionInfo[currentFunction] ?: throw Exception("unregistered function: $currentFunction")
         scopeInfo.loopSymbolsWritten[ctx] = symbolInfo.writtenSymbols
-//        scopeInfo.loopSymbolsRead[ctx] = symbolInfo.readSymbols
         return symbolInfo
     }
 
     override fun visitIfStatement(ctx: IfStatementContext?): SymbolInfo {
         ctx ?: throw Exception("null IfStatementContext")
-        var symbolInfo = visitChildren(ctx)
+        val symbolInfo = visitChildren(ctx)
         val scopeInfo = functionInfo[currentFunction] ?: throw Exception("unregistered function: $currentFunction")
         scopeInfo.loopSymbolsWritten[ctx] = symbolInfo.writtenSymbols
         return symbolInfo
@@ -133,7 +147,7 @@ class AnalyzingVisitor : BrainSaverBaseVisitor<SymbolInfo>()
             val oldStatement = scopeInfo.symbolUseMap[symbol]
             oldStatement?.let {
                 scopeInfo.lastSymbolsUsedMap[it]?.remove(symbol)
-                if (scopeInfo.lastSymbolsUsedMap[it]?.isEmpty() ?: false) {
+                if (scopeInfo.lastSymbolsUsedMap[it]?.isEmpty() == true) {
                     scopeInfo.lastSymbolsUsedMap.remove(it)
                 }
             }
@@ -172,10 +186,10 @@ class AnalyzingVisitor : BrainSaverBaseVisitor<SymbolInfo>()
     private fun recordWriteSymbol(lhs: String, ctx: ParserRuleContext? = null): SymbolInfo {
         val info = functionInfo[currentFunction] ?: throw Exception("unregistered function: $currentFunction")
         info.assignedSymbols.add(lhs)
-        if (ctx != null)
-            return visitChildren(ctx).apply{ writtenSymbols.add(lhs) }
+        return if (ctx != null)
+            visitChildren(ctx).apply{ writtenSymbols.add(lhs) }
         else
-            return SymbolInfo()
+            SymbolInfo()
     }
 
     override fun visitAtomId(ctx: AtomIdContext?): SymbolInfo {
@@ -184,16 +198,16 @@ class AnalyzingVisitor : BrainSaverBaseVisitor<SymbolInfo>()
     }
 
     override fun aggregateResult(aggregate: SymbolInfo?, nextResult: SymbolInfo?): SymbolInfo {
-        if (aggregate != null && nextResult != null) {
+        return if (aggregate != null && nextResult != null) {
             aggregate.readSymbols.addAll(nextResult.readSymbols)
             aggregate.writtenSymbols.addAll(nextResult.writtenSymbols)
-            return aggregate
+            aggregate
         } else if (aggregate != null) {
-            return aggregate
+            aggregate
         } else if (nextResult != null) {
-            return nextResult
+            nextResult
         } else {
-            return SymbolInfo()
+            SymbolInfo()
         }
     }
 }

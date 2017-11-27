@@ -15,7 +15,7 @@ const val ZERO = 0
  */
 class Interpreter(
         inputStream: InputStream,
-        val outputStream: OutputStream = System.out,
+        private val outputStream: OutputStream = System.out,
         val options: InterpreterOptions = DEFAULT_INTERPRETER_OPTIONS
 ) {
     constructor(
@@ -196,11 +196,11 @@ class Interpreter(
         outputStream.flush()
     }
 
-    private inline fun move(diff: Int) {
+    private fun move(diff: Int) {
         dp += diff
     }
 
-    private inline fun add(diff: Int) {
+    private fun add(diff: Int) {
         val v = memory[dp] + diff
         if (v < 0) {
             if (options.wrap) {
@@ -272,7 +272,7 @@ fun eval(inFile: File? = null,
     }
 }
 
-private inline fun printUsageAndHalt(options: Options) {
+private fun printUsageAndHalt(options: Options) {
     HelpFormatter().printHelp("brainsaver", options, true)
     System.exit(1)
 }

@@ -12,8 +12,7 @@ fun compile(input: String): String {
     outputStream.use { output ->
         compile(input, output, options = options)
     }
-    val result = outputStream.toString()
-    return result
+    return outputStream.toString()
 }
 
 fun eval(code: String, userInput: String = "", wrapping: Boolean = false): String {
@@ -30,14 +29,14 @@ fun eval(code: String, userInput: String = "", wrapping: Boolean = false): Strin
     return outputStream.toString()
 }
 
-class TestContext(wrapping: Boolean = false)
+class TestContext(wrapping: Boolean = false, globals: Set<Symbol> = HashSet())
 {
-    val output: ByteArrayOutputStream = ByteArrayOutputStream()
-    val cg: CodeGen = buildCodegen(wrapping)
+    private val output: ByteArrayOutputStream = ByteArrayOutputStream()
+    val cg: CodeGen = buildCodegen(wrapping, globals)
 
-    private fun buildCodegen(wrapping: Boolean): CodeGen {
+    private fun buildCodegen(wrapping: Boolean, globals: Set<Symbol>): CodeGen {
         val options = CompilerOptions(minify = true, wrapping = wrapping)
-        val cg = CodeGen(output, options)
+        val cg = CodeGen(output, options, globals)
         cg.enterScope("")
         return cg
     }

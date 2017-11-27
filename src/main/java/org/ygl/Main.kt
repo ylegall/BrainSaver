@@ -11,7 +11,7 @@ import java.io.*
 
 const val VERSION = "1.0"
 
-private inline fun printUsageAndHalt(options: Options) {
+private fun printUsageAndHalt(options: Options) {
     HelpFormatter().printHelp("brainsaver", options, true)
     System.exit(1)
 }
@@ -45,8 +45,9 @@ fun compile(input: InputStream, outStream: OutputStream, options: CompilerOption
     val tree = parser.program()
 
     val analysisInfoMap = analysisPass(tree, options)
+    val globals = GlobalVisitor().getGlobals(tree)
 
-    val cg = CodeGen(outStream, options)
+    val cg = CodeGen(outStream, options, globals)
     cg.use {
         val visitor = TreeWalker(it, analysisInfoMap)
         visitor.visit(tree)
