@@ -22,7 +22,7 @@ data class Symbol(
     override fun compareTo(other: Symbol) = address - other.address
 }
 
-inline fun Symbol.offset(offset: Int, name: String = this.name): Symbol {
+fun Symbol.offset(offset: Int, name: String = this.name): Symbol {
     val address = if (this.type == Type.INT && this.isArray()) {
         this.address + 4 + offset
     } else {
@@ -31,6 +31,6 @@ inline fun Symbol.offset(offset: Int, name: String = this.name): Symbol {
     return Symbol("$name($offset)", 1, address, this.type, this.value)
 }
 
-inline fun Symbol.isArray(): Boolean = this.size > 1
+fun Symbol.isArray(): Boolean = this.size > 1
 
-inline fun Symbol.isTemp(): Boolean = this.name.startsWith("$")
+fun Symbol.isTemp(): Boolean = this.name.startsWith("$")

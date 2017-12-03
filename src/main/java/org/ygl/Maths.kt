@@ -1,6 +1,6 @@
 package org.ygl
 
-class Maths(val cg: CodeGen)
+class Maths(private val cg: CodeGen)
 {
     fun divide(s1: Symbol, s2: Symbol): Symbol {
         return binaryOp(s1, s2, this::divideBy)
@@ -22,7 +22,7 @@ class Maths(val cg: CodeGen)
         return binaryOp(s1, s2, this::addTo)
     }
 
-    inline fun binaryOp(s1: Symbol, s2: Symbol, op: BinaryOp): Symbol {
+    private inline fun binaryOp(s1: Symbol, s2: Symbol, op: BinaryOp): Symbol {
         with (cg) {
             val result = currentScope().getTempSymbol()
             assign(result, s1)
@@ -276,7 +276,6 @@ class Maths(val cg: CodeGen)
         return lessThanEqual(rhs, lhs)
     }
 
-    // TODO: optimize
     fun greaterThan(lhs: Symbol, rhs: Symbol): Symbol {
         with (cg) {
             commentLine("${lhs.name} greater than ${rhs.name}")

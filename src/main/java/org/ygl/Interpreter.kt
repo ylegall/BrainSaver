@@ -48,7 +48,7 @@ class Interpreter(
         reset(ByteArrayInputStream(str.toByteArray()))
     }
 
-    fun reset(stream: InputStream) {
+    private fun reset(stream: InputStream) {
         jumpTable.clear()
         text = processInput(stream)
         userInput = loadUserInput()

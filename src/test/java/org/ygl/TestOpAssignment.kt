@@ -6,7 +6,6 @@ import org.junit.jupiter.api.Test
 
 internal class TestOpAssignment
 {
-    // TODO
     @Test
     fun testRuntimeOp() {
         test(0, "+=", 1, 1)

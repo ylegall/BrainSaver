@@ -25,18 +25,18 @@ internal class TestScope {
     @Test
     fun testMemoryReuse() {
         val t1 = scope.getTempSymbol(size = 1)
-        val t2 = scope.getTempSymbol(size = 1)
+        scope.getTempSymbol(size = 1)
         assertEquals(initialSize + 2, scope.scopeSize)
         scope.delete(t1)
         assertEquals(initialSize + 2, scope.scopeSize)
-        val t3 = scope.getTempSymbol(size = 1)
+        scope.getTempSymbol(size = 1)
         assertEquals(initialSize + 2, scope.scopeSize)
     }
 
     @Test
     fun testArrayMemoryReuse() {
         val t1 = scope.getTempSymbol(size = 3)
-        val t2 = scope.getTempSymbol(size = 2)
+        scope.getTempSymbol(size = 2)
         assertEquals(initialSize + 5, scope.scopeSize)
         scope.delete(t1)
         val t3 = scope.getTempSymbol(size = 2)

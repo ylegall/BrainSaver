@@ -19,8 +19,7 @@ fun time(body: () -> Unit): Long {
 
 fun unescape(str: String): String {
     val withoutQuotes = str.trim().substring(1 .. str.length-2)
-    val result = withoutQuotes.replace("\\n", "\n").replace("\\t", "\t")
-    return result
+    return withoutQuotes.replace("\\n", "\n").replace("\\t", "\t")
 }
 
 fun <T: Comparable<T>> T.clamp(min: T, max: T): T {

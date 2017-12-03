@@ -46,14 +46,6 @@ class GlobalVisitor : BrainSaverBaseVisitor<Unit>() {
         }
     }
 
-//    override fun visitAtomInt(ctx: AtomIntContext?) {
-//        super.visitAtomInt(ctx)
-//    }
-//
-//    override fun visitAtomStr(ctx: AtomIntContext?) {
-//        super.visitAtomInt(ctx)
-//    }
-
     override fun visitAtomId(ctx: BrainSaverParser.AtomIdContext?) {
         ctx ?: throw Exception("null AtomIdContext")
         readSymbols.add(ctx.text)

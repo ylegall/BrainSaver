@@ -3,7 +3,7 @@ package org.ygl
 internal object StringMinifier {
 
     // G[x][y]: BF code that transforms x to y.
-    var G = Array(256, { _ -> Array(256, { _ -> ""}) })
+    private var G = Array(256, { _ -> Array(256, { _ -> ""}) })
 
     init {
         // initial state for G[x][y]: go from x to y using +s or -s.

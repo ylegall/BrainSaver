@@ -634,8 +634,8 @@ class TreeWalker(
 
         // TODO: type checking?
 
-        if (isConstant(index)) {
-            return if (isConstant(value)) {
+        return if (isConstant(index)) {
+            if (isConstant(value)) {
                 if (value.value is String) {
                     val char = (value.value as String)[0]
                     cg.loadInt(array.offset(index.value as Int), char.toInt())
@@ -647,7 +647,7 @@ class TreeWalker(
             }
         } else {
             cg.writeArray(array, index, value)
-            return null
+            null
         }
     }
 
@@ -704,6 +704,6 @@ class TreeWalker(
         return true
     }
 
-    private inline fun currentFunction() = cg.currentScope().functionName
+    private fun currentFunction() = cg.currentScope().functionName
 
 }

@@ -12,7 +12,7 @@ fun main(args: Array<String>) {
 
     reader.use {
         do {
-            var c = it.read()
+            val c = it.read()
             if (c < 0) break
             totalCount += 1
 

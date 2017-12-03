@@ -37,7 +37,7 @@ class TestContext(wrapping: Boolean = false, globals: Set<Symbol> = HashSet())
     private fun buildCodegen(wrapping: Boolean, globals: Set<Symbol>): CodeGen {
         val options = CompilerOptions(minify = true, wrapping = wrapping)
         val cg = CodeGen(output, options, globals)
-        cg.enterScope("")
+        cg.enterScope("main")
         return cg
     }
 

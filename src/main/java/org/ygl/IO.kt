@@ -1,6 +1,6 @@
 package org.ygl
 
-class IO(val cg: CodeGen)
+class IO(private val cg: CodeGen)
 {
     fun readChar(symbol: Symbol): Symbol {
         with (cg) {
@@ -39,7 +39,7 @@ class IO(val cg: CodeGen)
         }
     }
 
-    fun printInt(symbol: Symbol): Symbol {
+    private fun printInt(symbol: Symbol): Symbol {
         with(cg) {
             commentLine("print int $symbol")
             val cs = currentScope()
@@ -87,7 +87,7 @@ class IO(val cg: CodeGen)
         return symbol
     }
 
-    fun printString(symbol: Symbol): Symbol {
+    private fun printString(symbol: Symbol): Symbol {
         with (cg) {
             commentLine("print str $symbol")
             for (i in 0 until symbol.size) {
@@ -111,7 +111,7 @@ class IO(val cg: CodeGen)
         }
     }
 
-    fun printChar(symbol: Symbol): Symbol {
+    private fun printChar(symbol: Symbol): Symbol {
         with (cg) {
             moveTo(symbol)
             emit(".", "print char $symbol")

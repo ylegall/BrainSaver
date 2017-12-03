@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Test
 
 internal class TestAssignment
 {
-    // TODO
     @Test
     fun testConstantAssignment() {
         test(0, "00")
