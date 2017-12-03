@@ -11,9 +11,9 @@ internal class TestGlobals {
 
         fun test(a: Int, expected: Int) {
             val program = """
-            myGlobal = 3;
+            g = 3;
             fn main() {
-                x = myGlobal + $a;
+                x = g + $a;
                 print(x);
             }
         """
@@ -30,9 +30,9 @@ internal class TestGlobals {
 
         fun test(a: Int, op: String, expected: Int) {
             val program = """
-            myGlobal = 3;
+            g = 3;
             fn main() {
-                myGlobal $op $a;
+                g $op $a;
                 print(x);
             }"""
             val result = compileAndEval(program)
@@ -50,10 +50,10 @@ internal class TestGlobals {
 
         fun test(a: Int, op: String, expected: Int) {
             val program = """
-            myGlobal = 3;
+            g = 3;
             fn main() {
-                myGlobal $op $a;
-                print(myGlobal);
+                g $op $a;
+                print(g);
             }"""
             val result = compileAndEval(program)
             Assertions.assertEquals(expected.toString(), result.trim())
@@ -63,4 +63,23 @@ internal class TestGlobals {
         test(2, "-=", 1)
     }
 
+
+    @Test
+    fun testConstantFold() {
+
+        fun test(expected: Int) {
+            val program = """
+            g = 3;
+            fn foo() {g += 1;}
+            fn main() {
+                foo();
+                x = g + 1;
+                print(x);
+            }"""
+            val result = compileAndEval(program)
+            Assertions.assertEquals(expected.toString(), result.trim())
+        }
+
+        test(5)
+    }
 }

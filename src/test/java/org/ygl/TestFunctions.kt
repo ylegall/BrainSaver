@@ -7,6 +7,22 @@ internal class TestFunctions
 {
 
     @Test
+    fun testVoidCall() {
+        val program = """
+            fn foo() {
+                print("foo");
+            }
+
+            fn main() {
+                foo();
+                print(" bar");
+            }
+        """
+        val result = compileAndEval(program)
+        assertEquals("foo bar", result.trim())
+    }
+
+    @Test
     fun testComplexCall() {
         val program = """
             fn bar(z) {

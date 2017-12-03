@@ -38,10 +38,10 @@ private class TempAnalysisInfo(val function: Function)
 /**
  *
  */
-fun analysisPass(tree: ProgramContext, options: CompilerOptions): UsageInfoMap {
+fun analysisPass(tree: ProgramContext, options: CompilerOptions, globals: Set<Symbol>): UsageInfoMap {
     val visitor = AnalyzingVisitor()
     visitor.visit(tree)
-    val analysisInfoMap = visitor.getAnalysisInfo()
+    val analysisInfoMap = visitor.getAnalysisInfo(globals)
 
     if ("main" !in analysisInfoMap) throw Exception("no main function found")
 
@@ -66,12 +66,14 @@ class AnalyzingVisitor : BrainSaverBaseVisitor<SymbolInfo>()
     /**
      *
      */
-    fun getAnalysisInfo(): Map<String, AnalysisInfo> {
+    fun getAnalysisInfo(globals: Set<Symbol>): UsageInfoMap {
+
+        val globalNames = globals.map { it.name }
 
         fun buildAnalysisInfo(tempInfo: TempAnalysisInfo): AnalysisInfo {
             return AnalysisInfo(
                     tempInfo.function,
-                    tempInfo.assignedSymbols.subtract(tempInfo.symbolUseMap.keys),
+                    tempInfo.assignedSymbols.subtract(tempInfo.symbolUseMap.keys).subtract(globalNames),
                     tempInfo.lastSymbolsUsedMap,
                     tempInfo.loopSymbolsWritten
             )

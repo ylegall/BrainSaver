@@ -13,7 +13,7 @@ internal class TestLoops
         testConstantWhile(3, "i > 0", "i -= 1", "321")
     }
 
-    fun testConstantWhile(start: Int, condition: String, inc: String, expected: String) {
+    private fun testConstantWhile(start: Int, condition: String, inc: String, expected: String) {
         val program = """
             fn main() {
                 i = $start;

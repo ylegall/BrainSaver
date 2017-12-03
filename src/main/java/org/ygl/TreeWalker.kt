@@ -256,8 +256,9 @@ class TreeWalker(
     }
 
     override fun visitCallStatement(ctx: CallStatementContext?): Symbol? {
-        val name = ctx?.funcName?.text ?: throw Exception("null CallStatementContext")
-        val args = ctx.expList().exp()
+        ctx ?: throw Exception("null CallStatementContext")
+        val name = ctx.funcName?.text ?: throw Exception("null function name")
+        val args = ctx.expList()?.exp()
 
         if (name in libraryFunctions.procedures) {
             val expList = args?.map { visit(it) } ?: listOf()
@@ -347,7 +348,7 @@ class TreeWalker(
         return evalOpExp(left, op, right)
     }
 
-    private fun evalOpExp(left: Symbol, op: String, right: Symbol): Symbol? {
+    private fun evalOpExp(left: Symbol, op: String, right: Symbol): Symbol {
 
         // TODO: explicit error for string types:
         if (isConstant(left) && isConstant(right)) {
@@ -415,8 +416,7 @@ class TreeWalker(
             else -> throw Exception("invalid op $op")
         }
 
-        result = Math.min(result, 255)
-        result = Math.max(result, 0)
+        result = result.clamp(0, 255)
 
         val symbol = cg.currentScope().getTempSymbol()
         symbol.value = result

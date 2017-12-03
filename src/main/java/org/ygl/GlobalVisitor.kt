@@ -12,7 +12,6 @@ class GlobalVisitor(
 ) : BrainSaverBaseVisitor<Unit>()
 {
 
-    // TODO: factor out into common code:
     private fun getReadSymbols(): HashSet<String> {
         return XPath.findAll(tree, "//atom", parser)
                 .mapNotNull { it as? AtomIdContext }
