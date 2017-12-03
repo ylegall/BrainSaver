@@ -8,10 +8,10 @@ program
     ;
 
 declList
-    :   (function | globalConstant)+
+    :   (function | globalVariable)+
     ;
 
-globalConstant
+globalVariable
     :   Identifier '=' rhs=atom ';'
     ;
 

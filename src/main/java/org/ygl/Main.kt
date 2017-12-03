@@ -45,7 +45,7 @@ fun compile(input: InputStream, outStream: OutputStream, options: CompilerOption
     val tree = parser.program()
 
     val analysisInfoMap = analysisPass(tree, options)
-    val globals = GlobalVisitor().getGlobals(tree)
+    val globals = GlobalVisitor(parser, tree).getGlobals()
 
     val cg = CodeGen(outStream, options, globals)
     cg.use {
