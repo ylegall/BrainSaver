@@ -1,10 +1,28 @@
 package org.ygl
 
+import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 internal class TestFunctions
 {
+
+    @Test
+    fun testDuplicateFunction() {
+        val program = """
+            fn foo() { print("foo1"); }
+            fn foo() { print("foo2"); }
+
+            fn main() {
+                foo();
+                print(" bar");
+            }
+        """
+        Assertions.assertThrows(CompilationException::class.java) {
+            val result = compileAndEval(program)
+            assertEquals("foo bar", result.trim())
+        }
+    }
 
     @Test
     fun testVoidCall() {

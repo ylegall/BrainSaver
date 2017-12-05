@@ -64,8 +64,9 @@ fun main(args: Array<String>) {
             println("brainsaver version \"$VERSION\"")
             return
         }
+
         val remainingArgs = commandLine.argList
-        if (remainingArgs.isEmpty()) {
+        if (commandLine.hasOption("help") || remainingArgs.isEmpty()) {
             printUsageAndHalt(options)
         }
 
@@ -84,9 +85,11 @@ fun main(args: Array<String>) {
         println("compiled in $elapsed ms")
 
     } catch (e: ParseException) {
+        System.err.println(e.message)
         printUsageAndHalt(options)
+    } catch (e: CompilationException ) {
+        System.err.println(e.message)
     } catch (e: ParseCancellationException) {
-        println(e.message)
-        System.exit(1)
+        System.err.println(e.message)
     }
 }

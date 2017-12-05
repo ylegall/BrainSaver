@@ -57,6 +57,11 @@ fun configureCommandLine(): Options {
             .desc("print the compiler version")
             .build()
 
+    val help = Option.builder("h")
+            .longOpt("help")
+            .desc("print this message")
+            .build()
+
     with (options) {
         addOption(output)
         addOption(noOptimization)
@@ -65,7 +70,7 @@ fun configureCommandLine(): Options {
         addOption(version)
         addOption(verbose)
         addOption(margin)
-        addOption(Option("help", "print this message"))
+        addOption(help)
     }
     return options
 }

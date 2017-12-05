@@ -2,6 +2,7 @@ package org.ygl
 
 import org.antlr.v4.runtime.misc.ParseCancellationException
 import org.antlr.v4.runtime.BaseErrorListener
+import org.antlr.v4.runtime.ParserRuleContext
 import org.antlr.v4.runtime.RecognitionException
 import org.antlr.v4.runtime.Recognizer
 
@@ -24,3 +25,14 @@ class CompileErrorListener : BaseErrorListener() {
         val INSTANCE = CompileErrorListener()
     }
 }
+
+class CompilationException(
+        message: String,
+        ctx: ParserRuleContext? = null
+) : Exception(
+        if (ctx != null) {
+            "compilation error: '$message' at line ${ctx.start.line} col ${ctx.start.charPositionInLine}"
+        } else {
+            message
+        }
+)

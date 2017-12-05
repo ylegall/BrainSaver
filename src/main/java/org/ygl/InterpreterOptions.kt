@@ -38,12 +38,23 @@ fun configureInterpreterOptions(): Options {
             .hasArg(true)
             .build()
 
+    val version = Option.builder()
+            .longOpt("version")
+            .desc("prints the version")
+            .build()
+
+    val help = Option.builder("h")
+            .longOpt("help")
+            .desc("print this message")
+            .build()
+
     with (options) {
         addOption(noOptimization)
         addOption(wrapping)
         addOption(debug)
         addOption(size)
-        addOption(Option("help", "print this message"))
+        addOption(version)
+        addOption(help)
     }
     return options
 }

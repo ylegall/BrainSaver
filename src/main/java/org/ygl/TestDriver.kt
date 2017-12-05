@@ -19,7 +19,12 @@ fun main(args: Array<String>) {
 
     inStream.use { input ->
         outStream.use { output ->
-            compile(input, output, compilerOptions)
+            try {
+                compile(input, output, compilerOptions)
+            } catch (e: CompilationException) {
+                System.err.println(e.message)
+                return
+            }
         }
     }
 

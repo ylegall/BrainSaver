@@ -3,6 +3,7 @@ package org.ygl
 import org.apache.commons.cli.DefaultParser
 import org.apache.commons.cli.HelpFormatter
 import org.apache.commons.cli.Options
+import org.apache.commons.cli.ParseException
 import java.io.*
 import java.util.*
 
@@ -280,23 +281,33 @@ private fun printUsageAndHalt(options: Options) {
 fun main(args: Array<String>) {
 
     val opts = configureInterpreterOptions()
-    val commandLine = DefaultParser().parse(opts, args)
+    try {
+        val commandLine = DefaultParser().parse(opts, args)
+        if (commandLine.hasOption("version")) {
+            println("brainsaver version \"$VERSION\"")
+            return
+        }
 
-    val remainingArgs = commandLine.argList
-    if (remainingArgs.isEmpty()) {
+        val remainingArgs = commandLine.argList
+        if (commandLine.hasOption("help") || remainingArgs.isEmpty()) {
+            printUsageAndHalt(opts)
+        }
+
+        val options = InterpreterOptions(
+                debug = commandLine.hasOption("debug"),
+                wrap = commandLine.hasOption("wrap"),
+                memorySize = commandLine.getOptionValue("memory")?.toInt() ?: 30000,
+                predefinedInput = commandLine.getOptionValue("input") ?: "",
+                optimize = !commandLine.hasOption("no-opt")
+        )
+
+        val start = System.currentTimeMillis()
+        eval(File(remainingArgs[0]), options)
+        val elapsed = System.currentTimeMillis() - start
+        println("\nelapsed: ${formatElapsed(elapsed)}")
+
+    } catch (pe: ParseException) {
+        println(pe.message)
         printUsageAndHalt(opts)
     }
-
-    val options = InterpreterOptions(
-            debug = commandLine.hasOption("debug"),
-            wrap = commandLine.hasOption("wrap"),
-            memorySize = commandLine.getOptionValue("memory")?.toInt() ?: 30000,
-            predefinedInput = commandLine.getOptionValue("input") ?: "",
-            optimize = !commandLine.hasOption("no-opt")
-    )
-
-    val start = System.currentTimeMillis()
-    eval(File(remainingArgs[0]), options)
-    val elapsed = System.currentTimeMillis() - start
-    println("\nelapsed: ${formatElapsed(elapsed)}")
 }

@@ -43,7 +43,7 @@ fun analysisPass(tree: ProgramContext, options: CompilerOptions, globals: Set<Sy
     visitor.visit(tree)
     val analysisInfoMap = visitor.getAnalysisInfo(globals)
 
-    if ("main" !in analysisInfoMap) throw Exception("no main function found")
+    if ("main" !in analysisInfoMap) throw CompilationException("no main function found")
 
     if (options.verbose) {
         for ((fn, info) in analysisInfoMap) {
@@ -88,13 +88,12 @@ class AnalyzingVisitor : BrainSaverBaseVisitor<SymbolInfo>()
     }
 
     override fun visitFunction(ctx: FunctionContext?): SymbolInfo {
-        ctx ?: throw Exception("null FunctionContext")
-        val name = ctx.name.text
+        val name = ctx!!.name.text
         val isVoid = ctx.functionBody().ret == null
         val function = Function(name, ctx, isVoid)
 
         if (name in functionInfo) {
-            throw Exception("duplicate function: $name")
+            throw CompilationException("duplicate function", ctx)
         }
         functionInfo[name] = TempAnalysisInfo(function)
 
@@ -106,24 +105,21 @@ class AnalyzingVisitor : BrainSaverBaseVisitor<SymbolInfo>()
     }
 
     override fun visitWhileStatement(ctx: WhileStatementContext?): SymbolInfo {
-        ctx ?: throw Exception("null WhileStatementContext")
-        val symbolInfo = visitChildren(ctx)
+        val symbolInfo = visitChildren(ctx!!)
         val scopeInfo = functionInfo[currentFunction] ?: throw Exception("unregistered function: $currentFunction")
         scopeInfo.loopSymbolsWritten[ctx] = symbolInfo.writtenSymbols
         return symbolInfo
     }
 
     override fun visitForStatement(ctx: ForStatementContext?): SymbolInfo {
-        ctx ?: throw Exception("null ForStatementContext")
-        val symbolInfo = visitChildren(ctx)
+        val symbolInfo = visitChildren(ctx!!)
         val scopeInfo = functionInfo[currentFunction] ?: throw Exception("unregistered function: $currentFunction")
         scopeInfo.loopSymbolsWritten[ctx] = symbolInfo.writtenSymbols
         return symbolInfo
     }
 
     override fun visitIfStatement(ctx: IfStatementContext?): SymbolInfo {
-        ctx ?: throw Exception("null IfStatementContext")
-        val symbolInfo = visitChildren(ctx)
+        val symbolInfo = visitChildren(ctx!!)
         val scopeInfo = functionInfo[currentFunction] ?: throw Exception("unregistered function: $currentFunction")
         scopeInfo.loopSymbolsWritten[ctx] = symbolInfo.writtenSymbols
         return symbolInfo

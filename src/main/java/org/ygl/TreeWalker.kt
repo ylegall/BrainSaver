@@ -20,14 +20,13 @@ class TreeWalker(
      * scan and register functions. look for the org.ygl.main function
      */
     override fun visitProgram(tree: BrainSaverParser.ProgramContext?): Symbol? {
-        val mainFunction = usageInfo["main"] ?: throw Exception("main not found")
+        val mainFunction = usageInfo["main"] ?: throw CompilationException("main not found")
         cg.enterScope("main")
         return visit(mainFunction.function.ctx)
     }
 
     override fun visitStatement(ctx: StatementContext?): Symbol? {
-        ctx ?: throw Exception("null StatementContext")
-        val result = super.visitStatement(ctx)
+        val result = super.visitStatement(ctx!!)
         cg.currentScope().deleteTemps()
         if (cg.options.optimize) {
             val staleVariables = usageInfo[currentFunction()]?.lastSymbolsUsedMap?.get(ctx)
@@ -42,9 +41,7 @@ class TreeWalker(
     }
 
     override fun visitAssignmentStatement(ctx: AssignmentStatementContext?): Symbol? {
-        ctx ?: throw Exception("null AssignmentStatementContext")
-
-        val lhs = ctx.lhs.text
+        val lhs = ctx!!.lhs.text
         val op = ctx.op.text
         val rhs = ctx.exp()
 
@@ -95,7 +92,7 @@ class TreeWalker(
                 }
                 "%=" -> math.modBy(lhsSymbol, expResult)
                 else -> {
-                    throw Exception("invalid assignment operator: " + op)
+                    throw CompilationException("invalid assignment operator $op", ctx.op)
                 }
             }
         }
@@ -119,7 +116,7 @@ class TreeWalker(
                 when (op) {
                     "*=" -> cg.math.multiplyBy(lhs, rhs)
                     "/=" -> cg.math.divideBy(lhs, rhs)
-                    else -> throw Exception("invalid assignment operator: " + op)
+                    else -> throw CompilationException("invalid assignment operator $op")
                 }
             }
         }
@@ -188,7 +185,7 @@ class TreeWalker(
         when (exp) {
             is AtomIdContext -> {
                 val symbol = cg.getSymbol(ctx.exp().text) ?:
-                        throw Exception("undefined identifier: ${ctx.exp().text}")
+                        throw CompilationException("undefined identifier ${ctx.exp().text}", ctx)
                 if (isConstant(symbol) && symbol.type == Type.INT) {
                     cg.io.printImmediate(symbol.value.toString())
                 } else {
@@ -210,8 +207,7 @@ class TreeWalker(
     }
 
     override fun visitReadStatement(ctx: ReadStatementContext?): Symbol? {
-        ctx ?: throw Exception("null ReadStatementContext")
-        val id = ctx.Identifier().text
+        val id = ctx!!.Identifier().text
         return when {
             ctx.rd != null -> {
                 val sym = cg.currentScope().getOrCreateSymbol(id, type = Type.INT)
@@ -221,14 +217,14 @@ class TreeWalker(
                 val sym = cg.currentScope().getOrCreateSymbol(id, type = Type.INT)
                 cg.io.readInt(sym)
             }
-            else -> throw Exception("unsupported read call")
+            else -> throw CompilationException("unsupported read call", ctx)
         }
     }
 
     override fun visitAtomId(ctx: AtomIdContext?): Symbol? {
-        val symbolName = ctx?.Identifier()?.text ?: throw Exception("null atom identifier")
+        val symbolName = ctx!!.Identifier().text
         // check for undefined identifier
-        return cg.getSymbol(symbolName) ?: throw Exception("undefined identifier: $symbolName")
+        return cg.getSymbol(symbolName) ?: throw CompilationException("undefined identifier $symbolName", ctx)
     }
 
     override fun visitAtomStr(ctx: AtomStrContext?): Symbol? {
@@ -244,7 +240,7 @@ class TreeWalker(
         val scope = cg.currentScope()
         val valueStr = ctx?.IntegerLiteral()?.text ?: throw Exception("null integer literal")
         val value = Integer.parseInt(valueStr)
-        if (value >= 256) throw Exception("integer overflow: $value")
+        if (value >= 256) throw CompilationException("integer overflow $value", ctx)
         val tempSymbol = scope.getTempSymbol(Type.INT)
         cg.loadInt(tempSymbol, value)
         tempSymbol.value = value
@@ -256,8 +252,7 @@ class TreeWalker(
     }
 
     override fun visitCallStatement(ctx: CallStatementContext?): Symbol? {
-        ctx ?: throw Exception("null CallStatementContext")
-        val name = ctx.funcName?.text ?: throw Exception("null function name")
+        val name = ctx!!.funcName?.text ?: throw CompilationException("null function name", ctx)
         val args = ctx.expList()?.exp()
 
         if (name in libraryFunctions.procedures) {
@@ -266,7 +261,7 @@ class TreeWalker(
         }
 
         // lookup matching function and its params
-        val function = usageInfo[name]?.function ?: throw Exception("unrecognized function: $name")
+        val function = usageInfo[name]?.function ?: throw CompilationException("unrecognized function $name", ctx)
 
         functionCall(function, args)
         return null
@@ -282,7 +277,7 @@ class TreeWalker(
         }
 
         // lookup matching function and its params
-        val function = usageInfo[name]?.function ?: throw Exception("unrecognized function: $name")
+        val function = usageInfo[name]?.function ?: throw CompilationException("unrecognized function $name", ctx)
         if (function.isVoid) {
             throw ParseCancellationException("line ${ctx.start.line}: function '$name' is void")
         }
@@ -301,7 +296,7 @@ class TreeWalker(
 
             val arguments = ArrayList<Symbol>(params.size)
             for (exp in args) {
-                val expResult = visit(exp) ?: throw Exception("null call argument: ${exp.text}")
+                val expResult = visit(exp) ?: throw CompilationException("null call argument ${exp.text}")
                 arguments.add(expResult)
             }
 
@@ -370,7 +365,7 @@ class TreeWalker(
                 ">=" -> math.greaterThanEqual(left, right)
                 "&&" -> math.and(left, right)
                 "||" -> math.or(left, right)
-                else -> throw Exception("invalid op $op")
+                else -> throw CompilationException("invalid op $op")
             }
         }
     }
@@ -385,7 +380,7 @@ class TreeWalker(
             "*=" -> left * right
             "/=" -> left / right
             "%=" -> left % right
-            else -> throw Exception("invalid op $op")
+            else -> throw CompilationException("invalid op $op")
         }
 
         result = Math.min(result, 255)
@@ -413,7 +408,7 @@ class TreeWalker(
             ">=" -> if (left >= right) 1 else 0
             "&&" -> if (left > 0 && right > 0) 1 else 0
             "||" -> if (left > 0 || right > 0) 1 else 0
-            else -> throw Exception("invalid op $op")
+            else -> throw CompilationException("invalid op $op")
         }
 
         result = result.clamp(0, 255)
@@ -499,8 +494,7 @@ class TreeWalker(
     }
 
     override fun visitWhileStatement(ctx: WhileStatementContext?): Symbol? {
-        ctx ?: throw Exception("null WhileStatementContext")
-        var condition = visit(ctx.condition) ?: throw Exception("null condition result")
+        var condition = visit(ctx!!.condition) ?: throw Exception("null condition result")
 
         if (isConstant(condition) && (condition.value as Int) == 0) {
             return null
@@ -533,9 +527,7 @@ class TreeWalker(
     }
 
     override fun visitForStatement(ctx: ForStatementContext?): Symbol? {
-        ctx ?: throw Exception("null ForStatementContext")
-
-        val start = visit(ctx.start)!!
+        val start = visit(ctx!!.start)!!
         val stop = visit(ctx.stop)!!
         val step = if (ctx.step != null) {
             visit(ctx.step)!!
@@ -600,22 +592,20 @@ class TreeWalker(
     }
 
     override fun visitArrayConstructor(ctx: ArrayConstructorContext?): Symbol? {
-        ctx ?: throw Exception("null ArrayConstructorContext")
-        val name = ctx.lhs.text
+        val name = ctx!!.lhs.text
         val size = Integer.parseInt(ctx.arraySize.text)
         return createArray(name, size)
     }
 
     override fun visitArrayLiteral(ctx: ArrayLiteralContext?): Symbol? {
-        ctx ?: throw Exception("null ArrayLiteralContext")
-        val name = ctx.lhs.text
+        val name = ctx!!.lhs.text
         val values = ctx.integerList().IntegerLiteral()
         val size = values.size
         return createArray(name, size, values)
     }
 
     private fun createArray(name: String, size: Int, values: List<TerminalNode>? = null): Symbol {
-        if (size < 1 || size >= 256) throw Exception("array size must be between 1 and 256")
+        if (size < 1 || size >= 256) throw CompilationException("array size must be between 1 and 256")
         val array = cg.currentScope().createSymbol(name, size + 4, Type.INT)
         if (values != null) {
             values.map { Integer.parseInt(it.text) }.
@@ -627,8 +617,7 @@ class TreeWalker(
     }
 
     override fun visitArrayWriteStatement(ctx: ArrayWriteStatementContext?): Symbol? {
-        ctx ?: throw Exception("null ArrayWriteStatementContext")
-        val array = checkNotNull(cg.currentScope().getSymbol(ctx.array.text), { "null ${ctx.array.text}" })
+        val array = checkNotNull(cg.currentScope().getSymbol(ctx!!.array.text), { "null ${ctx.array.text}" })
         val index = checkNotNull(visit(ctx.idx), { "null ${ctx.idx.text}" })
         val value = checkNotNull(visit(ctx.rhs), { "null ${ctx.rhs.text}" })
 
@@ -652,8 +641,7 @@ class TreeWalker(
     }
 
     override fun visitArrayReadExp(ctx: ArrayReadExpContext?): Symbol? {
-        ctx ?: throw Exception("null ArrayReadExpContext")
-        val array = checkNotNull(cg.currentScope().getSymbol(ctx.array.text), { "null ${ctx.array.text}" })
+        val array = checkNotNull(cg.currentScope().getSymbol(ctx!!.array.text), { "null ${ctx.array.text}" })
         val index = checkNotNull(visit(ctx.idx), { "null ${ctx.idx.text}" })
 
         return if (isConstant(index)) {
@@ -665,8 +653,7 @@ class TreeWalker(
     }
 
     override fun visitDebugStatement(ctx: DebugStatementContext?): Symbol? {
-        ctx ?: throw Exception("null DebugStatementContext")
-        ctx.idList.Identifier().mapNotNull {
+        ctx!!.idList.Identifier().mapNotNull {
             cg.getSymbol(it.text)
         }
         .forEach {
