@@ -29,12 +29,12 @@ fun eval(code: String, userInput: String = "", wrapping: Boolean = false): Strin
     return outputStream.toString()
 }
 
-class TestContext(wrapping: Boolean = false, globals: Set<Symbol> = HashSet())
+class TestContext(wrapping: Boolean = false, globals: HashMap<String, Symbol> = HashMap())
 {
     private val output: ByteArrayOutputStream = ByteArrayOutputStream()
     val cg: CodeGen = buildCodegen(wrapping, globals)
 
-    private fun buildCodegen(wrapping: Boolean, globals: Set<Symbol>): CodeGen {
+    private fun buildCodegen(wrapping: Boolean, globals: HashMap<String, Symbol>): CodeGen {
         val options = CompilerOptions(minify = true, wrapping = wrapping)
         val cg = CodeGen(output, options, globals)
         cg.enterScope("main")

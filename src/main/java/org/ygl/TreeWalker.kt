@@ -10,17 +10,18 @@ import java.util.*
  */
 class TreeWalker(
         private val cg: CodeGen,
-        private val usageInfo: UsageInfoMap
+        private val programInfo: ProgramInfo
 ) : BrainSaverBaseVisitor<Symbol?>()
 {
     private val libraryFunctions = LibraryFunctions(cg, this)
     private val staleSymbols = ArrayList<String>()
+    private val functionInfo = programInfo.functionInfo
 
     /**
      * scan and register functions. look for the org.ygl.main function
      */
-    override fun visitProgram(tree: BrainSaverParser.ProgramContext?): Symbol? {
-        val mainFunction = usageInfo["main"] ?: throw CompilationException("main not found")
+    override fun visitProgram(tree: ProgramContext?): Symbol? {
+        val mainFunction = functionInfo["main"] ?: throw CompilationException("main not found")
         cg.enterScope("main")
         return visit(mainFunction.function.ctx)
     }
@@ -29,7 +30,7 @@ class TreeWalker(
         val result = super.visitStatement(ctx!!)
         cg.currentScope().deleteTemps()
         if (cg.options.optimize) {
-            val staleVariables = usageInfo[currentFunction()]?.lastSymbolsUsedMap?.get(ctx)
+            val staleVariables = functionInfo[currentFunction()]?.lastSymbolsUsedMap?.get(ctx)
             staleVariables?.let {
                 if (cg.options.verbose) {
                     println("line ${ctx.start.line}: auto deleting $staleVariables")
@@ -45,7 +46,7 @@ class TreeWalker(
         val op = ctx.op.text
         val rhs = ctx.exp()
 
-        if (lhs in usageInfo[currentFunction()]!!.unusedSymbols) {
+        if (lhs in functionInfo[currentFunction()]!!.unusedSymbols) {
             if (cg.options.verbose) println("ignoring unused symbol $lhs")
             return null
         }
@@ -261,7 +262,7 @@ class TreeWalker(
         }
 
         // lookup matching function and its params
-        val function = usageInfo[name]?.function ?: throw CompilationException("unrecognized function $name", ctx)
+        val function = functionInfo[name]?.function ?: throw CompilationException("unrecognized function $name", ctx)
 
         functionCall(function, args)
         return null
@@ -277,7 +278,7 @@ class TreeWalker(
         }
 
         // lookup matching function and its params
-        val function = usageInfo[name]?.function ?: throw CompilationException("unrecognized function $name", ctx)
+        val function = functionInfo[name]?.function ?: throw CompilationException("unrecognized function $name", ctx)
         if (function.isVoid) {
             throw ParseCancellationException("line ${ctx.start.line}: function '$name' is void")
         }
@@ -684,7 +685,7 @@ class TreeWalker(
         if (symbol.value == null) return false
         if (cg.currentScope().loopContexts.isNotEmpty()) {
             cg.currentScope().loopContexts.forEach { ctx ->
-                val modifiedSymbols = usageInfo[currentFunction()]!!.loopSymbolsWritten[ctx]
+                val modifiedSymbols = functionInfo[currentFunction()]!!.loopSymbolsWritten[ctx]
                 if (modifiedSymbols != null && symbol.name in modifiedSymbols) return false
             }
         }

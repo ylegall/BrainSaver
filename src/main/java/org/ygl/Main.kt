@@ -7,6 +7,7 @@ import org.apache.commons.cli.DefaultParser
 import org.apache.commons.cli.HelpFormatter
 import org.apache.commons.cli.Options
 import org.apache.commons.cli.ParseException
+import org.ygl.ast.AstBuilder
 import java.io.*
 
 const val VERSION = "1.0"
@@ -44,12 +45,23 @@ fun compile(input: InputStream, outStream: OutputStream, options: CompilerOption
     parser.addErrorListener(CompileErrorListener.INSTANCE)
     val tree = parser.program()
 
-    val globals = GlobalVisitor(parser, tree).getGlobals()
-    val analysisInfoMap = analysisPass(tree, options, globals)
+    parser.constants.toString()
+
+    val globals = resolveGlobals(parser, tree)
+    val programInfo = getProgramInfo(parser, options, tree)
+
+    val ast = AstBuilder().visit(tree)
+    val constantEvaluator = ConstantEvaluator(programInfo)
+    constantEvaluator.visit(ast)
+
+    //ConstantEvaluator(programInfo).visit(tree)
+    //ParseTreeWalker.DEFAULT.walk(SourceTransformations(parser), tree)
+
+    //println(tree.toStringTree())
 
     val cg = CodeGen(outStream, options, globals)
     cg.use {
-        val visitor = TreeWalker(it, analysisInfoMap)
+        val visitor = TreeWalker(it, programInfo)
         visitor.visit(tree)
     }
 }
