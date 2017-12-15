@@ -6,8 +6,17 @@ class ExpResult(val value: Int)
 
 class ConstantEvaluator(val programInfo: ProgramInfo) : AstWalker<ExpResult>()
 {
-    private val symbols = mutableMapOf<String, ExpResult>()
+    private val symbols = mutableMapOf<String, Int>()
     private val emptyResult = ExpResult(-1)
+
+    override fun visit(node: AssignmentNode): ExpResult {
+        val rhs = visit(node.rhs)
+        if (rhs != emptyResult) {
+            node.rhs = AtomIntNode(rhs.value)
+            symbols[node.lhs] = rhs.value
+        }
+        return emptyResult
+    }
 
     override fun visit(node: BinaryExpNode): ExpResult {
         val op = node.op
@@ -43,9 +52,9 @@ class ConstantEvaluator(val programInfo: ProgramInfo) : AstWalker<ExpResult>()
     }
 
     override fun visit(node: AtomIdNode): ExpResult {
-        // TODO
+        // TODO check this symbol is written in a conditional context
         return if (node.identifier in symbols) {
-            ExpResult(symbols[node.identifier]!!.value)
+            ExpResult(symbols[node.identifier]!!)
         } else {
             emptyResult
         }

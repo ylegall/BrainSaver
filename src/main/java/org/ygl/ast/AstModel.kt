@@ -87,7 +87,7 @@ class PrintStatementNode(
 class AssignmentNode(
         val op: String,
         val lhs: String,
-        val rhs: AstNode
+        var rhs: AstNode
 ) : AstNode(AssignmentStatementContext::class, mutableListOf(rhs))
 
 open class ExpNode(
