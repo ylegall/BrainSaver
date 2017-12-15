@@ -13,63 +13,28 @@ internal class SymbolResult {
 }
 
 /**
- * Finalized info passed to the code generation phase
- */
-class AnalysisInfo (
-    val function: Function,
-    val unusedSymbols: Set<String>,
-    val lastSymbolsUsedMap: Map<ParserRuleContext, Set<String>>,
-    val loopSymbolsWritten: Map<ParserRuleContext, Set<String>>
-)
-
-typealias UsageInfoMap = Map<String, AnalysisInfo>
-
-/**
- *
- */
-private class TempAnalysisInfo(val function: Function)
-{
-    val assignedSymbols = mutableSetOf<String>()
-    val loopSymbolsWritten = mutableMapOf<ParserRuleContext, MutableSet<String>>()
-    val lastSymbolsUsedMap = mutableMapOf<ParserRuleContext, MutableSet<String>>()
-    val symbolUseMap = mutableMapOf<String, ParserRuleContext>()
-}
-
-/**
- *
- */
-fun analysisPass(tree: ProgramContext, options: CompilerOptions, globals: Map<String, Symbol>): UsageInfoMap {
-    val visitor = AnalyzingVisitor()
-    visitor.visit(tree)
-    val analysisInfoMap = visitor.getAnalysisInfo(globals)
-
-    if ("main" !in analysisInfoMap) throw CompilationException("no main function found")
-
-    if (options.verbose) {
-        for ((fn, info) in analysisInfoMap) {
-            println("\n$fn")
-            println("-".repeat(fn.length))
-            println("\tunused symbols: ${info.unusedSymbols}")
-        }
-    }
-    return analysisInfoMap
-}
-
-/**
  * Walks the tree to collect symbol usage info
  */
 internal class AnalyzingVisitor : BrainSaverBaseVisitor<SymbolResult>()
 {
     private var currentFunction = ""
-    private val functionInfo = HashMap<String, TempAnalysisInfo>()
+    private val functionInfo = mutableMapOf<String, ScopeInfo>()
+
+    private class ScopeInfo(val function: Function)
+    {
+        val assignedSymbols = mutableSetOf<String>()
+        val loopSymbolsWritten = mutableMapOf<ParserRuleContext, MutableSet<String>>()
+        val lastSymbolsUsedMap = mutableMapOf<ParserRuleContext, MutableSet<String>>()
+        val symbolUseMap = mutableMapOf<String, ParserRuleContext>()
+    }
 
     /**
      *
      */
-    fun getAnalysisInfo(globals: Map<String, Symbol>): UsageInfoMap {
+    fun getAnalysisInfo(globals: Map<String, Symbol>): Map<String, SymbolInfo> {
 
-        fun buildAnalysisInfo(tempInfo: TempAnalysisInfo): AnalysisInfo {
-            return AnalysisInfo(
+        fun buildAnalysisInfo(tempInfo: ScopeInfo): SymbolInfo {
+            return SymbolInfo(
                     tempInfo.function,
                     tempInfo.assignedSymbols.subtract(tempInfo.symbolUseMap.keys).subtract(globals.keys),
                     tempInfo.lastSymbolsUsedMap,
@@ -93,7 +58,7 @@ internal class AnalyzingVisitor : BrainSaverBaseVisitor<SymbolResult>()
         if (name in functionInfo) {
             throw CompilationException("duplicate function", ctx)
         }
-        functionInfo[name] = TempAnalysisInfo(function)
+        functionInfo[name] = ScopeInfo(function)
 
         currentFunction = name
         val result = visitChildren(ctx)
@@ -104,21 +69,21 @@ internal class AnalyzingVisitor : BrainSaverBaseVisitor<SymbolResult>()
 
     override fun visitWhileStatement(ctx: WhileStatementContext?): SymbolResult {
         val symbolInfo = visitChildren(ctx!!)
-        val scopeInfo = functionInfo[currentFunction] ?: throw Exception("unregistered function: $currentFunction")
+        val scopeInfo = currentScopeInfo()
         scopeInfo.loopSymbolsWritten[ctx] = symbolInfo.writtenSymbols
         return symbolInfo
     }
 
     override fun visitForStatement(ctx: ForStatementContext?): SymbolResult {
         val symbolInfo = visitChildren(ctx!!)
-        val scopeInfo = functionInfo[currentFunction] ?: throw Exception("unregistered function: $currentFunction")
+        val scopeInfo = currentScopeInfo()
         scopeInfo.loopSymbolsWritten[ctx] = symbolInfo.writtenSymbols
         return symbolInfo
     }
 
     override fun visitIfStatement(ctx: IfStatementContext?): SymbolResult {
         val symbolInfo = visitChildren(ctx!!)
-        val scopeInfo = functionInfo[currentFunction] ?: throw Exception("unregistered function: $currentFunction")
+        val scopeInfo = currentScopeInfo()
         scopeInfo.loopSymbolsWritten[ctx] = symbolInfo.writtenSymbols
         return symbolInfo
     }
@@ -173,7 +138,7 @@ internal class AnalyzingVisitor : BrainSaverBaseVisitor<SymbolResult>()
     }
 
     private fun recordWriteSymbol(lhs: String, ctx: ParserRuleContext? = null): SymbolResult {
-        val info = functionInfo[currentFunction] ?: throw Exception("unregistered function: $currentFunction")
+        val info = currentScopeInfo()
         info.assignedSymbols.add(lhs)
         return if (ctx != null)
             visitChildren(ctx).apply{ writtenSymbols.add(lhs) }
@@ -197,5 +162,9 @@ internal class AnalyzingVisitor : BrainSaverBaseVisitor<SymbolResult>()
         } else {
             SymbolResult()
         }
+    }
+
+    private fun currentScopeInfo(): ScopeInfo {
+        return functionInfo[currentFunction] ?: throw Exception("unregistered function: $currentFunction")
     }
 }

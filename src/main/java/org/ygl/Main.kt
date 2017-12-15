@@ -45,11 +45,11 @@ fun compile(input: InputStream, outStream: OutputStream, options: CompilerOption
     val tree = parser.program()
 
     val globals = resolveGlobals(parser, tree)
-    val analysisInfoMap = analysisPass(tree, options, globals)
+    val programInfo = getProgramInfo(parser, options, tree)
 
     val cg = CodeGen(outStream, options, globals)
     cg.use {
-        val visitor = TreeWalker(it, analysisInfoMap)
+        val visitor = TreeWalker(it, programInfo)
         visitor.visit(tree)
     }
 }
