@@ -38,7 +38,7 @@ private class TempAnalysisInfo(val function: Function)
 /**
  *
  */
-fun analysisPass(tree: ProgramContext, options: CompilerOptions, globals: Set<Symbol>): UsageInfoMap {
+fun analysisPass(tree: ProgramContext, options: CompilerOptions, globals: Map<String, Symbol>): UsageInfoMap {
     val visitor = AnalyzingVisitor()
     visitor.visit(tree)
     val analysisInfoMap = visitor.getAnalysisInfo(globals)
@@ -66,14 +66,12 @@ internal class AnalyzingVisitor : BrainSaverBaseVisitor<SymbolResult>()
     /**
      *
      */
-    fun getAnalysisInfo(globals: Set<Symbol>): UsageInfoMap {
-
-        val globalNames = globals.map { it.name }
+    fun getAnalysisInfo(globals: Map<String, Symbol>): UsageInfoMap {
 
         fun buildAnalysisInfo(tempInfo: TempAnalysisInfo): AnalysisInfo {
             return AnalysisInfo(
                     tempInfo.function,
-                    tempInfo.assignedSymbols.subtract(tempInfo.symbolUseMap.keys).subtract(globalNames),
+                    tempInfo.assignedSymbols.subtract(tempInfo.symbolUseMap.keys).subtract(globals.keys),
                     tempInfo.lastSymbolsUsedMap,
                     tempInfo.loopSymbolsWritten
             )

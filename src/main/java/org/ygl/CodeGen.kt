@@ -10,7 +10,7 @@ typealias BinaryOp = (Symbol, Symbol) -> Symbol
 class CodeGen(
         outputStream: OutputStream = System.`out`,
         val options: CompilerOptions = DEFAULT_COMPILE_OPTIONS,
-        globals: Set<Symbol> = HashSet()
+        globals: Map<String, Symbol> = mapOf()
 ): AutoCloseable {
 
     private var col = 0
@@ -26,8 +26,8 @@ class CodeGen(
 
     init {
         val globalScope = Scope(0, "")
-        for (global in globals) {
-            globalScope.createSymbol(global.name, global)
+        for ((name, global) in globals) {
+            globalScope.createSymbol(name, global)
         }
         scopes.add(globalScope)
     }
