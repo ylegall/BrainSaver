@@ -16,7 +16,7 @@ constant
     ;
 
 globalVariable
-    :   storage Identifier '=' rhs=atom ';'
+    :   storage Identifier '=' rhs=exp ';'
     ;
 
 storage
@@ -44,7 +44,6 @@ statementList
     :   statement (statement)*
     ;
 
-// TODO
 statement
     :   printStatement
     |   readStatement
@@ -96,15 +95,17 @@ returnStatement
     :   RETURN exp? ';'
     ;
 
+// TODO: remove
 readStatement
     :   (rd=READ|rdint=READINT) '(' Identifier ')' ';'
     ;
 
-// TODO
+// TODO remove
 printStatement
     :   PRINT '(' exp ')' ';'
     ;
 
+// TODO: allow array size to be constant expression
 arrayInitStatement
     :   lhs=Identifier '=' ARRAY '(' arraySize=IntegerLiteral ')' ';'   # arrayConstructor
     |   lhs=Identifier '=' '[' contents=integerList ']' ';'             # arrayLiteral

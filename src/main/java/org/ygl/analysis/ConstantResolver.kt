@@ -2,6 +2,7 @@ package org.ygl.analysis
 
 import org.ygl.CompilationException
 import org.ygl.ast.*
+import org.ygl.model.StorageType
 
 /**
  * TODO: function evaluation
@@ -35,7 +36,16 @@ class ConstantResolver : AstWalker<AstNode>() {
         if (node.lhs in constants) {
             throw CompilationException("${node.lhs} redefined")
         }
-        globals.add(node.lhs)
+        if (node.storage == StorageType.VAL) {
+            val rhs = visit(node.rhs)
+            if (rhs !is AtomIntNode && rhs !is AtomStrNode) {
+                globals.add(node.lhs)
+            } else {
+                constants.put(node.lhs, rhs)
+            }
+        } else {
+            globals.add(node.lhs)
+        }
         return emptyValue
     }
 

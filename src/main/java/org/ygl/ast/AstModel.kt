@@ -12,7 +12,7 @@ class ConstantNode(
         val lhs: String,
         val rhs: AstNode
 ) : AstNode(ConstantNode::class, mutableListOf(rhs)) {
-    override fun toString() = lhs + rhs.toString()
+    override fun toString() = "$lhs = $rhs"
 }
 
 class GlobalVariableNode(
@@ -68,7 +68,7 @@ class ForStatementNode(
 
 class CallStatementNode(
         val name: String,
-        val params: MutableList<ExpNode>
+        val params: MutableList<AstNode>
 ) : StatementNode(CallStatementNode::class, params)
 
 class DebugStatementNode(
@@ -88,8 +88,8 @@ class ArrayConstructorNode(
 class ArrayWriteNode(
         val array: String,
         val idx: AstNode,
-        val value: AstNode
-) : StatementNode(ArrayWriteNode::class, mutableListOf(idx, value))
+        val rhs: AstNode
+) : StatementNode(ArrayWriteNode::class, mutableListOf(idx, rhs))
 
 class ReadStatementNode(
         val name: String
@@ -109,7 +109,7 @@ class AssignmentNode(
         val lhs: String,
         var rhs: AstNode
 ) : StatementNode(AssignmentNode::class, mutableListOf(rhs)) {
-    override fun toString() = lhs + rhs.toString()
+    override fun toString() = "$lhs = $rhs"
 }
 
 open class ExpNode(
@@ -119,14 +119,16 @@ open class ExpNode(
 
 class CallExpNode(
         val name: String,
-        val params: MutableList<ExpNode>
+        val params: MutableList<AstNode>
 ) : ExpNode(CallExpNode::class, params)
 
 class BinaryExpNode(
         val op: String,
         val left: AstNode,
         val right: AstNode
-) : ExpNode(BinaryExpNode::class, mutableListOf(left, right))
+) : ExpNode(BinaryExpNode::class, mutableListOf(left, right)) {
+    override fun toString() = "$left $op $right"
+}
 
 class NotExpNode(
         val right: AstNode
@@ -139,7 +141,7 @@ class ArrayReadExpNode(
 
 open class AtomNode(
         type: KClass<out AtomNode>
-) : AstNode(type)
+) : ExpNode(type)
 
 class AtomIntNode(
         val value: Int

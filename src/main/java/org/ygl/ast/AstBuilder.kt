@@ -79,7 +79,7 @@ class AstBuilder : BrainSaverBaseVisitor<AstNode>()
 
     override fun visitCallStatement(ctx: CallStatementContext?): AstNode {
         val name = ctx!!.funcName.text
-        val args = toNodeList<ExpNode>(ctx.args?.exp() ?: mutableListOf())
+        val args = toNodeList<AstNode>(ctx.args?.exp() ?: mutableListOf())
         return CallStatementNode(name, args)
     }
 
@@ -119,7 +119,7 @@ class AstBuilder : BrainSaverBaseVisitor<AstNode>()
     }
 
     override fun visitCallExp(ctx: CallExpContext?): AstNode {
-        val params = toNodeList<ExpNode>(ctx!!.expList().exp())
+        val params = toNodeList<AstNode>(ctx!!.expList().exp())
         return CallExpNode(ctx.funcName.text, params)
     }
 
@@ -149,10 +149,8 @@ class AstBuilder : BrainSaverBaseVisitor<AstNode>()
     }
 
     @Suppress("UNCHECKED_CAST")
-    private fun <T: AstNode> toNodeList(input: Collection<ParserRuleContext>): MutableList<T> {
-        val list = mutableListOf<T>()
-        input.forEach { list.add(visit(it) as T) }
-        return list
+    private fun <T: AstNode> toNodeList(input: List<ParserRuleContext>): MutableList<T> {
+        return MutableList(input.size, { idx -> visit(input[idx]) as T })
     }
 
     override fun visitChildren(rule: RuleNode): AstNode {

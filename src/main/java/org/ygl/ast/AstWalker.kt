@@ -20,6 +20,12 @@ abstract class AstWalker<T>
                 is WhileStatementNode -> visit(node)
                 else -> visitChildren(node)
             }
+            is AtomNode -> when(node) {
+                is AtomIdNode -> visit(node)
+                is AtomIntNode -> visit(node)
+                is AtomStrNode -> visit(node)
+                else -> visitChildren(node)
+            }
             is ExpNode -> when(node) {
                 is ArrayReadExpNode -> visit(node)
                 is BinaryExpNode -> visit(node)
@@ -27,15 +33,10 @@ abstract class AstWalker<T>
                 is NotExpNode -> visit(node)
                 else -> visitChildren(node)
             }
-            is AtomNode -> when(node) {
-                is AtomIdNode -> visit(node)
-                is AtomIntNode -> visit(node)
-                is AtomStrNode -> visit(node)
-                else -> visitChildren(node)
-            }
             is ConstantNode -> visit(node)
+            is GlobalVariableNode -> visit(node)
             is FunctionNode -> visit(node)
-            else -> visit(node)
+            else -> visitChildren(node)
         }
     }
 
@@ -75,7 +76,7 @@ abstract class AstWalker<T>
         }
     }
 
-    abstract fun aggregateResult(agg: T, next: T): T
+    open fun aggregateResult(agg: T, next: T): T = agg
 
     abstract fun defaultValue(): T
 

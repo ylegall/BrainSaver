@@ -8,6 +8,7 @@ import org.apache.commons.cli.HelpFormatter
 import org.apache.commons.cli.Options
 import org.apache.commons.cli.ParseException
 import org.ygl.analysis.ConstantResolver
+import org.ygl.analysis.ConstantSubstitutions
 import org.ygl.ast.AstBuilder
 import java.io.*
 
@@ -46,6 +47,7 @@ fun compile(input: InputStream, outStream: OutputStream, options: CompilerOption
     val ast = AstBuilder().visit(tree)
     val constants = ConstantResolver().resolveConstants(ast)
     println(constants)
+    ConstantSubstitutions(constants).visit(ast)
 
 //    val globals = resolveGlobals(parser, tree)
 //    val programInfo = getProgramInfo(parser, options, tree)
