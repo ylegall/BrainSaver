@@ -19,7 +19,7 @@ fun resolveGlobals(parser: BrainSaverParser, tree: ProgramContext): Map<String, 
             .forEach { ctx ->
                 val name = ctx.Identifier().text
                 if (globals.containsKey(name)) throw CompilationException("global symbol $name redefined", ctx)
-                when (ctx.atom()) {
+                when (ctx.rhs) {
                     is BrainSaverParser.AtomIntContext -> {
                         globals[name] = Symbol(name, 1, address, Type.INT, ctx.rhs.text.toInt())
                         address += 1

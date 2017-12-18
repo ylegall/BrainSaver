@@ -4,6 +4,7 @@ import org.antlr.v4.runtime.ParserRuleContext
 import org.antlr.v4.runtime.tree.RuleNode
 import org.ygl.BrainSaverBaseVisitor
 import org.ygl.BrainSaverParser.*
+import org.ygl.model.StorageType
 
 /**
  *
@@ -11,9 +12,16 @@ import org.ygl.BrainSaverParser.*
 class AstBuilder : BrainSaverBaseVisitor<AstNode>()
 {
     override fun visitProgram(ctx: ProgramContext?): AstNode {
-        val children = mutableListOf<AstNode>()
-        ctx!!.declList().function().forEach { children.add(visit(it)) }
-        return AstNode(ProgramContext::class, children)
+        return AstNode(children = visit(ctx!!.declList()).children)
+    }
+
+    override fun visitConstant(ctx: ConstantContext?): AstNode {
+        return ConstantNode(ctx!!.Identifier().text, visit(ctx.rhs))
+    }
+
+    override fun visitGlobalVariable(ctx: GlobalVariableContext?): AstNode {
+        val storage = StorageType.parse(ctx!!.storage().text)
+        return GlobalVariableNode(storage, ctx.Identifier().text, visit(ctx.rhs))
     }
 
     override fun visitFunction(ctx: FunctionContext?): AstNode {
@@ -51,13 +59,27 @@ class AstBuilder : BrainSaverBaseVisitor<AstNode>()
         return ForStatementNode(ctx.loopVar.text, start, stop, inc, stmts)
     }
 
+    override fun visitDeclarationStatement(ctx: DeclarationStatementContext?): AstNode {
+        val storage = StorageType.parse(ctx!!.storage().text)
+        return DeclarationNode(storage, ctx.lhs.text, visit(ctx.rhs))
+    }
+
     override fun visitAssignmentStatement(ctx: AssignmentStatementContext?): AstNode {
-        return AssignmentNode(ctx!!.op.text, ctx.lhs.text, visit(ctx.rhs))
+        val op = ctx!!.op.text
+        val lhs = ctx.lhs.text
+
+        return if (op == "=") {
+            AssignmentNode(lhs, visit(ctx.rhs))
+        } else {
+            val left = AtomIdNode(lhs)
+            val right = visit(ctx.rhs)
+            return AssignmentNode(lhs, BinaryExpNode(op.substring(0, 1), left, right))
+        }
     }
 
     override fun visitCallStatement(ctx: CallStatementContext?): AstNode {
         val name = ctx!!.funcName.text
-        val args = toNodeList<ExpNode>(ctx.expList().exp())
+        val args = toNodeList<ExpNode>(ctx.args?.exp() ?: mutableListOf())
         return CallStatementNode(name, args)
     }
 
@@ -107,7 +129,11 @@ class AstBuilder : BrainSaverBaseVisitor<AstNode>()
     }
 
     override fun visitNotExp(ctx: NotExpContext?): ExpNode {
-        return NotExpNode(visit(ctx!!.right))
+        return NotExpNode(visit(ctx!!.right) as ExpNode)
+    }
+
+    override fun visitAtomExp(ctx: AtomExpContext?): AstNode {
+        return visit(ctx!!.atom())
     }
 
     override fun visitAtomId(ctx: AtomIdContext?): AstNode {
@@ -115,7 +141,7 @@ class AstBuilder : BrainSaverBaseVisitor<AstNode>()
     }
 
     override fun visitAtomStr(ctx: AtomStrContext?): AstNode {
-        return AtomStringNode(ctx!!.StringLiteral().text)
+        return AtomStrNode(ctx!!.StringLiteral().text)
     }
 
     override fun visitAtomInt(ctx: AtomIntContext?): AstNode {
@@ -137,6 +163,6 @@ class AstBuilder : BrainSaverBaseVisitor<AstNode>()
             val childResult = c.accept<AstNode>(this)
             if (childResult != null) children.add(childResult)
         }
-        return AstNode(ctx::class, children)
+        return AstNode(children = children)
     }
 }

@@ -8,11 +8,20 @@ program
     ;
 
 declList
-    :   (function | globalVariable)+
+    :   (function | globalVariable | constant)+
+    ;
+
+constant
+    : 'const' Identifier '=' rhs=exp ';'
     ;
 
 globalVariable
-    :   Identifier '=' rhs=atom ';'
+    :   storage Identifier '=' rhs=atom ';'
+    ;
+
+storage
+    :   'var' #varStorage
+    |   'val' #valStorage
     ;
 
 function
@@ -39,6 +48,7 @@ statementList
 statement
     :   printStatement
     |   readStatement
+    |   declarationStatement
     |   assignmentStatement
     |   callStatement
     |   ifStatement
@@ -64,6 +74,10 @@ whileStatement
 forStatement
     :   FOR '(' loopVar=Identifier IN start=atom '..' stop=atom (BY step=atom)? ')'
         '{' body=statementList '}'
+    ;
+
+declarationStatement
+    :   storage lhs=Identifier '=' rhs=exp ';'
     ;
 
 assignmentStatement

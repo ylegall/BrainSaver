@@ -7,6 +7,7 @@ import org.apache.commons.cli.DefaultParser
 import org.apache.commons.cli.HelpFormatter
 import org.apache.commons.cli.Options
 import org.apache.commons.cli.ParseException
+import org.ygl.analysis.ConstantResolver
 import org.ygl.ast.AstBuilder
 import java.io.*
 
@@ -39,31 +40,38 @@ fun compile(infile: File, options: CompilerOptions = DEFAULT_COMPILE_OPTIONS) {
 
 fun compile(input: InputStream, outStream: OutputStream, options: CompilerOptions = DEFAULT_COMPILE_OPTIONS) {
     // parse and generate the AST:
-    val lexer = BrainSaverLexer(CharStreams.fromStream(input))
-    val tokens = CommonTokenStream(lexer)
-    val parser = BrainSaverParser(tokens)
-    parser.addErrorListener(CompileErrorListener.INSTANCE)
+    val parser = parseInput(input)
     val tree = parser.program()
 
-    parser.constants.toString()
-
-    val globals = resolveGlobals(parser, tree)
-    val programInfo = getProgramInfo(parser, options, tree)
-
     val ast = AstBuilder().visit(tree)
-    val constantEvaluator = ConstantEvaluator(programInfo)
-    constantEvaluator.visit(ast)
+    val constants = ConstantResolver().resolveConstants(ast)
+    println(constants)
+
+//    val globals = resolveGlobals(parser, tree)
+//    val programInfo = getProgramInfo(parser, options, tree)
+
+    //val ast = AstBuilder().visit(tree)
+//    val constantEvaluator = ConstantEvaluator(programInfo)
+//    constantEvaluator.visit(ast)
 
     //ConstantEvaluator(programInfo).visit(tree)
     //ParseTreeWalker.DEFAULT.walk(SourceTransformations(parser), tree)
 
     //println(tree.toStringTree())
 
-    val cg = CodeGen(outStream, options, globals)
-    cg.use {
-        val visitor = TreeWalker(it, programInfo)
-        visitor.visit(tree)
-    }
+//    val cg = CodeGen(outStream, options, globals)
+//    cg.use {
+//        val visitor = TreeWalker(it, programInfo)
+//        visitor.visit(tree)
+//    }
+}
+
+private fun parseInput(input: InputStream): BrainSaverParser {
+    val lexer = BrainSaverLexer(CharStreams.fromStream(input))
+    val tokens = CommonTokenStream(lexer)
+    val parser = BrainSaverParser(tokens)
+    parser.addErrorListener(CompileErrorListener.INSTANCE)
+    return parser
 }
 
 
