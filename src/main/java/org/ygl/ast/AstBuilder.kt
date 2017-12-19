@@ -26,9 +26,13 @@ class AstBuilder : BrainSaverBaseVisitor<AstNode>()
 
     override fun visitFunction(ctx: FunctionContext?): AstNode {
         val params = ctx!!.params?.identifierList()?.Identifier()?.mapNotNull { it.text } ?: listOf()
-        val stmts = ctx.body.statement().map { visit(it) }.toCollection(mutableListOf())
-        if (ctx.body.ret != null) stmts.add(visit(ctx.body.ret))
+        val stmts = toNodeList<StatementNode>(ctx.body.statement())
+        if (ctx.body.ret != null) stmts.add(visit(ctx.body.ret) as ReadStatementNode)
         return FunctionNode(ctx.name.text, params, stmts)
+    }
+
+    override fun visitStatement(ctx: StatementContext?): AstNode {
+        return StatementNode(children = mutableListOf(super.visitChildren(ctx!!)))
     }
 
     override fun visitDebugStatement(ctx: DebugStatementContext?): AstNode {

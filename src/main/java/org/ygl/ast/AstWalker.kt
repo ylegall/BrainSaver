@@ -7,7 +7,6 @@ abstract class AstWalker<T>
             is StatementNode -> when(node) {
                 is ArrayConstructorNode -> visit(node)
                 is ArrayLiteralNode -> visit(node)
-                is ArrayReadExpNode -> visit(node)
                 is ArrayWriteNode -> visit(node)
                 is AssignmentNode -> visit(node)
                 is CallStatementNode -> visit(node)
@@ -18,7 +17,7 @@ abstract class AstWalker<T>
                 is PrintStatementNode -> visit(node)
                 is ReadStatementNode -> visit(node)
                 is WhileStatementNode -> visit(node)
-                else -> visitChildren(node)
+                else -> visit(node)
             }
             is AtomNode -> when(node) {
                 is AtomIdNode -> visit(node)
@@ -60,6 +59,7 @@ abstract class AstWalker<T>
     open fun visit(node: IfStatementNode): T = visitChildren(node)
     open fun visit(node: PrintStatementNode): T = visitChildren(node)
     open fun visit(node: ReadStatementNode): T = visitChildren(node)
+    open fun visit(node: StatementNode): T = visitChildren(node)
     open fun visit(node: NotExpNode): T = visitChildren(node)
     open fun visit(node: WhileStatementNode): T = visitChildren(node)
 

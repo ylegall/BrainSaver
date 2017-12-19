@@ -1,4 +1,4 @@
-package org.ygl.analysis
+package org.ygl.transformation
 
 import org.ygl.ast.*
 import java.util.*
@@ -10,10 +10,19 @@ class ConstantSubstitutions(
     private val emptyNode = AstNode()
     private val scopeSymbols = ArrayDeque<MutableSet<String>>()
 
+    fun replaceConstantSymobls(tree: AstNode): AstNode {
+        return visit(tree)
+    }
+
     override fun visit(node: DeclarationNode): AstNode {
         val rhs = visit(node.rhs)
         scopeSymbols.peek().add(node.lhs)
         return DeclarationNode(node.stoarge, node.lhs, rhs)
+    }
+
+    override fun visit(node: StatementNode): AstNode {
+        val children = mutableListOf(visit(node.children[0]))
+        return StatementNode(children = children)
     }
 
     override fun visit(node: ForStatementNode): AstNode {
@@ -39,9 +48,9 @@ class ConstantSubstitutions(
 
     override fun visit(node: FunctionNode): AstNode {
         scopeSymbols.push(mutableSetOf())
-        node.statements.forEach { visit(it) }
+        val newStatements = MutableList(node.statements.size, { i -> visit(node.statements[i]) as StatementNode })
         scopeSymbols.pop()
-        return node
+        return FunctionNode(node.name, node.params, newStatements)
     }
 
     override fun visit(node: AssignmentNode): AstNode {
@@ -86,7 +95,8 @@ class ConstantSubstitutions(
 
     override fun visitChildren(node: AstNode): AstNode {
         val newChildren = MutableList(node.children.size, { idx -> visit(node.children[idx]) })
-        return AstNode(node.type, newChildren)
+        node.children = newChildren
+        return node
     }
 
     override fun defaultValue(): AstNode {

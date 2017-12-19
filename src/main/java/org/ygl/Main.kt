@@ -7,9 +7,10 @@ import org.apache.commons.cli.DefaultParser
 import org.apache.commons.cli.HelpFormatter
 import org.apache.commons.cli.Options
 import org.apache.commons.cli.ParseException
-import org.ygl.analysis.ConstantResolver
-import org.ygl.analysis.ConstantSubstitutions
+import org.ygl.transformation.ConstantResolver
+import org.ygl.transformation.ConstantSubstitutions
 import org.ygl.ast.AstBuilder
+import org.ygl.ast.AstDebugger
 import java.io.*
 
 const val VERSION = "1.0"
@@ -46,8 +47,10 @@ fun compile(input: InputStream, outStream: OutputStream, options: CompilerOption
 
     val ast = AstBuilder().visit(tree)
     val constants = ConstantResolver().resolveConstants(ast)
-    println(constants)
-    ConstantSubstitutions(constants).visit(ast)
+    AstDebugger().print(ast)
+    val newAst = ConstantSubstitutions(constants).replaceConstantSymobls(ast)
+    println("after")
+    AstDebugger().print(newAst)
 
 //    val globals = resolveGlobals(parser, tree)
 //    val programInfo = getProgramInfo(parser, options, tree)
