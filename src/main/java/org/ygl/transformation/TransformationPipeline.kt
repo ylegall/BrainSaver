@@ -17,13 +17,13 @@ class TransformationPipeline(
 )
 {
     fun resolveConstants(): TransformationPipeline {
-        val constants = ConstantResolver().resolveConstants(ast)
+        val constants = ConstantExtractor().extractConstants(ast)
         if (options.verbose) {
             println("\nresolved constants:")
             println("-------------------")
             constants.forEach { (key, value) -> println("\t$key = $value") }
         }
-        ast = ConstantSubstitutions(constants).replaceConstantSymobls(ast)
+        ast = ConstantResolver(constants).resolveConstants(ast)
         return this
     }
 
