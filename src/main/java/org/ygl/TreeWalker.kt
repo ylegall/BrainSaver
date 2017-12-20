@@ -21,7 +21,7 @@ class TreeWalker(
      * scan and register functions. look for the org.ygl.main function
      */
     override fun visitProgram(tree: ProgramContext?): Symbol? {
-        val mainFunction = functionInfo["main"] ?: throw CompilationException("main not found")
+        val mainFunction = functionInfo["main"] ?: throw CompileException("main not found")
         cg.enterScope("main")
         return visit(mainFunction.function.ctx)
     }
@@ -93,7 +93,7 @@ class TreeWalker(
                 }
                 "%=" -> math.modBy(lhsSymbol, expResult)
                 else -> {
-                    throw CompilationException("invalid assignment operator $op", ctx.op)
+                    throw CompileException("invalid assignment operator $op", ctx.op)
                 }
             }
         }
@@ -117,7 +117,7 @@ class TreeWalker(
                 when (op) {
                     "*=" -> cg.math.multiplyBy(lhs, rhs)
                     "/=" -> cg.math.divideBy(lhs, rhs)
-                    else -> throw CompilationException("invalid assignment operator $op")
+                    else -> throw CompileException("invalid assignment operator $op")
                 }
             }
         }
@@ -186,7 +186,7 @@ class TreeWalker(
         when (exp) {
             is AtomIdContext -> {
                 val symbol = cg.getSymbol(ctx.exp().text) ?:
-                        throw CompilationException("undefined identifier ${ctx.exp().text}", ctx)
+                        throw CompileException("undefined identifier ${ctx.exp().text}", ctx)
                 if (isConstant(symbol) && symbol.type == Type.INT) {
                     cg.io.printImmediate(symbol.value.toString())
                 } else {
@@ -218,14 +218,14 @@ class TreeWalker(
                 val sym = cg.currentScope().getOrCreateSymbol(id, type = Type.INT)
                 cg.io.readInt(sym)
             }
-            else -> throw CompilationException("unsupported read call", ctx)
+            else -> throw CompileException("unsupported read call", ctx)
         }
     }
 
     override fun visitAtomId(ctx: AtomIdContext?): Symbol? {
         val symbolName = ctx!!.Identifier().text
         // check for undefined identifier
-        return cg.getSymbol(symbolName) ?: throw CompilationException("undefined identifier $symbolName", ctx)
+        return cg.getSymbol(symbolName) ?: throw CompileException("undefined identifier $symbolName", ctx)
     }
 
     override fun visitAtomStr(ctx: AtomStrContext?): Symbol? {
@@ -241,7 +241,7 @@ class TreeWalker(
         val scope = cg.currentScope()
         val valueStr = ctx?.IntegerLiteral()?.text ?: throw Exception("null integer literal")
         val value = Integer.parseInt(valueStr)
-        if (value >= 256) throw CompilationException("integer overflow $value", ctx)
+        if (value >= 256) throw CompileException("integer overflow $value", ctx)
         val tempSymbol = scope.getTempSymbol(Type.INT)
         cg.loadInt(tempSymbol, value)
         tempSymbol.value = value
@@ -253,7 +253,7 @@ class TreeWalker(
     }
 
     override fun visitCallStatement(ctx: CallStatementContext?): Symbol? {
-        val name = ctx!!.funcName?.text ?: throw CompilationException("null function name", ctx)
+        val name = ctx!!.funcName?.text ?: throw CompileException("null function name", ctx)
         val args = ctx.expList()?.exp()
 
         if (name in libraryFunctions.procedures) {
@@ -262,7 +262,7 @@ class TreeWalker(
         }
 
         // lookup matching function and its params
-        val function = functionInfo[name]?.function ?: throw CompilationException("unrecognized function $name", ctx)
+        val function = functionInfo[name]?.function ?: throw CompileException("unrecognized function $name", ctx)
 
         functionCall(function, args)
         return null
@@ -278,7 +278,7 @@ class TreeWalker(
         }
 
         // lookup matching function and its params
-        val function = functionInfo[name]?.function ?: throw CompilationException("unrecognized function $name", ctx)
+        val function = functionInfo[name]?.function ?: throw CompileException("unrecognized function $name", ctx)
         if (function.isVoid) {
             throw ParseCancellationException("line ${ctx.start.line}: function '$name' is void")
         }
@@ -297,7 +297,7 @@ class TreeWalker(
 
             val arguments = ArrayList<Symbol>(params.size)
             for (exp in args) {
-                val expResult = visit(exp) ?: throw CompilationException("null call argument ${exp.text}")
+                val expResult = visit(exp) ?: throw CompileException("null call argument ${exp.text}")
                 arguments.add(expResult)
             }
 
@@ -366,7 +366,7 @@ class TreeWalker(
                 ">=" -> math.greaterThanEqual(left, right)
                 "&&" -> math.and(left, right)
                 "||" -> math.or(left, right)
-                else -> throw CompilationException("invalid op $op")
+                else -> throw CompileException("invalid op $op")
             }
         }
     }
@@ -381,7 +381,7 @@ class TreeWalker(
             "*=" -> left * right
             "/=" -> left / right
             "%=" -> left % right
-            else -> throw CompilationException("invalid op $op")
+            else -> throw CompileException("invalid op $op")
         }
 
         result = Math.min(result, 255)
@@ -409,7 +409,7 @@ class TreeWalker(
             ">=" -> if (left >= right) 1 else 0
             "&&" -> if (left > 0 && right > 0) 1 else 0
             "||" -> if (left > 0 || right > 0) 1 else 0
-            else -> throw CompilationException("invalid op $op")
+            else -> throw CompileException("invalid op $op")
         }
 
         result = result.clamp(0, 255)
@@ -606,7 +606,7 @@ class TreeWalker(
     }
 
     private fun createArray(name: String, size: Int, values: List<TerminalNode>? = null): Symbol {
-        if (size < 1 || size >= 256) throw CompilationException("array size must be between 1 and 256")
+        if (size < 1 || size >= 256) throw CompileException("array size must be between 1 and 256")
         val array = cg.currentScope().createSymbol(name, size + 4, Type.INT)
         if (values != null) {
             values.map { Integer.parseInt(it.text) }.

@@ -1,10 +1,10 @@
 package org.ygl
 
-import org.antlr.v4.runtime.misc.ParseCancellationException
 import org.antlr.v4.runtime.BaseErrorListener
 import org.antlr.v4.runtime.ParserRuleContext
 import org.antlr.v4.runtime.RecognitionException
 import org.antlr.v4.runtime.Recognizer
+import org.antlr.v4.runtime.misc.ParseCancellationException
 
 
 class CompileErrorListener : BaseErrorListener() {
@@ -26,7 +26,7 @@ class CompileErrorListener : BaseErrorListener() {
     }
 }
 
-class CompilationException(
+class CompileException(
         message: String,
         ctx: ParserRuleContext? = null
 ) : Exception(

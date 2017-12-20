@@ -14,10 +14,16 @@ class ConstantSubstitutions(
         return visit(tree)
     }
 
+    override fun visit(node: ConstantNode) = node
+
+    override fun visit(node: GlobalVariableNode): AstNode {
+        return GlobalVariableNode(node.storage, node.lhs, visit(node.rhs))
+    }
+
     override fun visit(node: DeclarationNode): AstNode {
         val rhs = visit(node.rhs)
         scopeSymbols.peek().add(node.lhs)
-        return DeclarationNode(node.stoarge, node.lhs, rhs)
+        return DeclarationNode(node.storage, node.lhs, rhs)
     }
 
     override fun visit(node: StatementNode): AstNode {

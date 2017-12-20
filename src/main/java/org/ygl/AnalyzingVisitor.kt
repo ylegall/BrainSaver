@@ -56,7 +56,7 @@ internal class AnalyzingVisitor : BrainSaverBaseVisitor<SymbolResult>()
         val function = Function(name, ctx, isVoid)
 
         if (name in functionInfo) {
-            throw CompilationException("duplicate function", ctx)
+            throw CompileException("duplicate function", ctx)
         }
         functionInfo[name] = ScopeInfo(function)
 

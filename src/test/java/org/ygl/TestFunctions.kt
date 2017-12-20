@@ -18,7 +18,7 @@ internal class TestFunctions
                 print(" bar");
             }
         """
-        Assertions.assertThrows(CompilationException::class.java) {
+        Assertions.assertThrows(CompileException::class.java) {
             val result = compileAndEval(program)
             assertEquals("foo bar", result.trim())
         }

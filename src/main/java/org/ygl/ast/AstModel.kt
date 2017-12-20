@@ -14,7 +14,7 @@ class ConstantNode(
         val lhs: String,
         val rhs: AstNode
 ) : AstNode(ConstantNode::class, mutableListOf(rhs)) {
-    override fun toString() = "($lhs = $rhs)"
+    override fun toString() = "const $lhs ="
 }
 
 class GlobalVariableNode(
@@ -22,7 +22,7 @@ class GlobalVariableNode(
         val lhs: String,
         val rhs: AstNode
 ) : AstNode(GlobalVariableNode::class, mutableListOf(rhs)) {
-    override fun toString() = "($lhs = $rhs)"
+    override fun toString() = "global $lhs ="
 }
 
 class FunctionNode(
@@ -108,16 +108,18 @@ class PrintStatementNode(
 ) : StatementNode(PrintStatementNode::class, mutableListOf(exp))
 
 class DeclarationNode(
-        val stoarge: StorageType,
+        val storage: StorageType,
         val lhs: String,
         var rhs: AstNode
-) : StatementNode(DeclarationNode::class, mutableListOf(rhs))
+) : StatementNode(DeclarationNode::class, mutableListOf(rhs)) {
+    override fun toString() = "$storage $lhs ="
+}
 
 class AssignmentNode(
         val lhs: String,
         var rhs: AstNode
 ) : StatementNode(AssignmentNode::class, mutableListOf(rhs)) {
-    override fun toString() = "($lhs = $rhs)"
+    override fun toString() = "$lhs ="
 }
 
 open class ExpNode(
@@ -135,7 +137,7 @@ class BinaryExpNode(
         val left: AstNode,
         val right: AstNode
 ) : ExpNode(BinaryExpNode::class, mutableListOf(left, right)) {
-    override fun toString() = "($left $op $right)"
+    override fun toString() = "exp($op)"
 }
 
 class NotExpNode(

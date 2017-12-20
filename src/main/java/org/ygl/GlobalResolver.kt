@@ -18,7 +18,7 @@ fun resolveGlobals(parser: BrainSaverParser, tree: ProgramContext): Map<String, 
             .mapNotNull { ctx -> ctx as? GlobalVariableContext }
             .forEach { ctx ->
                 val name = ctx.Identifier().text
-                if (globals.containsKey(name)) throw CompilationException("global symbol $name redefined", ctx)
+                if (globals.containsKey(name)) throw CompileException("global symbol $name redefined", ctx)
                 when (ctx.rhs) {
                     is BrainSaverParser.AtomIntContext -> {
                         globals[name] = Symbol(name, 1, address, Type.INT, ctx.rhs.text.toInt())
@@ -33,7 +33,7 @@ fun resolveGlobals(parser: BrainSaverParser, tree: ProgramContext): Map<String, 
 
     for ((name, symbol) in globals) {
         if (!readSymbols.contains(name)) {
-            throw CompilationException("unused global variable $name")
+            throw CompileException("unused global variable $name")
         }
         finalGlobals.put(name, symbol)
     }

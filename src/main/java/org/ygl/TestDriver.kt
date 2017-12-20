@@ -21,7 +21,7 @@ fun main(args: Array<String>) {
         outStream.use { output ->
             try {
                 compile(input, output, compilerOptions)
-            } catch (e: CompilationException) {
+            } catch (e: CompileException) {
                 System.err.println(e.message)
                 return
             }
