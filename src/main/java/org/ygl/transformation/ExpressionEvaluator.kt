@@ -8,7 +8,7 @@ import org.ygl.ast.*
  */
 class ExpressionEvaluator : AstWalker<AstNode>()
 {
-    private val emptyNode = AstNode()
+    // TODO: use a shared class for resolving scope symbols?
     private var symbols: Map<String, AstNode> = mutableMapOf()
 
     fun evaluate(node: AstNode, symbols: Map<String, AstNode>): AstNode {
@@ -24,7 +24,7 @@ class ExpressionEvaluator : AstWalker<AstNode>()
     override fun visit(node: NotExpNode): AstNode {
         val result = visit(node.right)
         return if (result is AtomIntNode) {
-            AtomIntNode(if (result.value == 0) 1 else 0)
+            AtomIntNode(evaluateUnaryOp("!", result.value))
         } else {
             throw CompileException("unsupported negation operation: $result")
         }
@@ -42,14 +42,21 @@ class ExpressionEvaluator : AstWalker<AstNode>()
             }
             is AtomIntNode -> when (right) {
                 is AtomStrNode -> AtomStrNode(left.value.toString() + right.value)
-                is AtomIntNode -> AtomIntNode(computeResult(node.op, left.value, right.value))
+                is AtomIntNode -> AtomIntNode(evaluateBinaryOp(node.op, left.value, right.value))
                 else -> emptyNode
             }
             else -> emptyNode
         }
     }
 
-    private fun computeResult(op: String, left: Int, right: Int): Int {
+    fun evaluateUnaryOp(op: String, right: Int): Int {
+        return when (op) {
+            "!" -> if (right == 0) 1 else 0
+            else -> throw CompileException("unsupported unary operator: $op")
+        }
+    }
+
+    fun evaluateBinaryOp(op: String, left: Int, right: Int): Int {
         return when (op) {
             "+" -> left + right
             "-" -> left - right

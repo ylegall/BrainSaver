@@ -1,20 +1,20 @@
 package org.ygl.transformation
 
 import org.ygl.ast.*
-import java.util.*
+import org.ygl.runtime.NamedSymbol
+import org.ygl.runtime.ScopeContext
 
 class ConstantResolver(
         private val constants: Map<String, AstNode>
 ) : AstWalker<AstNode>() {
 
-    private val emptyNode = AstNode()
-    private val scopeSymbols = ArrayDeque<MutableSet<String>>()
+    private val scopeSymbols = ScopeContext<NamedSymbol>()
 
     fun resolveConstants(tree: AstNode): AstNode {
         return visit(tree)
     }
 
-    override fun visit(node: ConstantNode) = node
+    override fun visit(node: ConstantNode) = emptyNode
 
     override fun visit(node: GlobalVariableNode): AstNode {
         return GlobalVariableNode(node.storage, node.lhs, visit(node.rhs))
@@ -22,7 +22,7 @@ class ConstantResolver(
 
     override fun visit(node: DeclarationNode): AstNode {
         val rhs = visit(node.rhs)
-        scopeSymbols.peek().add(node.lhs)
+        scopeSymbols.addSymbol(NamedSymbol(node.lhs))
         return DeclarationNode(node.storage, node.lhs, rhs)
     }
 
@@ -48,9 +48,9 @@ class ConstantResolver(
     }
 
     override fun visit(node: FunctionNode): AstNode {
-        scopeSymbols.push(mutableSetOf())
+        scopeSymbols.enterScope(node)
         val newStatements = MutableList(node.statements.size, { i -> visit(node.statements[i]) as StatementNode })
-        scopeSymbols.pop()
+        scopeSymbols.exitScope()
         return FunctionNode(node.name, node.params, newStatements)
     }
 
@@ -68,7 +68,7 @@ class ConstantResolver(
 
     override fun visit(node: AtomIdNode): AstNode {
         return when (node.identifier) {
-            in scopeSymbols.peek() -> node
+            in scopeSymbols -> node
             in constants -> constants[node.identifier]!!
             else -> node
         }
@@ -96,12 +96,11 @@ class ConstantResolver(
 
     override fun visitChildren(node: AstNode): AstNode {
         val newChildren = MutableList(node.children.size, { idx -> visit(node.children[idx]) })
-        node.children = newChildren
+        node.children = newChildren.filter { it != emptyNode }.toCollection(mutableListOf())
         return node
     }
 
     override fun defaultValue(): AstNode {
         return emptyNode
     }
-
 }

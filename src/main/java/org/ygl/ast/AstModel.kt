@@ -3,12 +3,17 @@ package org.ygl.ast
 import org.ygl.model.StorageType
 import kotlin.reflect.KClass
 
+/**
+ *
+ */
 open class AstNode(
         val type: KClass<out AstNode> = AstNode::class,
         var children: MutableList<out AstNode> = mutableListOf()
 ) {
     override fun toString() = "(${type.java.simpleName})"
 }
+
+val emptyNode = AstNode()
 
 class ConstantNode(
         val lhs: String,

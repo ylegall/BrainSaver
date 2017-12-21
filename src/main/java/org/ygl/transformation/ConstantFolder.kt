@@ -1,7 +1,11 @@
 package org.ygl.transformation
 
 import org.ygl.ast.*
-import java.util.*
+import org.ygl.model.IntValue
+import org.ygl.model.StrValue
+import org.ygl.model.Value
+import org.ygl.runtime.ScopeContext
+import org.ygl.runtime.ValuedSymbol
 
 /**
  *
@@ -10,80 +14,73 @@ class ConstantFolder(
 
 ): AstWalker<AstNode>()
 {
-    private val scopeSymbols = ArrayDeque<MutableMap<String, AstNode>>()
+    private val scopeSymbols = ScopeContext<ValuedSymbol>()
+    // TODO: add expression evaluator
 
     private fun AstNode.isConstant(): Boolean {
         return (this is AtomIntNode) || (this is AtomStrNode)
     }
 
+    private fun AstNode.getValue(): Value {
+        return when (this) {
+            is AtomIntNode -> IntValue(this.value)
+            is AtomStrNode -> StrValue(this.value)
+            else -> throw Exception("not a node with a known value")
+        }
+    }
+
     override fun visit(node: AssignmentNode): AstNode {
         val rhs = visit(node.rhs)
         return if (rhs.isConstant()) {
-            scopeSymbols.peek().put(node.lhs, rhs)
             AssignmentNode(node.lhs, rhs)
         } else {
             node
         }
     }
 
+    // TODO:
     override fun visit(node: AtomIdNode): AstNode {
         return super.visit(node)
     }
 
-    override fun visit(node: AtomStrNode): AstNode {
-        return super.visit(node)
-    }
+    override fun visit(node: AtomIntNode) = node
+    override fun visit(node: AtomStrNode) = node
 
     override fun visit(node: BinaryExpNode): AstNode {
         return super.visit(node)
     }
 
-    override fun visit(node: CallExpNode): AstNode {
-        return super.visit(node)
-    }
-
-    override fun visit(node: CallStatementNode): AstNode {
-        return super.visit(node)
-    }
-
-    override fun visit(node: ConstantNode): AstNode {
-        return super.visit(node)
-    }
-
-    override fun visit(node: DebugStatementNode): AstNode {
-        return super.visit(node)
-    }
+    override fun visit(node: CallExpNode) = node
 
     override fun visit(node: DeclarationNode): AstNode {
-        return super.visit(node)
+        val rhs = visit(node.rhs)
+        return if (rhs.isConstant()) {
+            val value = rhs.getValue()
+            scopeSymbols.addSymbol(ValuedSymbol(node.lhs, node.storage, value))
+            DeclarationNode(node.storage, node.lhs, rhs)
+        } else {
+            node
+        }
     }
 
     override fun visit(node: ForStatementNode): AstNode {
         return super.visit(node)
     }
 
-    override fun visit(node: FunctionNode): AstNode {
-        return super.visit(node)
-    }
-
-    override fun visit(node: GlobalVariableNode): AstNode {
-        return super.visit(node)
-    }
-
     override fun visit(node: IfStatementNode): AstNode {
-        return super.visit(node)
-    }
+        val condition = visit(node.condition)
+        if (condition.isConstant()) {
+            val intVal = condition.getValue() as? IntValue ?: throw Exception("invalid condition type for $node")
+            return if (intVal.value == 0) {
+                AstNode(children = node.falseStatements)
+            } else {
+                AstNode(children = node.trueStatements)
+            }
+        } else {
+            // TODO reverse negated condition
 
-    override fun visit(node: PrintStatementNode): AstNode {
-        return super.visit(node)
-    }
-
-    override fun visit(node: ReadStatementNode): AstNode {
-        return super.visit(node)
-    }
-
-    override fun visit(node: StatementNode): AstNode {
-        return super.visit(node)
+            return node
+        }
     }
 
     override fun visit(node: NotExpNode): AstNode {
@@ -95,15 +92,12 @@ class ConstantFolder(
     }
 
     override fun visitChildren(node: AstNode): AstNode {
-        super.visitChildren(node)
+        val newChildren = MutableList(node.children.size, { idx -> visit(node.children[idx]) })
+        node.children = newChildren.filter { it != emptyNode }.toCollection(mutableListOf())
         return node
     }
 
-    override fun aggregateResult(agg: AstNode, next: AstNode): AstNode {
-        return super.aggregateResult(agg, next)
-    }
-
     override fun defaultValue(): AstNode {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        return emptyNode
     }
 }

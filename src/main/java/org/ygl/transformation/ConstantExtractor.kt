@@ -11,7 +11,6 @@ import org.ygl.model.StorageType
  */
 class ConstantExtractor: AstWalker<AstNode>() {
 
-    private val emptyValue = AstNode()
     private val constants = mutableMapOf<String, AstNode>()
     private val globals = mutableSetOf<String>()
     private val expEvaluator = ExpressionEvaluator()
@@ -31,7 +30,7 @@ class ConstantExtractor: AstWalker<AstNode>() {
             throw CompileException("${node.lhs} cannot be evaluated at compile time")
         }
         constants.put(node.lhs, rhs)
-        return emptyValue
+        return emptyNode
     }
 
     override fun visit(node: GlobalVariableNode): AstNode {
@@ -48,10 +47,10 @@ class ConstantExtractor: AstWalker<AstNode>() {
         } else {
             globals.add(node.lhs)
         }
-        return emptyValue
+        return emptyNode
     }
 
     override fun defaultValue(): AstNode {
-        return emptyValue
+        return emptyNode
     }
 }
