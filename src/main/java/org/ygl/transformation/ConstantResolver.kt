@@ -70,7 +70,7 @@ class ConstantResolver(
         }
         val rhs = visit(node.rhs)
         if (node.storage == StorageType.VAL) {
-            if (rhs.isLiteral()) {
+            if (rhs.isConstant()) {
                 constants.put(node.lhs, rhs)
                 return EmptyNode
             }

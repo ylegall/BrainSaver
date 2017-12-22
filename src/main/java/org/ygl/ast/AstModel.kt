@@ -15,7 +15,7 @@ open class AstNode(
 
 object EmptyNode : AstNode()
 
-fun AstNode.isLiteral(): Boolean {
+fun AstNode.isConstant(): Boolean {
     return (this is AtomIntNode) || (this is AtomStrNode)
 }
 
@@ -78,9 +78,13 @@ class ForStatementNode(
         val counter: String,
         val start: AtomNode,
         val stop: AtomNode,
-        val inc: AtomNode? = null,
+        val inc: AtomNode,
         val statements: MutableList<AstNode>
-) : StatementNode(statements) {
+) : StatementNode(
+        mutableListOf<AstNode>(start, stop, inc).apply {
+            addAll(statements)
+        }
+) {
     override fun toString() = "for ($counter in $start to $stop by $inc"
 }
 

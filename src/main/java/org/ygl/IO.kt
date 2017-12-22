@@ -97,6 +97,7 @@ class IO(private val cg: CodeGen)
         return symbol
     }
 
+    // TODO optimize by only adding/subtracting the diff between chars
     fun printImmediate(chars: String) {
         with (cg) {
             val cs = currentScope()

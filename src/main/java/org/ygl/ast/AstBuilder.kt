@@ -60,7 +60,7 @@ class AstBuilder : BrainSaverBaseVisitor<AstNode>()
     override fun visitForStatement(ctx: ForStatementContext?): AstNode {
         val start = visit(ctx!!.start) as AtomNode
         val stop = visit(ctx.stop) as AtomNode
-        val inc = if (ctx.step != null) visit(ctx.step) as AtomNode else null
+        val inc = if (ctx.step != null) visit(ctx.step) as AtomNode else AtomIntNode(1)
         val stmts = toNodeList<AstNode>(ctx.statementList().statement())
         return ForStatementNode(ctx.loopVar.text, start, stop, inc, stmts)
     }

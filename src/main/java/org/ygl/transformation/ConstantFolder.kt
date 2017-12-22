@@ -25,6 +25,13 @@ class ConstantFolder(
         }
     }
 
+    private fun AstNode.getIntValue(): Int {
+        return when (this) {
+            is AtomIntNode -> this.value
+            else -> throw CompileException("$this is not an integer value")
+        }
+    }
+
     override fun visit(node: ProgramNode): AstNode {
         // add global symbols to scope
         scopeSymbols.enterScope(node)
@@ -52,7 +59,7 @@ class ConstantFolder(
 
     override fun visit(node: DeclarationNode): AstNode {
         val rhs = visit(node.rhs)
-        return if (rhs.isLiteral()) {
+        return if (rhs.isConstant()) {
             val value = rhs.getValue()
             scopeSymbols.addSymbol(ValuedSymbol(node.lhs, node.storage, value))
             DeclarationNode(node.storage, node.lhs, rhs)
@@ -67,7 +74,7 @@ class ConstantFolder(
         val symbol = scopeSymbols.resolveLocalSymbol(node.lhs)
         if (symbol != null) {
             if (symbol.storage == StorageType.VAL) throw CompileException("val cannot be reassigned: ${node.lhs}")
-            if (rhs.isLiteral()) {
+            if (rhs.isConstant()) {
                 scopeSymbols.addSymbol(ValuedSymbol(node.lhs, symbol.storage, rhs.getValue()))
             } else {
                 symbol.value = NullValue
@@ -91,7 +98,7 @@ class ConstantFolder(
         val left = visit(node.left)
         val right = visit(node.right)
 
-        if (left.isLiteral() && right.isLiteral()) {
+        if (left.isConstant() && right.isConstant()) {
             return expEval.evalConstantBinaryExp(node.op, left, right)
         }
 
@@ -106,14 +113,30 @@ class ConstantFolder(
         return node
     }
 
-    // TODO
     override fun visit(node: ForStatementNode): AstNode {
-        return super.visit(node)
+        val start = visit(node.start)
+        val stop = visit(node.stop)
+        val inc = visit(node.inc)
+
+        // unroll loop
+        if (start.isConstant() && stop.isConstant() && inc.isConstant()) {
+            val result = StatementNode()
+            var i = start.getIntValue()
+            val j = stop.getIntValue()
+            val k = inc.getIntValue()
+            while (i < j) {
+                result.children.addAll(node.statements)
+                i += k
+            }
+            return result
+        }
+
+        return node
     }
 
     override fun visit(node: IfStatementNode): AstNode {
         val condition = visit(node.condition)
-        return if (condition.isLiteral()) {
+        return if (condition.isConstant()) {
             val intVal = condition.getValue() as? IntValue ?: throw Exception("invalid condition type for $node")
             if (intVal.value == 0) {
                 AstNode(children = node.falseStatements)
@@ -136,9 +159,12 @@ class ConstantFolder(
         }
     }
 
-    // TODO
     override fun visit(node: WhileStatementNode): AstNode {
-        return super.visit(node)
+        val condition = visit(node.condition)
+        if (condition.isConstant() && condition.getIntValue() == 0) {
+            return EmptyNode
+        }
+        return WhileStatementNode(condition as ExpNode, node.statements)
     }
 
     override fun visitChildren(node: AstNode): AstNode {
