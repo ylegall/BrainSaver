@@ -53,11 +53,6 @@ internal class SymbolAnalysis() : AstWalker<SymbolResult>()
         return result
     }
 
-    // TODO: remove read and convert to std lib function
-    override fun visit(node: ReadStatementNode): SymbolResult {
-        return recordWriteSymbol(node.name)
-    }
-
     override fun visit(node: StatementNode): SymbolResult {
         val result = visitChildren(node)
         node.recordSymbolUsed(result)

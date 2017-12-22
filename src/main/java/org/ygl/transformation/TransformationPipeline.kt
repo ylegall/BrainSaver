@@ -26,6 +26,26 @@ class TransformationPipeline(
         return this
     }
 
+    fun findUnusedSymbols(): TransformationPipeline {
+        val symbolInfo = MutabilityResolver().getSymbolMutabilityInfo(ast)
+
+        println("\nsymbol info:")
+        println("-------------")
+        symbolInfo.forEach { scope, symbols ->
+            if (!symbols.symbolsRead.isEmpty() || !symbols.symbolsWritten.isEmpty()) {
+                println("  in scope '$scope':")
+                println("    read:     ${symbols.symbolsRead}")
+                println("    written:  ${symbols.symbolsWritten}")
+                println("    declared: ${symbols.symbolsDeclared}")
+                println("    unused :  ${symbols.unusedSymbols}")
+                println()
+            }
+        }
+        println()
+
+        return this
+    }
+
     fun constantFold(): TransformationPipeline {
         ast = ConstantFolder().visit(ast)
         return this

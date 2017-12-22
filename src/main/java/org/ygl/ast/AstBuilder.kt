@@ -29,7 +29,7 @@ class AstBuilder : BrainSaverBaseVisitor<AstNode>()
     override fun visitFunction(ctx: FunctionContext?): AstNode {
         val params = ctx!!.params?.identifierList()?.Identifier()?.mapNotNull { it.text } ?: listOf()
         val stmts = toNodeList<AstNode>(ctx.body.statement())
-        if (ctx.body.ret != null) stmts.add(visit(ctx.body.ret) as ReadStatementNode)
+        if (ctx.body.ret != null) stmts.add(visit(ctx.body.ret) as ReturnNode)
         return FunctionNode(ctx.name.text, params, stmts)
     }
 
@@ -93,21 +93,13 @@ class AstBuilder : BrainSaverBaseVisitor<AstNode>()
         return ReturnNode(visit(ctx!!.exp()))
     }
 
-    override fun visitReadStatement(ctx: ReadStatementContext?): AstNode {
-        return ReadStatementNode(ctx!!.Identifier().text)
-    }
-
-    override fun visitPrintStatement(ctx: PrintStatementContext?): AstNode {
-        return PrintStatementNode(visit(ctx!!.exp()))
-    }
-
     override fun visitArrayConstructor(ctx: ArrayConstructorContext?): AstNode {
         return ArrayConstructorNode(ctx!!.lhs.text, ctx.arraySize.text.toInt())
     }
 
     override fun visitArrayLiteral(ctx: ArrayLiteralContext?): AstNode {
-        val items = mutableListOf<Int>()
-        ctx!!.integerList().IntegerLiteral().forEach { items.add(it.text.toInt()) }
+        val items = mutableListOf<AstNode>()
+        ctx!!.expList().exp().forEach { items.add(visit(it)) }
         return ArrayLiteralNode(ctx.lhs.text, items)
     }
 

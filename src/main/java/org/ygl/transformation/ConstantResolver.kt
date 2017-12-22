@@ -87,7 +87,7 @@ class ConstantResolver(
     override fun visit(node: ForStatementNode): AstNode {
         val start = visit(node.start) as AtomNode
         val stop = visit(node.stop) as AtomNode
-        val inc = node.inc?.let { visit(it) as AtomNode }
+        val inc = visit(node.inc) as AtomNode
         node.statements.forEach { visit(it) }
         return ForStatementNode(node.counter, start, stop, inc, node.statements)
     }
@@ -107,6 +107,7 @@ class ConstantResolver(
 
     override fun visit(node: FunctionNode): AstNode {
         scopeSymbols.enterScope(node)
+        node.params.forEach { scopeSymbols.addSymbol(NamedSymbol(it)) }
         val newStatements = MutableList(node.statements.size, { i -> visit(node.statements[i]) })
         scopeSymbols.exitScope()
         return FunctionNode(node.name, node.params, newStatements)

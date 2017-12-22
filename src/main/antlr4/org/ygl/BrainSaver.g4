@@ -45,9 +45,7 @@ statementList
     ;
 
 statement
-    :   printStatement
-    |   readStatement
-    |   declarationStatement
+    :   declarationStatement
     |   assignmentStatement
     |   callStatement
     |   ifStatement
@@ -96,29 +94,27 @@ returnStatement
     ;
 
 // TODO: remove
-readStatement
-    :   (rd=READ|rdint=READINT) '(' Identifier ')' ';'
-    ;
+//readStatement
+//    :   (rd=READ|rdint=READINT) '(' Identifier ')' ';'
+//    ;
 
 // TODO remove
-printStatement
-    :   PRINT '(' exp ')' ';'
-    ;
+//printStatement
+//    :   PRINT '(' exp ')' ';'
+//    ;
 
 // TODO: allow array size to be constant expression
 arrayInitStatement
     :   lhs=Identifier '=' ARRAY '(' arraySize=IntegerLiteral ')' ';'   # arrayConstructor
-    |   lhs=Identifier '=' '[' contents=integerList ']' ';'             # arrayLiteral
+    |   lhs=Identifier '=' '[' contents=expList ']' ';'                 # arrayLiteral
     ;
 
 arrayWriteStatement
     :   array=Identifier '[' idx=exp ']' '=' rhs=exp ';'
     ;
 
-integerList
-    :   IntegerLiteral (',' IntegerLiteral)*
-    ;
 
+// TODO: if expressions
 exp
     : '(' parenExp=exp ')'                                      # parenExp
     | array=Identifier '[' idx=exp ']'                          # arrayReadExp

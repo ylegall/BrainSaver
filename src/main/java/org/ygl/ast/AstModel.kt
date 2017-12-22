@@ -2,7 +2,6 @@ package org.ygl.ast
 
 import org.ygl.model.Op
 import org.ygl.model.StorageType
-import kotlin.reflect.KClass
 
 /**
  *
@@ -101,8 +100,8 @@ class DebugStatementNode(
 
 class ArrayLiteralNode(
         val array: String,
-        val items: List<Int>
-) : StatementNode()
+        val items: MutableList<AstNode>
+) : StatementNode(items)
 
 class ArrayConstructorNode(
         val array: String,
@@ -114,14 +113,6 @@ class ArrayWriteNode(
         val idx: AstNode,
         val rhs: AstNode
 ) : StatementNode(mutableListOf(idx, rhs))
-
-class ReadStatementNode(
-        val name: String
-) : StatementNode()
-
-class PrintStatementNode(
-        val exp: AstNode
-) : StatementNode(mutableListOf(exp))
 
 class DeclarationNode(
         val storage: StorageType,

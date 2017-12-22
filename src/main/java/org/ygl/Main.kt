@@ -45,6 +45,7 @@ fun compile(input: InputStream, outStream: OutputStream, options: CompilerOption
 
     val ast = buildAst(tree, options)
             .resolveConstants()
+            .findUnusedSymbols()
             .constantFold()
             .getAst()
 

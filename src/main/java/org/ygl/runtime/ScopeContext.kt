@@ -17,6 +17,8 @@ class ScopeContext<SymbolType: NamedSymbol>
         scopes.push(Scope(node))
     }
 
+    fun getScope() = scopes.peek()
+
     fun exitScope() {
         scopes.pop()
     }

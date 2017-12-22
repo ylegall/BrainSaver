@@ -179,48 +179,48 @@ class TreeWalker(
         return rhs
     }
 
-    override fun visitPrintStatement(ctx: PrintStatementContext?): Symbol? {
-        ctx ?: throw Exception("null PrintStatementContext")
-
-        val exp = if (ctx.exp().childCount == 1 ) ctx.exp().getChild(0) else ctx.exp()
-        when (exp) {
-            is AtomIdContext -> {
-                val symbol = cg.getSymbol(ctx.exp().text) ?:
-                        throw CompileException("undefined identifier ${ctx.exp().text}", ctx)
-                if (isConstant(symbol) && symbol.type == Type.INT) {
-                    cg.io.printImmediate(symbol.value.toString())
-                } else {
-                    cg.io.print(symbol)
-                }
-            }
-            is AtomStrContext -> {
-                cg.io.printImmediate(unescape(exp.text))
-            }
-            is AtomIntContext -> {
-                cg.io.printImmediate(exp.text)
-            }
-            else -> {
-                val symbol = visit(exp) ?: throw Exception("null argument to print()")
-                cg.io.print(symbol)
-            }
-        }
-        return null
-    }
-
-    override fun visitReadStatement(ctx: ReadStatementContext?): Symbol? {
-        val id = ctx!!.Identifier().text
-        return when {
-            ctx.rd != null -> {
-                val sym = cg.currentScope().getOrCreateSymbol(id, type = Type.INT)
-                cg.io.readChar(sym)
-            }
-            ctx.rdint != null -> {
-                val sym = cg.currentScope().getOrCreateSymbol(id, type = Type.INT)
-                cg.io.readInt(sym)
-            }
-            else -> throw CompileException("unsupported read call", ctx)
-        }
-    }
+//    override fun visitPrintStatement(ctx: PrintStatementContext?): Symbol? {
+//        ctx ?: throw Exception("null PrintStatementContext")
+//
+//        val exp = if (ctx.exp().childCount == 1 ) ctx.exp().getChild(0) else ctx.exp()
+//        when (exp) {
+//            is AtomIdContext -> {
+//                val symbol = cg.getSymbol(ctx.exp().text) ?:
+//                        throw CompileException("undefined identifier ${ctx.exp().text}", ctx)
+//                if (isConstant(symbol) && symbol.type == Type.INT) {
+//                    cg.io.printImmediate(symbol.value.toString())
+//                } else {
+//                    cg.io.print(symbol)
+//                }
+//            }
+//            is AtomStrContext -> {
+//                cg.io.printImmediate(unescape(exp.text))
+//            }
+//            is AtomIntContext -> {
+//                cg.io.printImmediate(exp.text)
+//            }
+//            else -> {
+//                val symbol = visit(exp) ?: throw Exception("null argument to print()")
+//                cg.io.print(symbol)
+//            }
+//        }
+//        return null
+//    }
+//
+//    override fun visitReadStatement(ctx: ReadStatementContext?): Symbol? {
+//        val id = ctx!!.Identifier().text
+//        return when {
+//            ctx.rd != null -> {
+//                val sym = cg.currentScope().getOrCreateSymbol(id, type = Type.INT)
+//                cg.io.readChar(sym)
+//            }
+//            ctx.rdint != null -> {
+//                val sym = cg.currentScope().getOrCreateSymbol(id, type = Type.INT)
+//                cg.io.readInt(sym)
+//            }
+//            else -> throw CompileException("unsupported read call", ctx)
+//        }
+//    }
 
     override fun visitAtomId(ctx: AtomIdContext?): Symbol? {
         val symbolName = ctx!!.Identifier().text
@@ -583,7 +583,7 @@ class TreeWalker(
         body.map { it.getChild(0) }
             .forEach {
                 when (it) {
-                    is PrintStatementContext -> return false
+                    //is PrintStatementContext -> return false
                     is CallStatementContext  -> return false
                     is ForStatementContext   -> return false
                     is WhileStatementContext -> return false
@@ -598,12 +598,12 @@ class TreeWalker(
         return createArray(name, size)
     }
 
-    override fun visitArrayLiteral(ctx: ArrayLiteralContext?): Symbol? {
-        val name = ctx!!.lhs.text
-        val values = ctx.integerList().IntegerLiteral()
-        val size = values.size
-        return createArray(name, size, values)
-    }
+//    override fun visitArrayLiteral(ctx: ArrayLiteralContext?): Symbol? {
+//        val name = ctx!!.lhs.text
+//        val values = ctx.integerList().IntegerLiteral()
+//        val size = values.size
+//        return createArray(name, size, values)
+//    }
 
     private fun createArray(name: String, size: Int, values: List<TerminalNode>? = null): Symbol {
         if (size < 1 || size >= 256) throw CompileException("array size must be between 1 and 256")

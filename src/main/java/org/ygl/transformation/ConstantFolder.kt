@@ -48,6 +48,7 @@ class ConstantFolder(
 
     override fun visit(node: FunctionNode): AstNode {
         scopeSymbols.enterScope(node)
+        node.params.forEach { scopeSymbols.addSymbol(ValuedSymbol(it, StorageType.VAL, NullValue)) }
         visitChildren(node)
         scopeSymbols.exitScope()
         return node
@@ -120,7 +121,7 @@ class ConstantFolder(
 
         // unroll loop
         if (start.isConstant() && stop.isConstant() && inc.isConstant()) {
-            val result = StatementNode()
+            val result = AstNode()
             var i = start.getIntValue()
             val j = stop.getIntValue()
             val k = inc.getIntValue()

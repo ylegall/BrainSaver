@@ -134,11 +134,6 @@ internal class AnalyzingVisitor : BrainSaverBaseVisitor<SymbolResult>()
         return recordWriteSymbol(ctx.lhs.text)
     }
 
-    override fun visitReadStatement(ctx: ReadStatementContext?): SymbolResult {
-        ctx ?: throw Exception("null ReadStatementContext")
-        return recordWriteSymbol(ctx.Identifier().text)
-    }
-
     override fun visitArrayWriteStatement(ctx: ArrayWriteStatementContext?): SymbolResult {
         ctx ?: throw Exception("null ArrayWriteStatementContext")
         return recordWriteSymbol(ctx.Identifier().text, ctx)
