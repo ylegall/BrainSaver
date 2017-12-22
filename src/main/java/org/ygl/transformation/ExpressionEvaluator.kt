@@ -2,6 +2,7 @@ package org.ygl.transformation
 
 import org.ygl.CompileException
 import org.ygl.ast.*
+import org.ygl.model.Op
 
 /**
  *
@@ -14,7 +15,7 @@ class ExpressionEvaluator : AstWalker<AstNode>()
     fun evaluate(node: AstNode, symbols: Map<String, AstNode>): AstNode {
         this.symbols = symbols
         val result = visit(node)
-        return if (result == emptyNode) {
+        return if (result == EmptyNode) {
             node
         } else {
             result
@@ -24,7 +25,7 @@ class ExpressionEvaluator : AstWalker<AstNode>()
     override fun visit(node: NotExpNode): AstNode {
         val result = visit(node.right)
         return if (result is AtomIntNode) {
-            AtomIntNode(evaluateUnaryOp("!", result.value))
+            AtomIntNode(evalUnaryExpression(Op.NOT, result.value))
         } else {
             throw CompileException("unsupported negation operation: $result")
         }
@@ -34,55 +35,66 @@ class ExpressionEvaluator : AstWalker<AstNode>()
         val left = visit(node.left)
         val right = visit(node.right)
 
+        return evalConstantBinaryExp(node.op, left, right)
+    }
+
+    fun evalConstantBinaryExp(op: Op, left: AstNode, right: AstNode): AstNode {
         return when (left) {
             is AtomStrNode -> when (right) {
-                is AtomStrNode -> AtomStrNode(left.value + right.value)
-                is AtomIntNode -> AtomStrNode(left.value + right.value.toString())
-                else -> emptyNode
+                is AtomStrNode -> AtomStrNode(evalStringExpression(op, left.value, right.value))
+                is AtomIntNode -> AtomStrNode(evalStringExpression(op, left.value, right.value.toString()))
+                else -> EmptyNode
             }
             is AtomIntNode -> when (right) {
-                is AtomStrNode -> AtomStrNode(left.value.toString() + right.value)
-                is AtomIntNode -> AtomIntNode(evaluateBinaryOp(node.op, left.value, right.value))
-                else -> emptyNode
+                is AtomStrNode -> AtomStrNode(evalStringExpression(op, left.value.toString(), right.value))
+                is AtomIntNode -> AtomIntNode(evalIntExpression(op, left.value, right.value))
+                else -> EmptyNode
             }
-            else -> emptyNode
+            else -> EmptyNode
         }
     }
 
-    fun evaluateUnaryOp(op: String, right: Int): Int {
+    fun evalStringExpression(op: Op, left: String, right: String): String {
         return when (op) {
-            "!" -> if (right == 0) 1 else 0
+            Op.ADD -> left + right
+            else -> throw CompileException("unsupported operator: $op")
+        }
+    }
+
+    fun evalUnaryExpression(op: Op, right: Int): Int {
+        return when (op) {
+            Op.NOT -> if (right == 0) 1 else 0
             else -> throw CompileException("unsupported unary operator: $op")
         }
     }
 
-    fun evaluateBinaryOp(op: String, left: Int, right: Int): Int {
+    fun evalIntExpression(op: Op, left: Int, right: Int): Int {
         return when (op) {
-            "+" -> left + right
-            "-" -> left - right
-            "*" -> left * right
-            "/" -> left / right
-            "%" -> left % right
-            "==" -> if (left == right) 1 else 0
-            "!=" -> if (left == right) 0 else 1
-            ">=" -> if (left >= right) 1 else 0
-            "<=" -> if (left <= right) 1 else 0
-            ">" -> if (left > right) 1 else 0
-            "<" -> if (left < right) 1 else 0
-            "&&" -> if (left != 0 && right != 0) 1 else 0
-            "||" -> if (left != 0 || right != 0) 1 else 0
+            Op.ADD -> left + right
+            Op.SUB -> left - right
+            Op.MUL -> left * right
+            Op.DIV -> left / right
+            Op.MOD -> left % right
+            Op.EQ -> if (left == right) 1 else 0
+            Op.NEQ -> if (left == right) 0 else 1
+            Op.GEQ -> if (left >= right) 1 else 0
+            Op.LEQ -> if (left <= right) 1 else 0
+            Op.GT -> if (left > right) 1 else 0
+            Op.LT -> if (left < right) 1 else 0
+            Op.AND -> if (left != 0 && right != 0) 1 else 0
+            Op.OR -> if (left != 0 || right != 0) 1 else 0
             else -> throw CompileException("unsupported operator: $op")
         }
     }
 
     override fun visit(node: AtomIdNode): AstNode {
-        return symbols.getOrDefault(node.identifier, emptyNode)
+        return symbols.getOrDefault(node.identifier, EmptyNode)
     }
 
     override fun visit(node: AtomIntNode) = node
     override fun visit(node: AtomStrNode) = node
 
     override fun defaultValue(): AstNode {
-        return emptyNode
+        return EmptyNode
     }
 }

@@ -29,6 +29,10 @@ class ScopeContext<SymbolType: NamedSymbol>
         return scopes.find { name in it.symbols }?.symbols?.get(name)
     }
 
+    fun resolveLocalSymbol(name: String): SymbolType? {
+        return scopes.peek()?.symbols?.get(name)
+    }
+
     operator fun contains(symbol: SymbolType): Boolean {
         return contains(symbol.getKey())
     }

@@ -3,11 +3,16 @@ package org.ygl.transformation
 import org.antlr.v4.runtime.ParserRuleContext
 import org.ygl.CompilerOptions
 import org.ygl.ast.AstBuilder
+import org.ygl.ast.AstDebugger
 import org.ygl.ast.AstNode
 
 fun buildAst(ctx: ParserRuleContext, options: CompilerOptions): TransformationPipeline
 {
     val ast = AstBuilder().visit(ctx)
+
+    println("\nbefore\n")
+    AstDebugger().print(ast)
+
     return TransformationPipeline(ast, options)
 }
 
@@ -17,13 +22,12 @@ class TransformationPipeline(
 )
 {
     fun resolveConstants(): TransformationPipeline {
-        val constants = ConstantExtractor().extractConstants(ast)
-        if (options.verbose) {
-            println("\nresolved constants:")
-            println("-------------------")
-            constants.forEach { (key, value) -> println("\t$key = $value") }
-        }
-        ast = ConstantResolver(constants).resolveConstants(ast)
+        ast = ConstantResolver(options).resolveConstants(ast)
+        return this
+    }
+
+    fun constantFold(): TransformationPipeline {
+        ast = ConstantFolder().visit(ast)
         return this
     }
 

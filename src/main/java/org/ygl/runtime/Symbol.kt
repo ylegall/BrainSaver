@@ -18,7 +18,7 @@ open class StoredSymbol(
 class ValuedSymbol(
         name: String,
         storage: StorageType,
-        val value: Value
+        var value: Value
 ): StoredSymbol(name, storage)
 
 class Symbol(

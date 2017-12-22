@@ -35,6 +35,7 @@ abstract class AstWalker<T>
             is ConstantNode -> visit(node)
             is GlobalVariableNode -> visit(node)
             is FunctionNode -> visit(node)
+            is ProgramNode -> visit(node)
             else -> visitChildren(node)
         }
     }
@@ -58,6 +59,7 @@ abstract class AstWalker<T>
     open fun visit(node: GlobalVariableNode): T = visitChildren(node)
     open fun visit(node: IfStatementNode): T = visitChildren(node)
     open fun visit(node: PrintStatementNode): T = visitChildren(node)
+    open fun visit(node: ProgramNode): T = visitChildren(node)
     open fun visit(node: ReadStatementNode): T = visitChildren(node)
     open fun visit(node: StatementNode): T = visitChildren(node)
     open fun visit(node: NotExpNode): T = visitChildren(node)

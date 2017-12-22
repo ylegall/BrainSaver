@@ -4,6 +4,7 @@ import org.antlr.v4.runtime.ParserRuleContext
 import org.antlr.v4.runtime.tree.RuleNode
 import org.ygl.BrainSaverBaseVisitor
 import org.ygl.BrainSaverParser.*
+import org.ygl.model.Op
 import org.ygl.model.StorageType
 
 /**
@@ -12,7 +13,8 @@ import org.ygl.model.StorageType
 class AstBuilder : BrainSaverBaseVisitor<AstNode>()
 {
     override fun visitProgram(ctx: ProgramContext?): AstNode {
-        return AstNode(children = visit(ctx!!.declList()).children)
+        val children = visit(ctx!!.declList()).children
+        return ProgramNode(children)
     }
 
     override fun visitConstant(ctx: ConstantContext?): AstNode {
@@ -26,7 +28,7 @@ class AstBuilder : BrainSaverBaseVisitor<AstNode>()
 
     override fun visitFunction(ctx: FunctionContext?): AstNode {
         val params = ctx!!.params?.identifierList()?.Identifier()?.mapNotNull { it.text } ?: listOf()
-        val stmts = toNodeList<StatementNode>(ctx.body.statement())
+        val stmts = toNodeList<AstNode>(ctx.body.statement())
         if (ctx.body.ret != null) stmts.add(visit(ctx.body.ret) as ReadStatementNode)
         return FunctionNode(ctx.name.text, params, stmts)
     }
@@ -77,7 +79,7 @@ class AstBuilder : BrainSaverBaseVisitor<AstNode>()
         } else {
             val left = AtomIdNode(lhs)
             val right = visit(ctx.rhs)
-            return AssignmentNode(lhs, BinaryExpNode(op.substring(0, 1), left, right))
+            return AssignmentNode(lhs, BinaryExpNode(Op.parse(op.substring(0, 1)), left, right))
         }
     }
 
@@ -129,7 +131,7 @@ class AstBuilder : BrainSaverBaseVisitor<AstNode>()
 
     override fun visitOpExp(ctx: OpExpContext?): ExpNode {
         val op = ctx!!.op.text
-        return BinaryExpNode(op, visit(ctx.left), visit(ctx.right))
+        return BinaryExpNode(Op.parse(op), visit(ctx.left), visit(ctx.right))
     }
 
     override fun visitNotExp(ctx: NotExpContext?): ExpNode {

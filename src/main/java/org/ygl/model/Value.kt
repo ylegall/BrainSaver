@@ -11,3 +11,8 @@ data class IntValue(
 data class StrValue(
         override val value: String
 ) : Value()
+
+object NullValue : Value() {
+    override val value: Any
+        get() = throw Exception("null value")
+}

@@ -1,5 +1,6 @@
 package org.ygl.ast
 
+import org.ygl.model.Op
 import org.ygl.model.StorageType
 import kotlin.reflect.KClass
 
@@ -7,18 +8,23 @@ import kotlin.reflect.KClass
  *
  */
 open class AstNode(
-        val type: KClass<out AstNode> = AstNode::class,
-        var children: MutableList<out AstNode> = mutableListOf()
+        var children: MutableList<AstNode> = mutableListOf()
 ) {
-    override fun toString() = "(${type.java.simpleName})"
+    override fun toString() = "(Node)"
 }
 
-val emptyNode = AstNode()
+object EmptyNode : AstNode()
+
+fun AstNode.isLiteral(): Boolean {
+    return (this is AtomIntNode) || (this is AtomStrNode)
+}
+
+class ProgramNode(children: MutableList<AstNode>) : AstNode(children)
 
 class ConstantNode(
         val lhs: String,
         val rhs: AstNode
-) : AstNode(ConstantNode::class, mutableListOf(rhs)) {
+) : AstNode(mutableListOf(rhs)) {
     override fun toString() = "const $lhs ="
 }
 
@@ -26,33 +32,33 @@ class GlobalVariableNode(
         val storage: StorageType,
         val lhs: String,
         val rhs: AstNode
-) : AstNode(GlobalVariableNode::class, mutableListOf(rhs)) {
+) : AstNode(mutableListOf(rhs)) {
     override fun toString() = "global $lhs ="
 }
 
 class FunctionNode(
         val name: String,
         val params: List<String>,
-        val statements: MutableList<StatementNode>
-) : AstNode(FunctionNode::class, statements) {
+        val statements: MutableList<AstNode>
+) : AstNode(statements) {
     override fun toString() = "fn $name()"
 }
 
 open class StatementNode(
-        type: KClass<out StatementNode> = StatementNode::class,
         children: MutableList<AstNode> = mutableListOf()
-) : AstNode(type, children)
+) : AstNode(children) {
+    override fun toString() = "(stmt)"
+}
 
 class ReturnNode(
         val exp: AstNode
-) : StatementNode(ReturnNode::class, mutableListOf(exp))
+) : StatementNode(mutableListOf(exp))
 
 class IfStatementNode(
         val condition: ExpNode,
         val trueStatements: MutableList<AstNode>,
         val falseStatements: MutableList<AstNode>
 ) : StatementNode(
-        IfStatementNode::class,
         mutableListOf<AstNode>(condition).apply {
             addAll(trueStatements)
             addAll(falseStatements)
@@ -63,7 +69,6 @@ class WhileStatementNode(
         val condition: ExpNode,
         val statements: MutableList<AstNode>
 ) : StatementNode(
-        WhileStatementNode::class,
         mutableListOf<AstNode>(condition).apply {
             addAll(statements)
         }
@@ -75,103 +80,104 @@ class ForStatementNode(
         val stop: AtomNode,
         val inc: AtomNode? = null,
         val statements: MutableList<AstNode>
-) : StatementNode(ForStatementNode::class, statements)
+) : StatementNode(statements) {
+    override fun toString() = "for ($counter in $start to $stop by $inc"
+}
 
 class CallStatementNode(
         val name: String,
         val params: MutableList<AstNode>
-) : StatementNode(CallStatementNode::class, params) {
+) : StatementNode(params) {
     override fun toString() = "call $name()"
 }
 
 class DebugStatementNode(
         val params: List<String>
-) : StatementNode(DebugStatementNode::class)
+) : StatementNode()
 
 class ArrayLiteralNode(
         val array: String,
         val items: List<Int>
-) : StatementNode(ArrayLiteralNode::class)
+) : StatementNode()
 
 class ArrayConstructorNode(
         val array: String,
         val size: Int
-) : StatementNode(ArrayConstructorNode::class)
+) : StatementNode()
 
 class ArrayWriteNode(
         val array: String,
         val idx: AstNode,
         val rhs: AstNode
-) : StatementNode(ArrayWriteNode::class, mutableListOf(idx, rhs))
+) : StatementNode(mutableListOf(idx, rhs))
 
 class ReadStatementNode(
         val name: String
-) : StatementNode(ReadStatementNode::class)
+) : StatementNode()
 
 class PrintStatementNode(
         val exp: AstNode
-) : StatementNode(PrintStatementNode::class, mutableListOf(exp))
+) : StatementNode(mutableListOf(exp))
 
 class DeclarationNode(
         val storage: StorageType,
         val lhs: String,
         var rhs: AstNode
-) : StatementNode(DeclarationNode::class, mutableListOf(rhs)) {
+) : StatementNode(mutableListOf(rhs)) {
     override fun toString() = "$storage $lhs ="
 }
 
 class AssignmentNode(
         val lhs: String,
         var rhs: AstNode
-) : StatementNode(AssignmentNode::class, mutableListOf(rhs)) {
+) : StatementNode(mutableListOf(rhs)) {
     override fun toString() = "$lhs ="
 }
 
 open class ExpNode(
-        type: KClass<out ExpNode>,
         list: MutableList<AstNode> = mutableListOf()
-) : AstNode(type, list)
+) : AstNode(list)
 
 class CallExpNode(
         val name: String,
         val params: MutableList<AstNode>
-) : ExpNode(CallExpNode::class, params)
+) : ExpNode(params) {
+    override fun toString() = "call $name()"
+}
 
 class BinaryExpNode(
-        val op: String,
+        val op: Op,
         val left: AstNode,
         val right: AstNode
-) : ExpNode(BinaryExpNode::class, mutableListOf(left, right)) {
+) : ExpNode(mutableListOf(left, right)) {
     override fun toString() = "exp($op)"
 }
 
 class NotExpNode(
         val right: AstNode
-) : ExpNode(NotExpNode::class, mutableListOf(right))
+) : ExpNode(mutableListOf(right))
 
 class ArrayReadExpNode(
         val array: String,
         val idx: AstNode
-) : ExpNode(ArrayReadExpNode::class, mutableListOf(idx))
+) : ExpNode(mutableListOf(idx))
 
-open class AtomNode(
-        type: KClass<out AtomNode>
-) : ExpNode(type)
+open class AtomNode : ExpNode()
 
 class AtomIntNode(
         val value: Int
-) : AtomNode(AtomIntNode::class) {
+) : AtomNode() {
     override fun toString() = "($value)"
 }
 
 class AtomIdNode(
         val identifier: String
-) : AtomNode(AtomIdNode::class) {
+) : AtomNode() {
     override fun toString() = "($identifier)"
 }
 
 class AtomStrNode(
         val value: String
-) : AtomNode(AtomStrNode::class) {
+) : AtomNode() {
     override fun toString() = "($value)"
 }

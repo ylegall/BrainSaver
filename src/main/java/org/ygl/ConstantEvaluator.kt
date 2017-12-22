@@ -1,6 +1,7 @@
 package org.ygl
 
 import org.ygl.ast.*
+import org.ygl.model.Op
 
 class ExpResult(val value: Int)
 
@@ -26,19 +27,19 @@ class ConstantEvaluator(val programInfo: ProgramInfo) : AstWalker<ExpResult>()
         if (left == emptyResult || right == emptyResult) return emptyResult
 
         return when (node.op) {
-            "+" ->  ExpResult(left.value + right.value)
-            "-" ->  ExpResult(left.value - right.value)
-            "*" ->  ExpResult(left.value * right.value)
-            "/" ->  ExpResult(left.value / right.value)
-            "%" ->  ExpResult(left.value % right.value)
-            "<" ->  ExpResult(if (left.value < right.value)  1 else 0)
-            ">" ->  ExpResult(if (left.value > right.value)  1 else 0)
-            "==" -> ExpResult(if (left.value == right.value) 1 else 0)
-            "!=" -> ExpResult(if (left.value != right.value) 1 else 0)
-            "<=" -> ExpResult(if (left.value <= right.value) 1 else 0)
-            ">=" -> ExpResult(if (left.value >= right.value) 1 else 0)
-            "&&" -> ExpResult(left.value and right.value)
-            "||" -> ExpResult(left.value or right.value)
+            Op.ADD -> ExpResult(left.value + right.value)
+            Op.SUB -> ExpResult(left.value - right.value)
+            Op.MUL -> ExpResult(left.value * right.value)
+            Op.DIV -> ExpResult(left.value / right.value)
+            Op.MOD -> ExpResult(left.value % right.value)
+            Op.LT ->  ExpResult(if (left.value < right.value)  1 else 0)
+            Op.GT ->  ExpResult(if (left.value > right.value)  1 else 0)
+            Op.EQ ->  ExpResult(if (left.value == right.value) 1 else 0)
+            Op.NEQ -> ExpResult(if (left.value != right.value) 1 else 0)
+            Op.LEQ -> ExpResult(if (left.value <= right.value) 1 else 0)
+            Op.GEQ -> ExpResult(if (left.value >= right.value) 1 else 0)
+            Op.AND -> ExpResult(left.value and right.value)
+            Op.OR  -> ExpResult(left.value or right.value)
             else -> throw Exception("invalid op $op")
         }
     }
