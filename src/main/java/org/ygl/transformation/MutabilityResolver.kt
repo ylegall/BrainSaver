@@ -7,113 +7,137 @@ import org.ygl.runtime.ScopeContext
 /**
  *
  */
-internal class SymbolInfo(
-        val symbolsRead: MutableSet<String> = mutableSetOf(),
-        val symbolsWritten: MutableSet<String> = mutableSetOf(),
-        val symbolsDeclared: MutableSet<String> = mutableSetOf()
-)
-
-/**
- *
- */
-class ScopeSymbols
-(
-        val symbolsRead: Set<String>,
-        val symbolsWritten: Set<String>,
-        val symbolsDeclared: Set<String>
+class SymbolInfo(
+        val modifiedSymbols: MutableSet<String> = mutableSetOf(),
+        val deadStores: MutableMap<String, MutableSet<AstNode>> = mutableMapOf()
 ) {
-    val unusedSymbols = symbolsDeclared.minus(symbolsRead)
+    fun isDeadStore(node: StoreNode): Boolean {
+        return deadStores[node.lhs]?.contains(node) == true
+    }
 }
 
+private typealias ModifiedSymbols = MutableSet<String>
+
 /**
  *
  */
-internal class MutabilityResolver() : AstWalker<SymbolInfo>()
+internal class MutabilityResolver : AstWalker<ModifiedSymbols>()
 {
-
     private val scopeContext = ScopeContext<NamedSymbol>()
-    private val symbolInfo = mutableMapOf<AstNode, ScopeSymbols>()
+    private val scopeSymbolInfo = mutableMapOf<AstNode, SymbolInfo>()
 
-    fun getSymbolMutabilityInfo(ast: AstNode): Map<AstNode, ScopeSymbols> {
+    fun getSymbolMutabilityInfo(ast: AstNode): Map<AstNode, SymbolInfo> {
         visit(ast)
-        return symbolInfo
+        return scopeSymbolInfo
     }
 
-    override fun visit(node: FunctionNode): SymbolInfo {
+    override fun visit(node: FunctionNode): ModifiedSymbols {
         return visitScope(node)
     }
 
-    override fun visit(node: IfStatementNode): SymbolInfo {
+    override fun visit(node: IfStatementNode): ModifiedSymbols {
         return visitScope(node)
     }
 
-    override fun visit(node: ForStatementNode): SymbolInfo {
-        return visitScope(node)
+    override fun visit(node: ForStatementNode): ModifiedSymbols {
+        val children = mutableListOf<AstNode>(node.start, node.start, node.inc)
+        children.addAll(node.statements)
+        return visitScope(node, children)
     }
 
-    override fun visit(node: WhileStatementNode): SymbolInfo {
-        return visitScope(node)
+    override fun visit(node: WhileStatementNode): ModifiedSymbols {
+        val children = mutableListOf<AstNode>(node.condition)
+        children.addAll(node.statements)
+        children.add(node.condition)
+        return visitScope(node, children)
     }
 
-    private fun visitScope(node: AstNode): SymbolInfo {
+    private fun visitScope(node: AstNode, children: Iterable<AstNode> = node.children): ModifiedSymbols {
         scopeContext.enterScope(node)
-        val result = visitChildren(node)
-        symbolInfo.put(node, ScopeSymbols(
-                result.symbolsRead,
-                result.symbolsWritten,
-                result.symbolsDeclared)
-        )
+        val symbolInfo = SymbolInfo()
+        scopeSymbolInfo.put(node, symbolInfo)
+
+
+        val result = visit(children)
+        symbolInfo.modifiedSymbols.addAll(result)
+
+        // remove empty dead store entries
+        val it = symbolInfo.deadStores.iterator()
+        while (it.hasNext()) {
+            val entry = it.next()
+            if (entry.value.isEmpty()) {
+                it.remove()
+            }
+        }
+
         scopeContext.exitScope()
         return result
     }
 
-    override fun visit(node: DeclarationNode): SymbolInfo {
+    override fun visit(node: DeclarationNode): ModifiedSymbols {
         scopeContext.addSymbol(NamedSymbol(node.lhs))
         val result = visit(node.rhs)
-        result.symbolsDeclared.add(node.lhs)
-        result.symbolsWritten.add(node.lhs)
+        recordSymbolWrite(node, node.lhs)
         return result
     }
 
-    override fun visit(node: AssignmentNode): SymbolInfo {
+    override fun visit(node: AssignmentNode): ModifiedSymbols {
         val result = visit(node.rhs)
-        result.symbolsWritten.add(node.lhs)
+        result.add(node.lhs)
+        recordSymbolWrite(node, node.lhs)
         return result
     }
 
-    override fun visit(node: ArrayConstructorNode): SymbolInfo {
-        return SymbolInfo(symbolsWritten = mutableSetOf(node.array))
+    override fun visit(node: ArrayConstructorNode): ModifiedSymbols {
+        recordSymbolWrite(node, node.array)
+        return mutableSetOf(node.array)
     }
 
-    override fun visit(node: ArrayLiteralNode): SymbolInfo {
+    override fun visit(node: ArrayLiteralNode): ModifiedSymbols {
         val result = visit(node.items)
-        result.symbolsWritten.add(node.array)
+        result.add(node.array)
+        recordSymbolWrite(node, node.array)
         return result
     }
 
-    override fun visit(node: ArrayReadExpNode): SymbolInfo {
-        val result = visit(node.idx)
-        result.symbolsRead.add(node.array)
-        return result
+    override fun visit(node: ArrayReadExpNode): ModifiedSymbols {
+        recordSymbolRead(node.array)
+        return visit(node.idx)
     }
 
-    override fun visit(node: ArrayWriteNode): SymbolInfo {
+    override fun visit(node: ArrayWriteNode): ModifiedSymbols {
         val result = visit(node.rhs)
-        result.symbolsRead.addAll(visit(node.idx).symbolsRead)
-        result.symbolsWritten.add(node.array)
+        result.add(node.array)
+        recordSymbolWrite(node, node.array)
         return result
     }
 
-    override fun visit(node: AtomIdNode): SymbolInfo {
-        return SymbolInfo(symbolsRead = mutableSetOf(node.identifier))
+    override fun visit(node: AtomIdNode): ModifiedSymbols {
+        recordSymbolRead(node.identifier)
+        return mutableSetOf()
     }
 
-    override fun aggregateResult(agg: SymbolInfo, next: SymbolInfo): SymbolInfo {
-        agg.symbolsRead.addAll(next.symbolsRead)
-        agg.symbolsWritten.addAll(next.symbolsWritten)
-        agg.symbolsDeclared.addAll(next.symbolsDeclared)
+    private fun recordSymbolWrite(node: AstNode, name: String) {
+        val scope = scopeContext.findScopeWithSymbol(name)
+        if (scope != null) {
+            scopeSymbolInfo[scope.node]
+                    ?.deadStores
+                    ?.getOrPut(name, { mutableSetOf() })
+                    ?.add(node)
+        }
+    }
+
+    private fun recordSymbolRead(name: String) {
+        val scope = scopeContext.findScopeWithSymbol(name)
+        if (scope != null) {
+            scopeSymbolInfo[scope.node]?.deadStores?.get(name)?.clear()
+        }
+    }
+
+    override fun aggregateResult(agg: ModifiedSymbols, next: ModifiedSymbols): ModifiedSymbols {
+        agg.addAll(next)
         return agg
     }
 
-    override fun defaultValue() = SymbolInfo()
+    override fun defaultValue() = mutableSetOf<String>()
 }

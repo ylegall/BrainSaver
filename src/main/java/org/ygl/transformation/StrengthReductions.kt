@@ -4,7 +4,6 @@ import org.ygl.CompileException
 import org.ygl.ast.*
 import org.ygl.model.Op
 
-// TODO mod
 fun strengthReduce(op: Op, left: AstNode, right: Int): AstNode {
     val result = when (op) {
         Op.ADD -> addReduce(left, right)

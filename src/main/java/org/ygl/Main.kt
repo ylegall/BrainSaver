@@ -7,8 +7,7 @@ import org.apache.commons.cli.DefaultParser
 import org.apache.commons.cli.HelpFormatter
 import org.apache.commons.cli.Options
 import org.apache.commons.cli.ParseException
-import org.ygl.ast.AstDebugger
-import org.ygl.transformation.buildAst
+import org.ygl.transformation.TransformationPipeline
 import java.io.*
 
 const val VERSION = "1.0"
@@ -43,14 +42,7 @@ fun compile(input: InputStream, outStream: OutputStream, options: CompilerOption
     val parser = parseInput(input)
     val tree = parser.program()
 
-    val ast = buildAst(tree, options)
-            .resolveConstants()
-            .findUnusedSymbols()
-            .constantFold()
-            .getAst()
-
-    println("\nafter\n")
-    AstDebugger().print(ast)
+    TransformationPipeline(options).transform(tree)
 
 //    val globals = resolveGlobals(parser, tree)
 //    val programInfo = getProgramInfo(parser, options, tree)

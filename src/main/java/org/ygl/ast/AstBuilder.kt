@@ -8,7 +8,7 @@ import org.ygl.model.Op
 import org.ygl.model.StorageType
 
 /**
- *
+ * TODO add source line, col info for error messages
  */
 class AstBuilder : BrainSaverBaseVisitor<AstNode>()
 {

@@ -6,50 +6,91 @@ import org.ygl.ast.AstBuilder
 import org.ygl.ast.AstDebugger
 import org.ygl.ast.AstNode
 
-fun buildAst(ctx: ParserRuleContext, options: CompilerOptions): TransformationPipeline
-{
-    val ast = AstBuilder().visit(ctx)
 
-    println("\nbefore\n")
-    AstDebugger().print(ast)
-
-    return TransformationPipeline(ast, options)
-}
-
+/**
+ *
+ */
 class TransformationPipeline(
-        private var ast: AstNode,
         private val options: CompilerOptions
 )
 {
-    fun resolveConstants(): TransformationPipeline {
-        ast = ConstantResolver(options).resolveConstants(ast)
+    private var symbolInfo: Map<AstNode, SymbolInfo> = mapOf()
+    private var lastUseInfo: Map<AstNode, Set<String>> = mapOf()
+
+    /**
+     *
+     */
+    private fun ParserRuleContext.buildAst(): AstNode {
+        val ast = AstBuilder().visit(this)
+        println("initial ast:")
+        println("------------")
+        AstDebugger().print(ast)
+        return ast
+    }
+
+    /**
+     *
+     */
+    private fun AstNode.resolveConstants(): AstNode {
+        return ConstantResolver(options).resolveConstants(this)
+    }
+
+    private fun AstNode.findUnusedSymbols(): AstNode {
+        symbolInfo = MutabilityResolver().getSymbolMutabilityInfo(this)
+
+        if (options.verbose) {
+            println("\nsymbol info:")
+            println("-------------")
+            symbolInfo.forEach { scope, symbols ->
+                if (!symbols.deadStores.isEmpty() || !symbols.modifiedSymbols.isEmpty()) {
+                    println("  in scope '$scope':")
+                    println("    modified: ${symbols.modifiedSymbols}")
+                    println("    unused:   ${symbols.deadStores}")
+                    println()
+                }
+            }
+            println()
+        }
+
         return this
     }
 
-    fun findUnusedSymbols(): TransformationPipeline {
-        val symbolInfo = MutabilityResolver().getSymbolMutabilityInfo(ast)
+    private fun AstNode.constantFold(): AstNode {
+        val ast = ConstantFolder(symbolInfo).visit(this)
 
-        println("\nsymbol info:")
-        println("-------------")
-        symbolInfo.forEach { scope, symbols ->
-            if (!symbols.symbolsRead.isEmpty() || !symbols.symbolsWritten.isEmpty()) {
-                println("  in scope '$scope':")
-                println("    read:     ${symbols.symbolsRead}")
-                println("    written:  ${symbols.symbolsWritten}")
-                println("    declared: ${symbols.symbolsDeclared}")
-                println("    unused :  ${symbols.unusedSymbols}")
-                println()
+        if (options.verbose) {
+            println("constant folding:")
+            println("-----------------")
+            AstDebugger().print(ast)
+        }
+
+        return ast
+    }
+
+    private fun AstNode.findLastUsages(): AstNode {
+        lastUseInfo = LastUseResolver().getSymbolLastUseInfo(this)
+
+        if (options.verbose) {
+            println("last use nodes:")
+            println("---------------")
+            lastUseInfo.forEach { node, symbols ->
+                println("  $node\t\t: $symbols")
             }
         }
-        println()
 
         return this
     }
 
-    fun constantFold(): TransformationPipeline {
-        ast = ConstantFolder().visit(ast)
-        return this
-    }
+    fun transform(ctx: ParserRuleContext) {
+        val ast = ctx.buildAst()
+                .resolveConstants()
+                .findUnusedSymbols()
+                .constantFold()
+                .findUnusedSymbols()
+                .constantFold()
+                .findLastUsages()
+        println("final ast:")
+        AstDebugger().print(ast)
 
-    fun getAst() = ast
+    }
 }

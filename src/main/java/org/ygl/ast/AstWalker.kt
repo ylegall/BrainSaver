@@ -8,14 +8,15 @@ abstract class AstWalker<T>
                 is ArrayConstructorNode -> visit(node)
                 is ArrayLiteralNode -> visit(node)
                 is ArrayWriteNode -> visit(node)
-                is AssignmentNode -> visit(node)
+                is StoreNode -> when(node) {
+                    is AssignmentNode -> visit(node)
+                    is DeclarationNode -> visit(node)
+                    else -> visit(node)
+                }
                 is CallStatementNode -> visit(node)
                 is DebugStatementNode -> visit(node)
-                is DeclarationNode -> visit(node)
                 is ForStatementNode -> visit(node)
                 is IfStatementNode -> visit(node)
-//                is PrintStatementNode -> visit(node)
-//                is ReadStatementNode -> visit(node)
                 is WhileStatementNode -> visit(node)
                 else -> visit(node)
             }
@@ -58,9 +59,7 @@ abstract class AstWalker<T>
     open fun visit(node: FunctionNode): T = visitChildren(node)
     open fun visit(node: GlobalVariableNode): T = visitChildren(node)
     open fun visit(node: IfStatementNode): T = visitChildren(node)
-//    open fun visit(node: PrintStatementNode): T = visitChildren(node)
     open fun visit(node: ProgramNode): T = visitChildren(node)
-//    open fun visit(node: ReadStatementNode): T = visitChildren(node)
     open fun visit(node: StatementNode): T = visitChildren(node)
     open fun visit(node: NotExpNode): T = visitChildren(node)
     open fun visit(node: WhileStatementNode): T = visitChildren(node)
@@ -89,5 +88,9 @@ abstract class AstWalker<T>
             result = aggregateResult(result, nextValue)
         }
         return result
+    }
+
+    fun visitList(children: MutableList<AstNode>): MutableList<T> {
+        return MutableList(children.size, { idx -> visit(children[idx]) })
     }
 }

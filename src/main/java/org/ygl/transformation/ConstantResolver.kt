@@ -3,9 +3,10 @@ package org.ygl.transformation
 import org.ygl.CompileException
 import org.ygl.CompilerOptions
 import org.ygl.ast.*
+import org.ygl.model.NullValue
 import org.ygl.model.StorageType
-import org.ygl.runtime.NamedSymbol
 import org.ygl.runtime.ScopeContext
+import org.ygl.runtime.ValuedSymbol
 
 /**
  *
@@ -16,7 +17,7 @@ class ConstantResolver(
 
     private val expEvaluator = ExpressionEvaluator()
     private val constants = mutableMapOf<String, AstNode>()
-    private val scopeSymbols = ScopeContext<NamedSymbol>()
+    private val scopeSymbols = ScopeContext<ValuedSymbol>()
 
     fun resolveConstants(tree: AstNode): AstNode {
         val newTree = visit(tree)
@@ -80,7 +81,7 @@ class ConstantResolver(
 
     override fun visit(node: DeclarationNode): AstNode {
         val rhs = visit(node.rhs)
-        scopeSymbols.addSymbol(NamedSymbol(node.lhs))
+        scopeSymbols.addSymbol(ValuedSymbol(node.lhs, node.storage))
         return DeclarationNode(node.storage, node.lhs, rhs)
     }
 
@@ -107,13 +108,15 @@ class ConstantResolver(
 
     override fun visit(node: FunctionNode): AstNode {
         scopeSymbols.enterScope(node)
-        node.params.forEach { scopeSymbols.addSymbol(NamedSymbol(it)) }
+        node.params.forEach { scopeSymbols.addSymbol(ValuedSymbol(it, StorageType.VAL, NullValue)) }
         val newStatements = MutableList(node.statements.size, { i -> visit(node.statements[i]) })
         scopeSymbols.exitScope()
         return FunctionNode(node.name, node.params, newStatements)
     }
 
     override fun visit(node: AssignmentNode): AstNode {
+        val symbol = scopeSymbols.resolveSymbol(node.lhs) ?: throw CompileException("undefined symbol: ${node.lhs}")
+        if (symbol.storage == StorageType.VAL) throw CompileException("${node.lhs} cannot be re-assigned")
         return AssignmentNode(node.lhs, visit(node.rhs))
     }
 

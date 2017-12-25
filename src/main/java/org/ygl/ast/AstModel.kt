@@ -7,7 +7,8 @@ import org.ygl.model.StorageType
  *
  */
 open class AstNode(
-        var children: MutableList<AstNode> = mutableListOf()
+        var children: MutableList<AstNode> = mutableListOf(),
+        var sourceInfo: SourceInfo? = null
 ) {
     override fun toString() = "(Node)"
 }
@@ -62,7 +63,9 @@ class IfStatementNode(
             addAll(trueStatements)
             addAll(falseStatements)
         }
-)
+) {
+    override fun toString() = "if"
+}
 
 class WhileStatementNode(
         val condition: ExpNode,
@@ -71,7 +74,9 @@ class WhileStatementNode(
         mutableListOf<AstNode>(condition).apply {
             addAll(statements)
         }
-)
+) {
+    override fun toString() = "while"
+}
 
 class ForStatementNode(
         val counter: String,
@@ -84,7 +89,7 @@ class ForStatementNode(
             addAll(statements)
         }
 ) {
-    override fun toString() = "for ($counter in $start to $stop by $inc"
+    override fun toString() = "for ($counter in $start to $stop by $inc)"
 }
 
 class CallStatementNode(
@@ -114,18 +119,23 @@ class ArrayWriteNode(
         val rhs: AstNode
 ) : StatementNode(mutableListOf(idx, rhs))
 
+open class StoreNode(
+        val lhs: String,
+        val rhs: AstNode
+) : StatementNode(mutableListOf(rhs))
+
 class DeclarationNode(
         val storage: StorageType,
-        val lhs: String,
-        var rhs: AstNode
-) : StatementNode(mutableListOf(rhs)) {
+        lhs: String,
+        rhs: AstNode
+) : StoreNode(lhs, rhs) {
     override fun toString() = "$storage $lhs ="
 }
 
 class AssignmentNode(
-        val lhs: String,
-        var rhs: AstNode
-) : StatementNode(mutableListOf(rhs)) {
+        lhs: String,
+        rhs: AstNode
+) : StoreNode(lhs, rhs) {
     override fun toString() = "$lhs ="
 }
 

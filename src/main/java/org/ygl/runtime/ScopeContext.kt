@@ -17,7 +17,7 @@ class ScopeContext<SymbolType: NamedSymbol>
         scopes.push(Scope(node))
     }
 
-    fun getScope() = scopes.peek()
+    fun currentScope() = scopes.peek()
 
     fun exitScope() {
         scopes.pop()
@@ -29,6 +29,10 @@ class ScopeContext<SymbolType: NamedSymbol>
 
     fun resolveSymbol(name: String): SymbolType? {
         return scopes.find { name in it.symbols }?.symbols?.get(name)
+    }
+
+    fun findScopeWithSymbol(name: String): Scope<AstNode, SymbolType>? {
+        return scopes.find { name in it.symbols }
     }
 
     fun resolveLocalSymbol(name: String): SymbolType? {

@@ -5,6 +5,7 @@ import org.antlr.v4.runtime.ParserRuleContext
 import org.antlr.v4.runtime.RecognitionException
 import org.antlr.v4.runtime.Recognizer
 import org.antlr.v4.runtime.misc.ParseCancellationException
+import org.ygl.ast.SourceInfo
 
 
 class CompileErrorListener : BaseErrorListener() {
@@ -28,11 +29,13 @@ class CompileErrorListener : BaseErrorListener() {
 
 class CompileException(
         message: String,
-        ctx: ParserRuleContext? = null
+        sourceInfo: SourceInfo? = null
 ) : Exception(
-        if (ctx != null) {
-            "compilation error: '$message' at line ${ctx.start.line} col ${ctx.start.charPositionInLine}"
+        if (sourceInfo != null) {
+            "compilation error: '$message' at line ${sourceInfo.line} col ${sourceInfo.col}"
         } else {
             message
         }
-)
+) {
+    constructor(message: String, ctx: ParserRuleContext): this(message, SourceInfo(ctx))
+}

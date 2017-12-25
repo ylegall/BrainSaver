@@ -93,16 +93,6 @@ returnStatement
     :   RETURN exp? ';'
     ;
 
-// TODO: remove
-//readStatement
-//    :   (rd=READ|rdint=READINT) '(' Identifier ')' ';'
-//    ;
-
-// TODO remove
-//printStatement
-//    :   PRINT '(' exp ')' ';'
-//    ;
-
 // TODO: allow array size to be constant expression
 arrayInitStatement
     :   lhs=Identifier '=' ARRAY '(' arraySize=IntegerLiteral ')' ';'   # arrayConstructor
@@ -112,7 +102,6 @@ arrayInitStatement
 arrayWriteStatement
     :   array=Identifier '[' idx=exp ']' '=' rhs=exp ';'
     ;
-
 
 // TODO: if expressions
 exp
@@ -142,9 +131,6 @@ atom
 ARRAY   : 'array';
 FUNCTION: 'fn';
 RETURN  : 'return';
-PRINT   : 'print';
-READ    : 'read';
-READINT : 'readInt';
 IF      : 'if';
 ELSE    : 'else';
 WHILE   : 'while';

@@ -1,6 +1,7 @@
 package org.ygl.runtime
 
 import org.ygl.Type
+import org.ygl.model.NullValue
 import org.ygl.model.StorageType
 import org.ygl.model.Value
 
@@ -18,7 +19,7 @@ open class StoredSymbol(
 class ValuedSymbol(
         name: String,
         storage: StorageType,
-        var value: Value
+        var value: Value = NullValue
 ): StoredSymbol(name, storage)
 
 class Symbol(

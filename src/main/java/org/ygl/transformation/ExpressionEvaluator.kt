@@ -5,7 +5,7 @@ import org.ygl.ast.*
 import org.ygl.model.Op
 
 /**
- *
+ * TODO static function evaluation
  */
 class ExpressionEvaluator : AstWalker<AstNode>()
 {
