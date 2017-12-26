@@ -44,10 +44,10 @@ class AstBuilder : BrainSaverBaseVisitor<AstNode>()
 
     override fun visitIfStatement(ctx: IfStatementContext?): AstNode {
         val condition = visit(ctx!!.condition) as ExpNode
-        val trueStatements = mutableListOf<AstNode>()
-        val falseStatements = mutableListOf<AstNode>()
-        ctx.trueStatements?.statement()?.forEach { trueStatements.add(visit(it)) }
-        ctx.falseStatements?.statement()?.forEach { falseStatements.add(visit(it)) }
+        val trueStmts = ctx.trueStatements?.statement() ?: emptyList()
+        val falseStmts = ctx.falseStatements?.statement() ?: emptyList()
+        val trueStatements = MutableList(trueStmts.size, {idx -> visit(trueStmts[idx])})
+        val falseStatements = MutableList(falseStmts.size, {idx -> visit(falseStmts[idx])})
         return IfStatementNode(condition, trueStatements, falseStatements)
     }
 

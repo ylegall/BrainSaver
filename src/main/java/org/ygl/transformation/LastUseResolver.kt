@@ -1,7 +1,6 @@
 package org.ygl.transformation
 
 import org.ygl.ast.*
-import org.ygl.runtime.NamedSymbol
 import org.ygl.runtime.ScopeContext
 
 /**
@@ -11,7 +10,7 @@ class LastUseResolver : AstWalker<Set<String>>()
 {
     private val stmtSymbolsMap = mutableMapOf<AstNode, MutableSet<String>>()
     private val previousUseMap = mutableMapOf<String, AstNode>()
-    private val scopeContext = ScopeContext<NamedSymbol>()
+    private val scopeContext = ScopeContext()
 
     fun getSymbolLastUseInfo(astNode: AstNode): Map<AstNode, Set<String>> {
         visit(astNode)
@@ -71,7 +70,7 @@ class LastUseResolver : AstWalker<Set<String>>()
     }
 
     override fun visit(node: DeclarationNode): Set<String> {
-        scopeContext.addSymbol(NamedSymbol(node.lhs))
+        scopeContext.createSymbol(node)
         return visit(node.rhs)
     }
 

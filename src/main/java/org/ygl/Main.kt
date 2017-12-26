@@ -105,7 +105,8 @@ fun main(args: Array<String>) {
         System.err.println(e.message)
         printUsageAndHalt(options)
     } catch (e: CompileException) {
-        System.err.println(e.message)
+        //System.err.println(e.message)
+        throw e
     } catch (e: ParseCancellationException) {
         System.err.println(e.message)
     }

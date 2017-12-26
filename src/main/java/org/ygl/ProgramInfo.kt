@@ -17,23 +17,23 @@ class SymbolInfo(
 )
 
 fun getProgramInfo(parser: BrainSaverParser,  options: CompilerOptions, tree: ProgramContext): ProgramInfo {
-    val globals = resolveGlobals(parser, tree)
-    val functionInfo = AnalyzingVisitor().apply {
-        visit(tree)
-    }.getAnalysisInfo(globals)
+//    val globals = resolveGlobals(parser, tree)
+//    val functionInfo = AnalyzingVisitor().apply {
+//        visit(tree)
+//    }.getAnalysisInfo(globals)
+//
+//    // TODO: get constants
+//    val constants = mutableMapOf<String, Symbol>()
+//    val programInfo = ProgramInfo(globals, constants, functionInfo)
+//
+//    // TODO: move out
+//    if (options.verbose) {
+//        for ((fn, info) in functionInfo) {
+//            println("\n$fn")
+//            println("-".repeat(fn.length))
+//            println("\tunused symbols: ${info.unusedSymbols}")
+//        }
+//    }
 
-    // TODO: get constants
-    val constants = mutableMapOf<String, Symbol>()
-    val programInfo = ProgramInfo(globals, constants, functionInfo)
-
-    // TODO: move out
-    if (options.verbose) {
-        for ((fn, info) in functionInfo) {
-            println("\n$fn")
-            println("-".repeat(fn.length))
-            println("\tunused symbols: ${info.unusedSymbols}")
-        }
-    }
-
-    return programInfo
+    return ProgramInfo()
 }

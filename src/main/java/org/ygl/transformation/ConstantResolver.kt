@@ -3,10 +3,8 @@ package org.ygl.transformation
 import org.ygl.CompileException
 import org.ygl.CompilerOptions
 import org.ygl.ast.*
-import org.ygl.model.NullValue
 import org.ygl.model.StorageType
 import org.ygl.runtime.ScopeContext
-import org.ygl.runtime.ValuedSymbol
 
 /**
  *
@@ -17,7 +15,7 @@ class ConstantResolver(
 
     private val expEvaluator = ExpressionEvaluator()
     private val constants = mutableMapOf<String, AstNode>()
-    private val scopeSymbols = ScopeContext<ValuedSymbol>()
+    private val scopeSymbols = ScopeContext()
 
     fun resolveConstants(tree: AstNode): AstNode {
         val newTree = visit(tree)
@@ -54,10 +52,10 @@ class ConstantResolver(
     }
 
     override fun visit(node: ConstantNode): AstNode {
-        val rhs = expEvaluator.evaluate(node.rhs, constants)
         if (node.lhs in constants) {
             throw CompileException("${node.lhs} redefined")
         }
+        val rhs = expEvaluator.evaluate(node.rhs, constants)
         if (rhs !is AtomIntNode && rhs !is AtomStrNode) {
             throw CompileException("${node.lhs} cannot be evaluated at compile time")
         }
@@ -69,7 +67,7 @@ class ConstantResolver(
         if (node.lhs in constants) {
             throw CompileException("${node.lhs} redefined")
         }
-        val rhs = visit(node.rhs)
+        val rhs = expEvaluator.evaluate(node.rhs, constants)
         if (node.storage == StorageType.VAL) {
             if (rhs.isConstant()) {
                 constants.put(node.lhs, rhs)
@@ -81,7 +79,7 @@ class ConstantResolver(
 
     override fun visit(node: DeclarationNode): AstNode {
         val rhs = visit(node.rhs)
-        scopeSymbols.addSymbol(ValuedSymbol(node.lhs, node.storage))
+        scopeSymbols.createSymbol(node)
         return DeclarationNode(node.storage, node.lhs, rhs)
     }
 
@@ -108,7 +106,7 @@ class ConstantResolver(
 
     override fun visit(node: FunctionNode): AstNode {
         scopeSymbols.enterScope(node)
-        node.params.forEach { scopeSymbols.addSymbol(ValuedSymbol(it, StorageType.VAL, NullValue)) }
+        node.params.forEach { scopeSymbols.createSymbol(it) }
         val newStatements = MutableList(node.statements.size, { i -> visit(node.statements[i]) })
         scopeSymbols.exitScope()
         return FunctionNode(node.name, node.params, newStatements)

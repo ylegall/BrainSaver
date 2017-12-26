@@ -3,7 +3,7 @@ package org.ygl.transformation
 import org.antlr.v4.runtime.ParserRuleContext
 import org.ygl.CompilerOptions
 import org.ygl.ast.AstBuilder
-import org.ygl.ast.AstDebugger
+import org.ygl.ast.AstPrinter
 import org.ygl.ast.AstNode
 
 
@@ -24,7 +24,7 @@ class TransformationPipeline(
         val ast = AstBuilder().visit(this)
         println("initial ast:")
         println("------------")
-        AstDebugger().print(ast)
+        AstPrinter().print(ast)
         return ast
     }
 
@@ -61,7 +61,7 @@ class TransformationPipeline(
         if (options.verbose) {
             println("constant folding:")
             println("-----------------")
-            AstDebugger().print(ast)
+            AstPrinter().print(ast)
         }
 
         return ast
@@ -89,8 +89,8 @@ class TransformationPipeline(
                 .findUnusedSymbols()
                 .constantFold()
                 .findLastUsages()
-        println("final ast:")
-        AstDebugger().print(ast)
+        println("\nfinal ast:\n")
+        AstPrinter().print(ast)
 
     }
 }

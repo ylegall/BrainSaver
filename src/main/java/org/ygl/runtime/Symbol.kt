@@ -1,30 +1,33 @@
 package org.ygl.runtime
 
-import org.ygl.Type
 import org.ygl.model.NullValue
 import org.ygl.model.StorageType
 import org.ygl.model.Value
 
-open class NamedSymbol(val name: String) {
-    fun getKey(): String = name
+open class NamedSymbol(
+        val name: String
+)
+
+open class ValueSymbol(
+        name: String,
+        val storage: StorageType = StorageType.VAL
+) : NamedSymbol(name) {
+
+    var value: Value = NullValue
+    val size: Int get() = value.getSize()
+    val type: Type get() = value.getType()
+
+    constructor(name: String, storage: StorageType, value: Value): this(name, storage) {
+        this.value = value
+    }
+
 }
 
-open class StoredSymbol(
-        name: String,
-        val storage: StorageType
-): NamedSymbol(name) {
-    fun isMutable() = storage == StorageType.VAR
-}
-
-class ValuedSymbol(
+open class Symbol(
         name: String,
         storage: StorageType,
-        var value: Value = NullValue
-): StoredSymbol(name, storage)
-
-class Symbol(
-        name: String,
-        storage: StorageType,
-        val type: Type = Type.INT,
+        value: Value,
         val address: Int
-) : StoredSymbol(name, storage)
+) : ValueSymbol(name, storage, value)
+
+object UnknownSymbol : Symbol("", StorageType.VAL, NullValue, -1)

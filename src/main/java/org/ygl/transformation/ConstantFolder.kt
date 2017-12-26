@@ -3,8 +3,7 @@ package org.ygl.transformation
 import org.ygl.CompileException
 import org.ygl.ast.*
 import org.ygl.model.*
-import org.ygl.runtime.ScopeContext
-import org.ygl.runtime.ValuedSymbol
+import org.ygl.runtime.*
 
 /**
  * TODO: use symbol info
@@ -13,8 +12,7 @@ class ConstantFolder(
         private val scopeInfo: Map<AstNode, SymbolInfo>
 ): AstWalker<AstNode>()
 {
-    private val scopeContext = ScopeContext<ValuedSymbol>()
-    private val unknownSymbol = ValuedSymbol("", StorageType.VAR, NullValue)
+    private val scopeContext = ScopeContext()
     private val expEval = ExpressionEvaluator()
 
     private fun AstNode.getValue(): Value {
@@ -38,7 +36,7 @@ class ConstantFolder(
         node.children.filterIsInstance<GlobalVariableNode>()
                 .forEach {
                     val result = visit(it) as GlobalVariableNode
-                    scopeContext.addSymbol(ValuedSymbol(it.lhs, it.storage, result.rhs.getValue()))
+                    scopeContext.createSymbol(it.lhs, it.storage, result.rhs.getValue())
                 }
 
         node.children.filterIsInstance<FunctionNode>().forEach { visit(it) }
@@ -52,7 +50,7 @@ class ConstantFolder(
 
     override fun visit(node: FunctionNode): AstNode {
         scopeContext.enterScope(node)
-        node.params.forEach { scopeContext.addSymbol(ValuedSymbol(it, StorageType.VAL, NullValue)) }
+        node.params.forEach { scopeContext.createSymbol(it) }
         val stmts = node.statements.map { visit(it) }
                 .filter { it != EmptyNode }
                 .toCollection(mutableListOf())
@@ -80,11 +78,10 @@ class ConstantFolder(
 
         val rhs = visit(node.rhs)
         return if (rhs.isConstant()) {
-            val value = rhs.getValue()
-            scopeContext.addSymbol(ValuedSymbol(node.lhs, node.storage, value))
+            scopeContext.createSymbol(node.lhs, node.storage, rhs.getValue())
             DeclarationNode(node.storage, node.lhs, rhs)
         } else {
-            scopeContext.addSymbol(ValuedSymbol(node.lhs, node.storage, NullValue))
+            scopeContext.createSymbol(node.lhs, node.storage)
             node
         }
     }
@@ -99,9 +96,11 @@ class ConstantFolder(
         val rhs = visit(node.rhs)
         val symbol = scopeContext.resolveLocalSymbol(node.lhs)
         if (symbol != null) {
-            if (symbol.storage == StorageType.VAL) throw CompileException("val cannot be reassigned: ${node.lhs}")
-            if (rhs.isConstant()) {
-                scopeContext.addSymbol(ValuedSymbol(node.lhs, symbol.storage, rhs.getValue()))
+            if (symbol.storage == StorageType.VAL) {
+                throw CompileException("val cannot be reassigned: ${node.lhs}")
+            } else if (rhs.isConstant()) {
+                //scopeContext.createSymbol(node.lhs, symbol.storage, rhs.getValue())
+                symbol.value = rhs.getValue()
             } else {
                 symbol.value = NullValue
             }
@@ -117,7 +116,7 @@ class ConstantFolder(
             return node
         }
 
-        val symbol = scopeContext.resolveSymbol(node.identifier) ?: unknownSymbol
+        val symbol = scopeContext.resolveSymbol(node.identifier) ?: UnknownSymbol
         val value = symbol.value
         return when (value) {
             is IntValue -> AtomIntNode(value.value)
