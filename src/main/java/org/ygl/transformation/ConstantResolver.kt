@@ -4,7 +4,7 @@ import org.ygl.CompileException
 import org.ygl.CompilerOptions
 import org.ygl.ast.*
 import org.ygl.model.StorageType
-import org.ygl.runtime.ScopeContext
+import java.util.*
 
 /**
  *
@@ -15,7 +15,7 @@ class ConstantResolver(
 
     private val expEvaluator = ExpressionEvaluator()
     private val constants = mutableMapOf<String, AstNode>()
-    private val scopeSymbols = ScopeContext()
+    private val scopeSymbols = ArrayDeque<MutableSet<String>>()
 
     fun resolveConstants(tree: AstNode): AstNode {
         val newTree = visit(tree)
@@ -30,7 +30,7 @@ class ConstantResolver(
     }
 
     override fun visit(node: ProgramNode): AstNode {
-        scopeSymbols.enterScope(node)
+        scopeSymbols.push(mutableSetOf())
 
         node.children.filterIsInstance<ConstantNode>().forEach { visit(it) }
 
@@ -47,7 +47,7 @@ class ConstantResolver(
         node.children.addAll(newGlobals)
         node.children.addAll(functions)
 
-        scopeSymbols.exitScope()
+        scopeSymbols.pop()
         return node
     }
 
@@ -79,7 +79,8 @@ class ConstantResolver(
 
     override fun visit(node: DeclarationNode): AstNode {
         val rhs = visit(node.rhs)
-        scopeSymbols.createSymbol(node)
+        //scopeSymbols.createSymbol(node)
+        scopeSymbols.peek().add(node.lhs)
         return DeclarationNode(node.storage, node.lhs, rhs)
     }
 
@@ -105,16 +106,17 @@ class ConstantResolver(
     }
 
     override fun visit(node: FunctionNode): AstNode {
-        scopeSymbols.enterScope(node)
-        node.params.forEach { scopeSymbols.createSymbol(it) }
+        scopeSymbols.push(mutableSetOf())
+        node.params.forEach { scopeSymbols.peek().add(it) }
         val newStatements = MutableList(node.statements.size, { i -> visit(node.statements[i]) })
-        scopeSymbols.exitScope()
+        scopeSymbols.pop()
         return FunctionNode(node.name, node.params, newStatements)
     }
 
     override fun visit(node: AssignmentNode): AstNode {
-        val symbol = scopeSymbols.resolveSymbol(node.lhs) ?: throw CompileException("undefined symbol: ${node.lhs}")
-        if (symbol.storage == StorageType.VAL) throw CompileException("${node.lhs} cannot be re-assigned")
+        //val symbol = scopeSymbols.find { node.lhs in it } ?: throw CompileException("undefined symbol: ${node.lhs}")
+        //val symbol = scopeSymbols.resolveSymbol(node.lhs) ?: throw CompileException("undefined symbol: ${node.lhs}")
+        //if (symbol.storage == StorageType.VAL) throw CompileException("${node.lhs} cannot be re-assigned")
         return AssignmentNode(node.lhs, visit(node.rhs))
     }
 
@@ -127,10 +129,11 @@ class ConstantResolver(
     }
 
     override fun visit(node: AtomIdNode): AstNode {
-        return when (node.identifier) {
-            in scopeSymbols -> node
-            in constants -> constants[node.identifier]!!
-            else -> node
+        val symbol = scopeSymbols.find { node.identifier in it }
+        return if (symbol != null || node.identifier !in constants) {
+            node
+        } else {
+            constants[node.identifier]!!
         }
     }
 
