@@ -63,7 +63,7 @@ class ScopeContext
         return contains(symbol.name)
     }
 
-    operator fun contains(name: String): Boolean {
+    private operator fun contains(name: String): Boolean {
         return scopes.find { name in it.symbols } != null
     }
 }

@@ -68,12 +68,9 @@ abstract class AstWalker<T>
         return if (node.children.isEmpty()) {
             defaultValue()
         } else {
-            var result = visit(node.children[0])
-            for (i in 1 until node.children.size) {
-                val nextValue = visit(node.children[i])
-                result = aggregateResult(result, nextValue)
-            }
-            result
+            return node.children
+                    .map { visit(it) }
+                    .reduce { acc, next -> aggregateResult(acc, next) }
         }
     }
 
@@ -82,12 +79,8 @@ abstract class AstWalker<T>
     abstract fun defaultValue(): T
 
     fun visit(nodes: Iterable<AstNode>): T {
-        var result = defaultValue()
-        for (node in nodes) {
-            val nextValue = visit(node)
-            result = aggregateResult(result, nextValue)
-        }
-        return result
+        return nodes.map { visit(it) }
+                .fold(defaultValue(), { agg, next -> aggregateResult(agg, next) })
     }
 
     fun visitList(children: MutableList<AstNode>): MutableList<T> {
