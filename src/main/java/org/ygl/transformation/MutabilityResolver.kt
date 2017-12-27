@@ -74,7 +74,7 @@ internal class MutabilityResolver : AstWalker<ModifiedSymbols>()
     }
 
     override fun visit(node: DeclarationNode): ModifiedSymbols {
-        scopeContext.createSymbol(node.lhs)
+        scopeContext.createSymbol(node.lhs, node.storage)
         val result = visit(node.rhs)
         recordSymbolWrite(node, node.lhs)
         return result
