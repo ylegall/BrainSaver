@@ -6,7 +6,6 @@ import org.ygl.model.*
 import org.ygl.runtime.*
 
 /**
- * TODO: use symbol info
  */
 class ConstantFolder(
         private val scopeInfo: Map<AstNode, SymbolInfo>
@@ -173,8 +172,8 @@ class ConstantFolder(
         val condition = visit(node.condition)
 
         val result = if (condition.isConstant()) {
-            val intVal = condition.getValue() as? IntValue ?: throw Exception("invalid condition type for $node")
-            if (intVal.value == 0) {
+            val intVal = condition.getIntValue()
+            if (intVal == 0) {
                 AstNode(children = node.falseStatements)
             } else {
                 AstNode(children = node.trueStatements)
