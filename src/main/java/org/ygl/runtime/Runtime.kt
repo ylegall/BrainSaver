@@ -9,7 +9,7 @@ import java.util.*
 /**
  *
  */
-class ScopeContext
+class Runtime
 {
     private val scopes = ArrayDeque<Scope>()
 
@@ -42,9 +42,29 @@ class ScopeContext
         return scopes.peek().createSymbol(name, storageType, value)
     }
 
+    fun createTempSymbol(
+            value: Value = NullValue
+    ): Symbol {
+        if (scopes.isEmpty()) throw Exception("addSymbol(): no current scope")
+
+        return scopes.peek().createTempSymbol(value)
+    }
+
     fun createSymbol(node: AstNode): Symbol {
         if (scopes.isEmpty()) throw Exception("addSymbol(): no current scope")
         return scopes.peek().createSymbol(node)
+    }
+
+    fun rename(symbol: Symbol, newName: String): Symbol {
+        // TODO: add comment in source output
+        currentScope().symbols.remove(symbol.name)
+        val newSymbol = Symbol(newName, symbol.storage, symbol.value, symbol.address)
+        currentScope().symbols[newName] = newSymbol
+        return symbol
+    }
+
+    fun delete(symbol: Symbol) {
+        // TODO
     }
 
     fun resolveSymbol(name: String): Symbol? {
@@ -59,11 +79,7 @@ class ScopeContext
         return scopes.peek()?.symbols?.get(name)
     }
 
-    operator fun contains(symbol: Symbol): Boolean {
-        return contains(symbol.name)
-    }
-
-    private operator fun contains(name: String): Boolean {
+    operator fun contains(name: String): Boolean {
         return scopes.find { name in it.symbols } != null
     }
 }

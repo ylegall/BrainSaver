@@ -14,9 +14,12 @@ class Scope(
 )
 {
     val symbols = mutableMapOf<String, Symbol>()
+    val tempSymbols = mutableMapOf<String, Symbol>()
 
     var scopeSize = 0
         private set
+
+    private var tempCounter = 0
 
     fun createSymbol(node: AstNode): Symbol {
         return when(node) {
@@ -39,6 +42,31 @@ class Scope(
         val address = startAddress + scopeSize
         val symbol = Symbol(name, storageType, NullValue, address)
         symbols[name] = symbol
+        scopeSize += symbol.size
+        return symbol
+    }
+
+    fun delete(symbol: Symbol) {
+        assert(symbol.hasAddress(),
+                { "symbol ${symbol.name} does not have an address" }
+        )
+        if (symbol.isTemp()) {
+            assert(tempSymbols.remove(symbol.name) != null,
+                    { "symbol ${symbol.name} was not a temp symbol" }
+            )
+        } else {
+            assert(symbols.remove(symbol.name) != null,
+                    { "symbol ${symbol.name} was not found for deletion" }
+            )
+        }
+    }
+
+    fun createTempSymbol(value: Value): Symbol {
+        // TODO
+        val address = startAddress + scopeSize
+        val name = "\$t$tempCounter"
+        tempCounter++
+        val symbol = TempSymbol(name, value, address)
         scopeSize += symbol.size
         return symbol
     }

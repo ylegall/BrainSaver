@@ -42,7 +42,7 @@ fun compile(input: InputStream, outStream: OutputStream, options: CompilerOption
     val parser = parseInput(input)
     val tree = parser.program()
 
-    TransformationPipeline(options).transform(tree)
+    TransformationPipeline(outStream, options).transform(tree)
 
 //    val globals = resolveGlobals(parser, tree)
 //    val programInfo = getProgramInfo(parser, options, tree)

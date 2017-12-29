@@ -1,7 +1,7 @@
 package org.ygl.transformation
 
 import org.ygl.ast.*
-import org.ygl.runtime.ScopeContext
+import org.ygl.runtime.Runtime
 
 /**
  *
@@ -22,7 +22,7 @@ private typealias ModifiedSymbols = MutableSet<String>
  */
 internal class MutabilityResolver : AstWalker<ModifiedSymbols>()
 {
-    private val scopeContext = ScopeContext()
+    private val scopeContext = Runtime()
     private val scopeSymbolInfo = mutableMapOf<AstNode, SymbolInfo>()
 
     fun getSymbolMutabilityInfo(ast: AstNode): Map<AstNode, SymbolInfo> {

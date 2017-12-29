@@ -39,8 +39,12 @@ class GlobalVariableNode(
 class FunctionNode(
         val name: String,
         val params: List<String>,
-        val statements: MutableList<AstNode>
-) : AstNode(statements) {
+        val statements: MutableList<AstNode>,
+        val ret: AstNode? = null
+) : AstNode(
+        statements.apply { ret?.let { add(it) } }
+)
+{
     override fun toString() = "fn $name()"
 }
 
@@ -52,7 +56,9 @@ open class StatementNode(
 
 class ReturnNode(
         val exp: AstNode
-) : StatementNode(mutableListOf(exp))
+) : StatementNode(mutableListOf(exp)) {
+    override fun toString() = "ret"
+}
 
 class IfStatementNode(
         val condition: ExpNode,

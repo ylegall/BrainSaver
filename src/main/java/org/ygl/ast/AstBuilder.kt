@@ -28,9 +28,12 @@ class AstBuilder : BrainSaverBaseVisitor<AstNode>()
 
     override fun visitFunction(ctx: FunctionContext?): AstNode {
         val params = ctx!!.params?.identifierList()?.Identifier()?.mapNotNull { it.text } ?: listOf()
-        val stmts = toNodeList<AstNode>(ctx.body.statement())
-        if (ctx.body.ret != null) stmts.add(visit(ctx.body.ret) as ReturnNode)
-        return FunctionNode(ctx.name.text, params, stmts)
+        val stmts = toNodeList(ctx.body.statement())
+        var ret: AstNode? = null
+        if (ctx.body.ret != null) {
+            ret = visit(ctx.body.ret)
+        }
+        return FunctionNode(ctx.name.text, params, stmts, ret)
     }
 
     override fun visitStatement(ctx: StatementContext?): AstNode {
@@ -53,7 +56,8 @@ class AstBuilder : BrainSaverBaseVisitor<AstNode>()
 
     override fun visitWhileStatement(ctx: WhileStatementContext?): AstNode {
         val condition = visit(ctx!!.condition) as ExpNode
-        val stmts = toNodeList<AstNode>(ctx.statementList().statement())
+        val stmts = MutableList(ctx.statementList().statement().size, { idx -> visit(ctx.statementList().statement()[idx]) })
+        //val stmts = toNodeList<AstNode>(ctx.statementList().statement())
         return WhileStatementNode(condition, stmts)
     }
 
@@ -61,7 +65,7 @@ class AstBuilder : BrainSaverBaseVisitor<AstNode>()
         val start = visit(ctx!!.start) as AtomNode
         val stop = visit(ctx.stop) as AtomNode
         val inc = if (ctx.step != null) visit(ctx.step) as AtomNode else AtomIntNode(1)
-        val stmts = toNodeList<AstNode>(ctx.statementList().statement())
+        val stmts = toNodeList(ctx.statementList().statement())
         return ForStatementNode(ctx.loopVar.text, start, stop, inc, stmts)
     }
 
@@ -85,7 +89,7 @@ class AstBuilder : BrainSaverBaseVisitor<AstNode>()
 
     override fun visitCallStatement(ctx: CallStatementContext?): AstNode {
         val name = ctx!!.funcName.text
-        val args = toNodeList<AstNode>(ctx.args?.exp() ?: mutableListOf())
+        val args = toNodeList(ctx.args?.exp() ?: mutableListOf())
         return CallStatementNode(name, args)
     }
 
@@ -117,7 +121,7 @@ class AstBuilder : BrainSaverBaseVisitor<AstNode>()
     }
 
     override fun visitCallExp(ctx: CallExpContext?): AstNode {
-        val params = toNodeList<AstNode>(ctx!!.expList().exp())
+        val params = toNodeList(ctx!!.expList().exp())
         return CallExpNode(ctx.funcName.text, params)
     }
 
@@ -146,13 +150,11 @@ class AstBuilder : BrainSaverBaseVisitor<AstNode>()
         return AtomIntNode(ctx!!.IntegerLiteral().text.toInt())
     }
 
-    @Suppress("UNCHECKED_CAST")
-    private fun <T: AstNode> toNodeList(input: List<ParserRuleContext>): MutableList<T> {
-        return MutableList(input.size, { idx -> visit(input[idx]) as T })
+    private fun toNodeList(input: List<ParserRuleContext>): MutableList<AstNode> {
+        return MutableList(input.size, { idx -> visit(input[idx]) })
     }
 
     override fun visitChildren(rule: RuleNode): AstNode {
-        val ctx = rule as ParserRuleContext
         val children = mutableListOf<AstNode>()
         for (i in 0 until rule.childCount) {
             val c = rule.getChild(i)

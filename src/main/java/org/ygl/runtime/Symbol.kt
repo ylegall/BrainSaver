@@ -4,30 +4,49 @@ import org.ygl.model.NullValue
 import org.ygl.model.StorageType
 import org.ygl.model.Value
 
-open class NamedSymbol(
-        val name: String
-)
-
-open class ValueSymbol(
-        name: String,
-        val storage: StorageType = StorageType.VAL
-) : NamedSymbol(name) {
-
-    var value: Value = NullValue
+open class Symbol(
+        val name: String,
+        val storage: StorageType = StorageType.VAL,
+        var value: Value,
+        var address: Int
+) {
     val size: Int get() = value.getSize()
     val type: Type get() = value.getType()
 
-    constructor(name: String, storage: StorageType, value: Value): this(name, storage) {
-        this.value = value
-    }
+    open fun isConstant() = false
+    open fun isTemp() = false
+    open fun hasAddress() = true
 
 }
 
-open class Symbol(
+class TempSymbol(
         name: String,
-        storage: StorageType,
         value: Value,
-        val address: Int
-) : ValueSymbol(name, storage, value)
+        address: Int
+) : Symbol(name, StorageType.VAR, value, address) {
+    override fun isTemp() = true
+}
+
+class ConstantSymbol(
+        value: Value
+) : Symbol("\$const($value)", StorageType.VAL, value, -1) {
+
+    override fun isConstant() = true
+    override fun hasAddress() = false
+}
 
 object UnknownSymbol : Symbol("", StorageType.VAL, NullValue, -1)
+
+fun Symbol.offset(offset: Int, name: String = this.name): Symbol {
+    // TODO: arrays
+
+    assert(this.address >= 0)
+    return Symbol(
+            "$name($offset)",
+            this.storage,
+            NullValue,
+            this.address.plus(offset)
+    )
+}
+
+typealias BinaryOp = (Symbol, Symbol) -> Symbol

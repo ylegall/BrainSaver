@@ -11,7 +11,7 @@ class ConstantFolder(
         private val scopeInfo: Map<AstNode, SymbolInfo>
 ): AstWalker<AstNode>()
 {
-    private val scopeContext = ScopeContext()
+    private val scopeContext = Runtime()
     private val expEval = ExpressionEvaluator()
 
     private fun AstNode.getValue(): Value {
@@ -95,19 +95,15 @@ class ConstantFolder(
         val rhs = visit(node.rhs)
         val symbol = scopeContext.resolveLocalSymbol(node.lhs)
         if (symbol != null) {
-            if (symbol.storage == StorageType.VAL) {
-                throw CompileException("val cannot be reassigned: ${node.lhs}")
-            } else if (rhs.isConstant()) {
-                //scopeContext.createSymbol(node.lhs, symbol.storage, rhs.getValue())
-                symbol.value = rhs.getValue()
-            } else {
-                symbol.value = NullValue
+            when {
+                symbol.storage == StorageType.VAL -> throw CompileException("val cannot be reassigned: ${node.lhs}")
+                rhs.isConstant() -> symbol.value = rhs.getValue()
+                else -> symbol.value = NullValue
             }
         }
         return AssignmentNode(node.lhs, rhs)
     }
 
-    // TODO: check if value is written in scope context
     override fun visit(node: AtomIdNode): AstNode {
         // check if symbol is modified in current scope
         val info = scopeInfo[scopeContext.currentScope().node]!!

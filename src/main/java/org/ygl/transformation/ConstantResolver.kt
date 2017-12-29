@@ -79,7 +79,6 @@ class ConstantResolver(
 
     override fun visit(node: DeclarationNode): AstNode {
         val rhs = visit(node.rhs)
-        //scopeSymbols.createSymbol(node)
         scopeSymbols.peek().add(node.lhs)
         return DeclarationNode(node.storage, node.lhs, rhs)
     }
@@ -114,9 +113,6 @@ class ConstantResolver(
     }
 
     override fun visit(node: AssignmentNode): AstNode {
-        //val symbol = scopeSymbols.find { node.lhs in it } ?: throw CompileException("undefined symbol: ${node.lhs}")
-        //val symbol = scopeSymbols.resolveSymbol(node.lhs) ?: throw CompileException("undefined symbol: ${node.lhs}")
-        //if (symbol.storage == StorageType.VAL) throw CompileException("${node.lhs} cannot be re-assigned")
         return AssignmentNode(node.lhs, visit(node.rhs))
     }
 

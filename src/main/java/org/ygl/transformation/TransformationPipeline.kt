@@ -3,14 +3,16 @@ package org.ygl.transformation
 import org.antlr.v4.runtime.ParserRuleContext
 import org.ygl.CompilerOptions
 import org.ygl.ast.AstBuilder
-import org.ygl.ast.AstPrinter
 import org.ygl.ast.AstNode
+import org.ygl.ast.AstPrinter
+import java.io.OutputStream
 
 
 /**
  *
  */
 class TransformationPipeline(
+        private val outStream: OutputStream,
         private val options: CompilerOptions
 )
 {
@@ -88,9 +90,13 @@ class TransformationPipeline(
                 .constantFold()
                 .findUnusedSymbols()
                 .constantFold()
+                .findUnusedSymbols()
+                .constantFold()
                 .findLastUsages()
         println("\nfinal ast:\n")
         AstPrinter().print(ast)
 
+        // generate bf code:
+        //AstCodeGenerator(outStream, options, lastUseInfo).visit(ast)
     }
 }

@@ -69,7 +69,7 @@ fun subReduce(left: AstNode, right: Int): AstNode {
 fun addReduce(left: AstNode, right: Int): AstNode {
     return when (right) {
         0 -> left
-        else -> CallExpNode("inc", mutableListOf(left, AtomIntNode(right)))
+        else -> EmptyNode
     }
 }
 
