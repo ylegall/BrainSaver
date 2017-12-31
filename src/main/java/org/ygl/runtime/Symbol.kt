@@ -49,4 +49,5 @@ fun Symbol.offset(offset: Int, name: String = this.name): Symbol {
     )
 }
 
+// TODO: move this
 typealias BinaryOp = (Symbol, Symbol) -> Symbol

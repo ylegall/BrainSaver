@@ -3,9 +3,7 @@ package org.ygl.runtime
 import org.ygl.CompilerOptions
 import org.ygl.DEFAULT_COMPILE_OPTIONS
 import org.ygl.MinifyingOutputStream
-import org.ygl.model.NullValue
 import org.ygl.model.StrValue
-import org.ygl.model.Value
 import java.io.OutputStream
 
 class CodeGen(
@@ -141,6 +139,20 @@ class CodeGen(
             }
         }
         return symbol
+    }
+
+    /**
+     * moves rhs to lhs. rhs is not preserved
+     */
+    fun move(lhs: Symbol, rhs: Symbol): Symbol {
+        if (rhs.address == lhs.address) return lhs
+        commentLine("move $rhs to $lhs")
+        setZero(lhs)
+        loop(rhs, {
+            inc(lhs)
+            dec(rhs)
+        })
+        return lhs
     }
 
     fun moveTo(symbol: Symbol, comment: String = "") {

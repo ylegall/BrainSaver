@@ -14,7 +14,7 @@ import java.util.ArrayList
 /**
  * Walks the Ast and generates code
  */
-class AstCodeGenerator(
+class AstCompiler(
         outputStream: OutputStream,
         private val options: CompilerOptions,
         private val lastUseInfo: Map<AstNode, Set<String>> = mapOf()
@@ -70,6 +70,8 @@ class AstCodeGenerator(
         TODO("assign value")
         return rhs
     }
+
+
 
     /**
      * visit the statement.
@@ -139,12 +141,13 @@ class AstCodeGenerator(
         // execute statements in function body:
         fnNode.statements.forEach { visit(it) }
 
-        var result = UnknownSymbol
+        // TODO
+        var result: Symbol = UnknownSymbol
         if (fnNode.ret != null) {
             val ret = visit(fnNode.ret)
             runtime.exitScope()
             val cpy = runtime.createTempSymbol(ret.value)
-            result = runtime.move(cpy, ret)
+            result = cg.move(cpy, ret)
         } else {
             runtime.exitScope()
         }
@@ -193,7 +196,6 @@ class AstCodeGenerator(
     private fun assignVariable(lhs: Symbol, rhs: Symbol): Symbol {
         return when (rhs.type) {
             is IntType -> cg.copyInt(lhs, rhs)
-        //is StrType -> cg.copyStr(lhs, rhs.value)
             else -> throw CompileException("invalid rhs type: ${rhs.type}")
         }
     }
