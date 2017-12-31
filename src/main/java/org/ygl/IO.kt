@@ -102,10 +102,16 @@ class IO(private val cg: CodeGen)
             val cs = currentScope()
             val tmp = cs.getTempSymbol()
             moveTo(tmp, "print immediate '$chars'")
-            for (i in 0 until chars.length) {
+
+            var lastValue = chars[0].toInt()
+            loadInt(tmp, lastValue)
+            emit(".")
+
+            for (i in 1 until chars.length) {
                 val intValue = chars[i].toInt()
-                loadInt(tmp, intValue)
+                incrementBy(tmp, intValue - lastValue)
                 emit(".")
+                lastValue = intValue
             }
             cs.delete(tmp)
         }
