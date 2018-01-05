@@ -18,22 +18,22 @@ class AstBuilder : BrainSaverBaseVisitor<AstNode>()
     }
 
     override fun visitConstant(ctx: ConstantContext?): AstNode {
-        return ConstantNode(ctx!!.Identifier().text, visit(ctx.rhs))
+        return ConstantNode(ctx!!.Identifier().text, visit(ctx.rhs), SourceInfo(ctx))
     }
 
     override fun visitGlobalVariable(ctx: GlobalVariableContext?): AstNode {
-        val storage = StorageType.parse(ctx!!.storage().text)
-        return GlobalVariableNode(storage, ctx.Identifier().text, visit(ctx.rhs))
+        return GlobalVariableNode(ctx!!.Identifier().text, visit(ctx.rhs), SourceInfo(ctx))
     }
 
     override fun visitFunction(ctx: FunctionContext?): AstNode {
-        val params = ctx!!.params?.identifierList()?.Identifier()?.mapNotNull { it.text } ?: listOf()
+        val name = ctx!!.name.text
+        val params = ctx.params?.mapNotNull { it.text } ?: listOf()
         val stmts = toNodeList(ctx.body.statement())
         var ret: AstNode? = null
         if (ctx.body.ret != null) {
             ret = visit(ctx.body.ret)
         }
-        return FunctionNode(ctx.name.text, params, stmts, ret)
+        return FunctionNode(name, params, stmts, ret)
     }
 
     override fun visitStatement(ctx: StatementContext?): AstNode {
@@ -41,23 +41,20 @@ class AstBuilder : BrainSaverBaseVisitor<AstNode>()
     }
 
     override fun visitDebugStatement(ctx: DebugStatementContext?): AstNode {
-        val params = ctx!!.identifierList()?.Identifier()?.mapNotNull { it.text } ?: listOf()
+        val params = ctx!!.params.map { it.text }
         return DebugStatementNode(params)
     }
 
     override fun visitIfStatement(ctx: IfStatementContext?): AstNode {
         val condition = visit(ctx!!.condition) as ExpNode
-        val trueStmts = ctx.trueStatements?.statement() ?: emptyList()
-        val falseStmts = ctx.falseStatements?.statement() ?: emptyList()
-        val trueStatements = MutableList(trueStmts.size, {idx -> visit(trueStmts[idx])})
-        val falseStatements = MutableList(falseStmts.size, {idx -> visit(falseStmts[idx])})
+        val trueStatements = toNodeList(ctx.trueStmts)
+        val falseStatements = toNodeList(ctx.falseStmts)
         return IfStatementNode(condition, trueStatements, falseStatements)
     }
 
     override fun visitWhileStatement(ctx: WhileStatementContext?): AstNode {
         val condition = visit(ctx!!.condition) as ExpNode
-        val stmts = MutableList(ctx.statementList().statement().size, { idx -> visit(ctx.statementList().statement()[idx]) })
-        //val stmts = toNodeList<AstNode>(ctx.statementList().statement())
+        val stmts = toNodeList(ctx.body)
         return WhileStatementNode(condition, stmts)
     }
 
@@ -65,13 +62,14 @@ class AstBuilder : BrainSaverBaseVisitor<AstNode>()
         val start = visit(ctx!!.start) as AtomNode
         val stop = visit(ctx.stop) as AtomNode
         val inc = if (ctx.step != null) visit(ctx.step) as AtomNode else AtomIntNode(1)
-        val stmts = toNodeList(ctx.statementList().statement())
+        val stmts = toNodeList(ctx.body)
         return ForStatementNode(ctx.loopVar.text, start, stop, inc, stmts)
     }
 
     override fun visitDeclarationStatement(ctx: DeclarationStatementContext?): AstNode {
         val storage = StorageType.parse(ctx!!.storage().text)
-        return DeclarationNode(storage, ctx.lhs.text, visit(ctx.rhs))
+        val name = ctx.lhs.text
+        return DeclarationNode(storage, ctx.lhs.text, visit(ctx.rhs), SourceInfo(ctx))
     }
 
     override fun visitAssignmentStatement(ctx: AssignmentStatementContext?): AstNode {
@@ -79,11 +77,11 @@ class AstBuilder : BrainSaverBaseVisitor<AstNode>()
         val lhs = ctx.lhs.text
 
         return if (op == "=") {
-            AssignmentNode(lhs, visit(ctx.rhs))
+            AssignmentNode(lhs, visit(ctx.rhs), SourceInfo(ctx))
         } else {
             val left = AtomIdNode(lhs)
             val right = visit(ctx.rhs)
-            return AssignmentNode(lhs, BinaryExpNode(Op.parse(op.substring(0, 1)), left, right))
+            return AssignmentNode(lhs, BinaryExpNode(Op.parse(op.substring(0, 1)), left, right), SourceInfo(ctx))
         }
     }
 
@@ -102,8 +100,7 @@ class AstBuilder : BrainSaverBaseVisitor<AstNode>()
     }
 
     override fun visitArrayLiteral(ctx: ArrayLiteralContext?): AstNode {
-        val items = mutableListOf<AstNode>()
-        ctx!!.expList().exp().forEach { items.add(visit(it)) }
+        val items = MutableList(ctx!!.exp().size, { idx -> visit(ctx.exp(idx)) })
         return ArrayLiteralNode(ctx.lhs.text, items)
     }
 
@@ -115,13 +112,20 @@ class AstBuilder : BrainSaverBaseVisitor<AstNode>()
         return visit(ctx!!.exp())
     }
 
+    override fun visitConditionalExp(ctx: ConditionalExpContext?): AstNode {
+        val condition = visit(ctx!!.condition)
+        val trueExp = visit(ctx.trueExp)
+        val falseExp = visit(ctx.falseExp)
+        return ConditionExpNode(condition, trueExp, falseExp)
+    }
+
     override fun visitArrayReadExp(ctx: ArrayReadExpContext?): ExpNode {
         val idx = visit(ctx!!.exp())
         return ArrayReadExpNode(ctx.array.text, idx)
     }
 
     override fun visitCallExp(ctx: CallExpContext?): AstNode {
-        val params = toNodeList(ctx!!.expList().exp())
+        val params = toNodeList(ctx!!.expList()?.exp() ?: emptyList())
         return CallExpNode(ctx.funcName.text, params)
     }
 

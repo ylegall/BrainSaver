@@ -2,7 +2,6 @@
 
 grammar BrainSaver;
 
-
 program
     : declList
     ;
@@ -11,42 +10,25 @@ declList
     :   (function | globalVariable | constant)+
     ;
 
-constant
-    : 'const' Identifier '=' rhs=exp ';'
-    ;
-
 globalVariable
-    :   storage Identifier '=' rhs=exp ';'
+    :   VAR lhs=Identifier '=' rhs=exp ';'
     ;
 
-storage
-    :   'var' #varStorage
-    |   'val' #valStorage
+constant
+    :   VAL lhs=Identifier '=' rhs=exp ';'
     ;
 
 function
-    :   FUNCTION name=Identifier params=parameterList body=functionBody
-    ;
-
-parameterList
-    :   '(' identifierList? ')'
-    ;
-
-identifierList
-    :   Identifier (',' Identifier)*
+    :   FUNCTION name=Identifier '(' (params+=Identifier (',' params+=Identifier)*)? ')' body=functionBody
     ;
 
 functionBody
     :   '{' statement* ret=returnStatement? '}'
     ;
 
-statementList
-    :   statement (statement)*
-    ;
-
 statement
-    :   declarationStatement
-    |   assignmentStatement
+    :   assignmentStatement
+    |   declarationStatement
     |   callStatement
     |   ifStatement
     |   whileStatement
@@ -57,20 +39,20 @@ statement
     ;
 
 debugStatement
-    :   'debug' '(' idList=identifierList ')' ';'
+    :   'debug' '(' (params+=Identifier (',' params+=Identifier)*)? ')' ';'
     ;
 
 ifStatement
-    :   IF '(' condition=exp ')' '{' trueStatements=statementList '}' ( ELSE '{' falseStatements=statementList '}' )?
+    :   IF '(' condition=exp ')' '{' trueStmts+=statement* '}' ( ELSE '{' falseStmts+=statement* '}' )?
     ;
 
 whileStatement
-    :   WHILE '(' condition=exp ')' '{' body=statementList '}'
+    :   WHILE '(' condition=exp ')' '{' body+=statement* '}'
     ;
 
 forStatement
     :   FOR '(' loopVar=Identifier IN start=atom '..' stop=atom (BY step=atom)? ')'
-        '{' body=statementList '}'
+        '{' body+=statement* '}'
     ;
 
 declarationStatement
@@ -93,31 +75,34 @@ returnStatement
     :   RETURN exp? ';'
     ;
 
-// TODO: allow array size to be constant expression
 arrayInitStatement
-    :   lhs=Identifier '=' ARRAY '(' arraySize=IntegerLiteral ')' ';'   # arrayConstructor
-    |   lhs=Identifier '=' '[' contents=expList ']' ';'                 # arrayLiteral
+    :   storage lhs=Identifier '=' ARRAY '(' arraySize=IntegerLiteral ')' ';'   # arrayConstructor
+    |   storage lhs=Identifier '=' '[' items+=exp (',' items+=exp)* ']' ';'     # arrayLiteral
     ;
 
 arrayWriteStatement
     :   array=Identifier '[' idx=exp ']' '=' rhs=exp ';'
     ;
 
-// TODO: if expressions
 exp
     : '(' parenExp=exp ')'                                      # parenExp
     | array=Identifier '[' idx=exp ']'                          # arrayReadExp
+    |          op='!'                           right=exp       # notExp
     | left=exp op=('*'|'/'|'%')                 right=exp       # opExp
     | left=exp op=('+'|'-')                     right=exp       # opExp
     | left=exp op=('=='|'<'|'<='|'>'|'>='|'!=') right=exp       # opExp
+    | condition=exp '?' trueExp=exp ':' falseExp=exp            # conditionalExp
     | left=exp op=('&&'|'||')                   right=exp       # opExp
-    |          op='!'                           right=exp       # notExp
     | funcName=Identifier '(' args=expList? ')'                 # callExp
     | atom                                                      # atomExp
     ;
 
 expList
     :   exp (',' exp)*
+    ;
+
+storage
+    :   (VAR|VAL)
     ;
 
 atom
@@ -137,6 +122,8 @@ WHILE   : 'while';
 FOR     : 'for';
 IN      : 'in';
 BY      : 'by';
+VAR     : 'var';
+VAL     : 'val';
 
 // lexer rules
 
