@@ -15,6 +15,11 @@ class SemanticValidator(
     private val errors = mutableListOf<CompileException>()
     private val functions = mutableSetOf<String>()
 
+    fun validate(node: AstNode): List<CompileException> {
+        visit(node)
+        return errors
+    }
+
     override fun visit(node: ProgramNode) {
         context.push(mutableMapOf())
 
@@ -90,7 +95,11 @@ class SemanticValidator(
         addSymbol(node.lhs, node)
     }
 
-    private fun addSymbol(name: String, node: AstNode){
+    private fun addSymbol(name: String, node: AstNode) {
+        val symbol = context.peek()[name] ?: EmptyNode
+        if (symbol != EmptyNode) {
+            errors.add(CompileException("duplicate declaration: $name", node))
+        }
         context.peek().put(name, node)
     }
 

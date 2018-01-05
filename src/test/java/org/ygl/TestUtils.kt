@@ -1,5 +1,8 @@
 package org.ygl
 
+import org.ygl.ast.AstBuilder
+import org.ygl.ast.AstNode
+import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 
 fun compileAndEval(input: String, userInput: String = "", wrapping: Boolean = true): String {
@@ -27,6 +30,11 @@ fun eval(code: String, userInput: String = "", wrapping: Boolean = false): Strin
         interpreter.eval()
     }
     return outputStream.toString()
+}
+
+fun parse(code: String): AstNode {
+    val inputStream = ByteArrayInputStream(code.toByteArray(Charsets.UTF_8))
+    return AstBuilder().visit(parse(inputStream))
 }
 
 class TestContext(wrapping: Boolean = false, globals: HashMap<String, Symbol> = HashMap())
