@@ -8,7 +8,7 @@ import org.ygl.model.Op
 import org.ygl.model.StorageType
 
 /**
- * TODO add source line, col info for error messages
+ *
  */
 class AstBuilder : BrainSaverBaseVisitor<AstNode>()
 {
@@ -62,14 +62,14 @@ class AstBuilder : BrainSaverBaseVisitor<AstNode>()
         val start = visit(ctx!!.start) as AtomNode
         val stop = visit(ctx.stop) as AtomNode
         val inc = if (ctx.step != null) visit(ctx.step) as AtomNode else AtomIntNode(1)
-        val stmts = toNodeList(ctx.body)
-        return ForStatementNode(ctx.loopVar.text, start, stop, inc, stmts)
+        val statements = toNodeList(ctx.body)
+        return ForStatementNode(ctx.loopVar.text, start, stop, inc, statements)
     }
 
     override fun visitDeclarationStatement(ctx: DeclarationStatementContext?): AstNode {
         val storage = StorageType.parse(ctx!!.storage().text)
         val name = ctx.lhs.text
-        return DeclarationNode(storage, ctx.lhs.text, visit(ctx.rhs), SourceInfo(ctx))
+        return DeclarationNode(storage, name, visit(ctx.rhs), SourceInfo(ctx))
     }
 
     override fun visitAssignmentStatement(ctx: AssignmentStatementContext?): AstNode {
@@ -96,12 +96,14 @@ class AstBuilder : BrainSaverBaseVisitor<AstNode>()
     }
 
     override fun visitArrayConstructor(ctx: ArrayConstructorContext?): AstNode {
-        return ArrayConstructorNode(ctx!!.lhs.text, ctx.arraySize.text.toInt())
+        val storage = StorageType.parse(ctx!!.storage().text)
+        return ArrayConstructorNode(ctx.lhs.text, storage, ctx.arraySize.text.toInt())
     }
 
     override fun visitArrayLiteral(ctx: ArrayLiteralContext?): AstNode {
-        val items = MutableList(ctx!!.exp().size, { idx -> visit(ctx.exp(idx)) })
-        return ArrayLiteralNode(ctx.lhs.text, items)
+        val storage = StorageType.parse(ctx!!.storage().text)
+        val items = MutableList(ctx.exp().size, { idx -> visit(ctx.exp(idx)) })
+        return ArrayLiteralNode(ctx.lhs.text, storage, items)
     }
 
     override fun visitArrayWriteStatement(ctx: ArrayWriteStatementContext?): AstNode {
