@@ -5,18 +5,21 @@ import org.ygl.model.StorageType
 import java.util.*
 
 /**
- * TODO add test
+ *
  */
-class SemanticValidator(
-
-): AstWalker<Unit>() {
+class SemanticValidator: AstWalker<Unit>() {
 
     private val context = ArrayDeque<MutableMap<String, AstNode>>()
     private val errors = mutableListOf<CompileException>()
     private val functions = mutableSetOf<String>()
 
     fun validate(node: AstNode): List<CompileException> {
+        context.clear()
+        errors.clear()
+        functions.clear()
+
         visit(node)
+
         return errors
     }
 
@@ -25,12 +28,7 @@ class SemanticValidator(
 
         node.children.filterIsInstance<ConstantNode>().forEach { visit(it) }
         node.children.filterIsInstance<GlobalVariableNode>().forEach { visit(it) }
-
-        node.children.filterIsInstance<FunctionNode>()
-                .forEach { functions.add(it.name) }
-
-        node.children.filterIsInstance<FunctionNode>()
-                .forEach { visit(it) }
+        node.children.filterIsInstance<FunctionNode>().forEach { visit(it) }
 
         context.pop()
     }
@@ -39,6 +37,7 @@ class SemanticValidator(
         if (node.name in functions) {
             errors.add(CompileException("duplicate declaration: ${node.name}", node))
         }
+        functions.add(node.name)
         context.push(mutableMapOf())
         visit(node.statements)
         context.pop()
@@ -55,7 +54,7 @@ class SemanticValidator(
     private fun validateWrite(name: String, node: AstNode) {
         val symbol = resolveSymbol(name)
         when (symbol) {
-            is EmptyNode -> errors.add(CompileException("undefined symbol $name", node))
+            is EmptyNode -> errors.add(CompileException("undefined identifier $name", node))
             is DeclarationNode -> if (symbol.storage == StorageType.VAL) {
                 errors.add(CompileException("val $name cannot be reassigned", node))
             }
