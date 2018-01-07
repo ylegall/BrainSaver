@@ -5,20 +5,43 @@ import org.ygl.ast.*
 import org.ygl.model.Op
 
 /**
+ * TODO
  * TODO static function evaluation
+ * TODO array index evaluation
  */
 class ExpressionEvaluator : AstWalker<AstNode>()
 {
     // TODO: use a shared class for resolving scope symbols?
     private var symbols: Map<String, AstNode> = mutableMapOf()
 
-    fun evaluate(node: AstNode, symbols: Map<String, AstNode>): AstNode {
+    fun evaluate(node: AstNode, symbols: Map<String, AstNode> = mutableMapOf()): AstNode {
         this.symbols = symbols
         val result = visit(node)
         return if (result == EmptyNode) {
             node
         } else {
             result
+        }
+    }
+
+    override fun visit(node: ArrayReadExpNode): AstNode {
+        val idx = visit(node.idx)
+        return if (idx is AtomIntNode) {
+            val key = "${node.array}[${idx.value}]"
+            symbols.getOrDefault(key, EmptyNode)
+        } else {
+            EmptyNode
+        }
+    }
+
+    override fun visit(node: ConditionExpNode): AstNode {
+        val condition = visit(node.condition)
+        return when (condition) {
+            is AtomIntNode -> when (condition.value) {
+                0 -> visit(node.falseExp)
+                else -> visit(node.trueExp)
+            }
+            else -> EmptyNode
         }
     }
 
@@ -34,7 +57,6 @@ class ExpressionEvaluator : AstWalker<AstNode>()
     override fun visit(node: BinaryExpNode): AstNode {
         val left = visit(node.left)
         val right = visit(node.right)
-
         return evalConstantBinaryExp(node.op, left, right)
     }
 
@@ -93,8 +115,5 @@ class ExpressionEvaluator : AstWalker<AstNode>()
 
     override fun visit(node: AtomIntNode) = node
     override fun visit(node: AtomStrNode) = node
-
-    override fun defaultValue(): AstNode {
-        return EmptyNode
-    }
+    override fun defaultValue(node: AstNode) = EmptyNode
 }
