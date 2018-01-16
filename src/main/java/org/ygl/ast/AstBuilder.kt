@@ -10,7 +10,7 @@ import org.ygl.model.StorageType
 /**
  *
  */
-class AstBuilder : BrainSaverBaseVisitor<AstNode>()
+class AstBuilder: BrainSaverBaseVisitor<AstNode>()
 {
     override fun visitProgram(ctx: ProgramContext?): AstNode {
         val children = visit(ctx!!.declList()).children

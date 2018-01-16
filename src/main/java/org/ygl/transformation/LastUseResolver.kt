@@ -19,7 +19,7 @@ class LastUseResolver : AstWalker<Set<String>>()
 
     override fun visit(node: ProgramNode): Set<String> {
         node.children.filterIsInstance<FunctionNode>().forEach { visit(it) }
-        return defaultValue()
+        return defaultValue(node)
     }
 
     override fun visit(node: FunctionNode): Set<String> {
@@ -82,7 +82,7 @@ class LastUseResolver : AstWalker<Set<String>>()
         return agg + next
     }
 
-    override fun defaultValue(): Set<String> {
+    override fun defaultValue(node: AstNode): Set<String> {
         return emptySet()
     }
 }

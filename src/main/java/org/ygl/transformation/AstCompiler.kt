@@ -54,12 +54,12 @@ class AstCompiler(
         val rhs = visit(node.rhs)
         return when {
             rhs.isConstant() -> {
-                val lhs = runtime.createSymbol(node.lhs, node.storage, rhs.value)
+                val lhs = runtime.createSymbol(node.lhs, StorageType.VAR, rhs.value)
                 assignConstant(lhs, rhs.value)
             }
             rhs.isTemp() -> runtime.rename(rhs, node.lhs)
             else -> {
-                val lhs = runtime.createSymbol(node.lhs, node.storage, rhs.value)
+                val lhs = runtime.createSymbol(node.lhs, StorageType.VAR, rhs.value)
                 assignVariable(lhs, rhs)
             }
         }
@@ -194,17 +194,17 @@ class AstCompiler(
     }
 
     private fun assignVariable(lhs: Symbol, rhs: Symbol): Symbol {
-        return when (rhs.type) {
-            is IntType -> cg.copyInt(lhs, rhs)
-            else -> throw CompileException("invalid rhs type: ${rhs.type}")
+        return when (rhs.value) {
+            is Int -> cg.copyInt(lhs, rhs)
+            else -> throw CompileException("invalid rhs type: $rhs")
         }
     }
 
-    private fun assignConstant(lhs: Symbol, rhs: Value): Symbol {
+    private fun assignConstant(lhs: Symbol, rhs: Any): Symbol {
         return when (rhs) {
-            is IntValue -> cg.loadImmediate(lhs, rhs.value)
-            is StrValue -> cg.loadImmediate(lhs, rhs.value)
-            else -> throw CompileException("invalid rhs value: ${rhs.value}")
+            is Int -> cg.loadImmediate(lhs, rhs)
+            is String -> cg.loadImmediate(lhs, rhs)
+            else -> throw CompileException("invalid rhs value: ${rhs}")
         }
     }
 
@@ -241,12 +241,12 @@ class AstCompiler(
     }
 
     override fun visit(node: AtomIntNode): Symbol {
-        return ConstantSymbol(IntValue(node.value))
+        return ConstantSymbol(node.value)
     }
 
     override fun visit(node: AtomStrNode): Symbol {
-        return ConstantSymbol(StrValue(node.value))
+        return ConstantSymbol(node.value)
     }
 
-    override fun defaultValue() = UnknownSymbol
+    override fun defaultValue(node: AstNode) = UnknownSymbol
 }

@@ -1,0 +1,106 @@
+package org.ygl.transformation
+
+import org.ygl.ast.*
+import org.ygl.runtime.Runtime
+
+
+/**
+ *
+ */
+class ConstantPropagator(): AstTransformer()
+{
+    private val runtime = Runtime()
+    private val assignmentResolver = AssignmentResolver()
+    private val evaluator = ExpressionEvaluator()
+
+    private var env = emptyMap<AstNode, Map<String, AstNode>>()
+    private var constantSymbols = emptyMap<String, AstNode>()
+
+    override fun visit(node: ProgramNode): AstNode {
+        // add global symbols to scope
+        runtime.enterScope(node)
+        node.children.filterIsInstance<FunctionNode>().forEach { visit(it) }
+        runtime.exitScope()
+        return node
+    }
+
+    override fun visit(node: FunctionNode): AstNode {
+        env = assignmentResolver.resolveAssignments(node)
+        val newStatements = visitList(node.statements)
+        node.statements.clear()
+        node.statements.addAll(newStatements)
+        return node
+    }
+
+    override fun visit(node: StatementNode): AstNode {
+        constantSymbols = env[node] ?: emptyMap()
+        return StatementNode(visitList(node.children), node.sourceInfo)
+    }
+
+    override fun visit(node: ForStatementNode): AstNode {
+        val start = eval(node.start)
+        val stop = eval(node.start)
+        val inc = eval(node.start)
+        val statements = visitList(node.statements)
+
+        // unroll loop
+        if (start.isConstant && stop.isConstant && inc.isConstant) {
+            val result = AstNode()
+            var i = start.intValue
+            val j = stop.intValue
+            val k = inc.intValue
+            while (i < j) {
+                result.children.add(AssignmentNode(node.counter, AtomIntNode(i)))
+                result.children.addAll(node.statements)
+                i += k
+            }
+            return result
+        }
+        return ForStatementNode(node.counter, node.start, node.stop, node.inc, statements)
+    }
+
+    override fun visit(node: IfStatementNode): AstNode {
+        val condition = eval(node.condition)
+        val result = if (condition.isConstant) {
+            val intVal = condition.intValue
+            val newNode = AstNode(children = if (intVal == 0) {
+                node.falseStatements
+            } else {
+                node.trueStatements
+            })
+            visitChildren(newNode)
+        } else {
+            val trueStatements = visitList(node.trueStatements)
+            val falseStatements = visitList(node.falseStatements)
+            if (condition is NotExpNode) {
+                IfStatementNode(condition.right as ExpNode, falseStatements, trueStatements)
+            } else {
+                IfStatementNode(node.condition, trueStatements, falseStatements)
+            }
+        }
+        return result
+    }
+
+    override fun visit(node: WhileStatementNode): AstNode {
+        val condition = eval(node.condition)
+        val statements = visitList(node.statements)
+
+        if (condition.isConstant && condition.intValue == 0) {
+            return EmptyNode
+        }
+        return WhileStatementNode(condition as ExpNode, statements)
+    }
+
+    override fun visitChildren(node: AstNode): AstNode {
+        return if (node is ExpNode) {
+            eval(node)
+        } else {
+            super.visitChildren(node)
+        }
+    }
+
+    private fun eval(node: AstNode): AstNode {
+        val result = evaluator.evaluate(node, constantSymbols)
+        return if (result == EmptyNode) node else result
+    }
+}

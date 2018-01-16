@@ -1,5 +1,8 @@
 package org.ygl.ast
 
+/**
+ * utility for printing an ast
+ */
 class AstPrinter : AstWalker<Unit>()
 {
     fun print(tree: AstNode) {
@@ -21,5 +24,5 @@ class AstPrinter : AstWalker<Unit>()
         }
     }
 
-    override fun defaultValue() {}
+    override fun defaultValue(node: AstNode) {}
 }

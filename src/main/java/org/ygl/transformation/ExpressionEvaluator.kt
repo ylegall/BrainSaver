@@ -5,20 +5,18 @@ import org.ygl.ast.*
 import org.ygl.model.Op
 
 /**
- * TODO
- * TODO static function evaluation
- * TODO array index evaluation
+ * TODO: static function evaluation
+ * TODO: strength reductions
  */
 class ExpressionEvaluator : AstWalker<AstNode>()
 {
-    // TODO: use a shared class for resolving scope symbols?
     private var symbols: Map<String, AstNode> = mutableMapOf()
 
     fun evaluate(node: AstNode, symbols: Map<String, AstNode> = mutableMapOf()): AstNode {
         this.symbols = symbols
         val result = visit(node)
         return if (result == EmptyNode) {
-            node
+            EmptyNode
         } else {
             result
         }

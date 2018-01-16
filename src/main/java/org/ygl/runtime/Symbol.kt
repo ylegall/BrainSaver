@@ -1,41 +1,41 @@
 package org.ygl.runtime
 
-import org.ygl.model.NullValue
 import org.ygl.model.StorageType
-import org.ygl.model.Value
 
 open class Symbol(
         val name: String,
         val storage: StorageType = StorageType.VAL,
-        var value: Value,
-        var address: Int
+        val value: Any,
+        val address: Int
 ) {
-    val size: Int get() = value.getSize()
-    val type: Type get() = value.getType()
+    val size: Int get() = when (value) {
+        is String -> value.length
+        is Int -> 1
+        else -> 0
+    }
 
     open fun isConstant() = false
     open fun isTemp() = false
     open fun hasAddress() = true
-
 }
 
 class TempSymbol(
         name: String,
-        value: Value,
+        value: Any,
         address: Int
 ) : Symbol(name, StorageType.VAR, value, address) {
     override fun isTemp() = true
 }
 
 class ConstantSymbol(
-        value: Value
+        value: Any
 ) : Symbol("\$const($value)", StorageType.VAL, value, -1) {
 
     override fun isConstant() = true
     override fun hasAddress() = false
 }
 
-object UnknownSymbol : Symbol("", StorageType.VAL, NullValue, -1)
+object UnknownSymbol : Symbol("", StorageType.VAL, Unit, -1)
 
 fun Symbol.offset(offset: Int, name: String = this.name): Symbol {
     // TODO: arrays
@@ -44,7 +44,7 @@ fun Symbol.offset(offset: Int, name: String = this.name): Symbol {
     return Symbol(
             "$name($offset)",
             this.storage,
-            NullValue,
+            Unit,
             this.address.plus(offset)
     )
 }

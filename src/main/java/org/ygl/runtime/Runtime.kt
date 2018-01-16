@@ -1,9 +1,7 @@
 package org.ygl.runtime
 
 import org.ygl.ast.AstNode
-import org.ygl.model.NullValue
 import org.ygl.model.StorageType
-import org.ygl.model.Value
 import java.util.*
 
 /**
@@ -12,9 +10,6 @@ import java.util.*
 class Runtime
 {
     private val scopes = ArrayDeque<Scope>()
-
-    init {
-    }
 
     fun enterScope(node: AstNode) {
         if (scopes.isEmpty()) {
@@ -35,7 +30,7 @@ class Runtime
     fun createSymbol(
             name: String,
             storageType: StorageType = StorageType.VAL,
-            value: Value = NullValue
+            value: Any = Unit
     ): Symbol {
         if (scopes.isEmpty()) throw Exception("addSymbol(): no current scope")
 
@@ -43,7 +38,7 @@ class Runtime
     }
 
     fun createTempSymbol(
-            value: Value = NullValue
+            value: Any = Unit
     ): Symbol {
         if (scopes.isEmpty()) throw Exception("addSymbol(): no current scope")
 

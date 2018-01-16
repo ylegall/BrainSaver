@@ -9,13 +9,13 @@ import org.ygl.parse
 
 internal class ConstantEvaluatorTest {
 
-    private val constantEvaluator = ConstantEvaluator()
+    private val resolver = ConstantResolver()
 
     @Test
     fun testNoConstants() {
         val program = """ fn main() { print(""); }"""
         val ast = parse(program)
-        val constants = constantEvaluator.resolveConstants(ast)
+        val constants = resolver.resolveConstants(ast)
         assertTrue(constants.isEmpty())
     }
 
@@ -23,7 +23,7 @@ internal class ConstantEvaluatorTest {
     fun testSingleConstant() {
         val program = """ val x = 5; var y = 3; fn main() { }"""
         val ast = parse(program)
-        val constants = constantEvaluator.resolveConstants(ast)
+        val constants = resolver.resolveConstants(ast)
         assertEquals(1, constants.size)
         val node = constants["x"] as AtomIntNode
         assertEquals(5, node.value)
@@ -33,7 +33,7 @@ internal class ConstantEvaluatorTest {
     fun testSimpleConstants() {
         val program = """ val x = 5; val y = 4; fn main() { }"""
         val ast = parse(program)
-        val constants = constantEvaluator.resolveConstants(ast)
+        val constants = resolver.resolveConstants(ast)
         assertEquals(2, constants.size)
         val x = constants["x"] as AtomIntNode
         assertEquals(5, x.value)
@@ -51,7 +51,7 @@ internal class ConstantEvaluatorTest {
         """
 
         val ast = parse(program)
-        val constants = constantEvaluator.resolveConstants(ast)
+        val constants = resolver.resolveConstants(ast)
         assertEquals(3, constants.size)
         val x = constants["x"] as AtomIntNode
         assertEquals(2, x.value)
@@ -71,7 +71,7 @@ internal class ConstantEvaluatorTest {
                 fn main() { }
             """
             val ast = parse(program)
-            constantEvaluator.resolveConstants(ast)
+            resolver.resolveConstants(ast)
         })
     }
 
@@ -85,7 +85,7 @@ internal class ConstantEvaluatorTest {
                 fn main() { }
             """
             val ast = parse(program)
-            constantEvaluator.resolveConstants(ast)
+            resolver.resolveConstants(ast)
         })
     }
 }

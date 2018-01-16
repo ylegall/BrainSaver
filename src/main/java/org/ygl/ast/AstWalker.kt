@@ -30,6 +30,7 @@ abstract class AstWalker<T>
                 is ArrayReadExpNode -> visit(node)
                 is BinaryExpNode -> visit(node)
                 is CallExpNode -> visit(node)
+                is ConditionExpNode -> visit(node)
                 is NotExpNode -> visit(node)
                 else -> visitChildren(node)
             }
@@ -52,6 +53,7 @@ abstract class AstWalker<T>
     open fun visit(node: BinaryExpNode): T = visitChildren(node)
     open fun visit(node: CallExpNode): T = visitChildren(node)
     open fun visit(node: CallStatementNode): T = visitChildren(node)
+    open fun visit(node: ConditionExpNode): T = visitChildren(node)
     open fun visit(node: ConstantNode): T = visitChildren(node)
     open fun visit(node: DebugStatementNode): T = visitChildren(node)
     open fun visit(node: DeclarationNode): T = visitChildren(node)
@@ -66,7 +68,7 @@ abstract class AstWalker<T>
 
     open fun visitChildren(node: AstNode): T {
         return if (node.children.isEmpty()) {
-            defaultValue()
+            defaultValue(node)
         } else {
             return node.children
                     .map { visit(it) }
@@ -76,14 +78,14 @@ abstract class AstWalker<T>
 
     open fun aggregateResult(agg: T, next: T): T = agg
 
-    abstract fun defaultValue(): T
+    abstract fun defaultValue(node: AstNode): T
 
     fun visit(nodes: Iterable<AstNode>): T {
         return nodes.map { visit(it) }
-                .fold(defaultValue(), { agg, next -> aggregateResult(agg, next) })
+                .reduce { acc, next -> aggregateResult(acc, next) }
     }
 
-    fun visitList(children: MutableList<AstNode>): MutableList<T> {
+    open fun visitList(children: MutableList<AstNode>): MutableList<T> {
         return MutableList(children.size, { idx -> visit(children[idx]) })
     }
 }

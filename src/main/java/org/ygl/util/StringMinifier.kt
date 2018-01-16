@@ -1,4 +1,4 @@
-package org.ygl
+package org.ygl.util
 
 internal object StringMinifier {
 

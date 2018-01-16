@@ -1,8 +1,5 @@
 package org.ygl.runtime
 
-import org.ygl.model.IntValue
-import org.ygl.model.StrValue
-
 class IO(
         private val cg: CodeGen,
         private val runtime: Runtime
@@ -31,13 +28,14 @@ class IO(
         if (symbol.isConstant()) {
             val symbolValue = symbol.value
             when (symbolValue) {
-                is IntValue -> printImmediate(symbolValue.value.toString())
-                is StrValue -> printImmediate(symbolValue.value)
+                is Int -> printImmediate(symbolValue.toString())
+                is String -> printImmediate(symbolValue)
             }
         } else {
-            when (symbol.type) {
-                is IntType -> printInt(symbol)
-                is StrType -> printString(symbol)
+            // TODO
+            when (symbol.value) {
+                is Int -> printInt(symbol)
+                is String -> printString(symbol)
             }
         }
     }

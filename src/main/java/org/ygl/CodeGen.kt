@@ -1,5 +1,6 @@
 package org.ygl
 
+import org.ygl.util.MinifyingOutputStream
 import java.io.OutputStream
 import java.util.*
 

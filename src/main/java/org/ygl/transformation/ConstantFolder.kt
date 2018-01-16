@@ -3,9 +3,11 @@ package org.ygl.transformation
 import org.ygl.CompileException
 import org.ygl.ast.*
 import org.ygl.model.*
-import org.ygl.runtime.*
+import org.ygl.runtime.Runtime
+import org.ygl.runtime.UnknownSymbol
 
 /**
+ *
  */
 class ConstantFolder(
         private val scopeInfo: Map<AstNode, SymbolInfo>
@@ -13,14 +15,6 @@ class ConstantFolder(
 {
     private val scopeContext = Runtime()
     private val expEval = ExpressionEvaluator()
-
-    private fun AstNode.getValue(): Value {
-        return when (this) {
-            is AtomIntNode -> IntValue(this.value)
-            is AtomStrNode -> StrValue(this.value)
-            else -> NullValue
-        }
-    }
 
     private fun AstNode.getIntValue(): Int {
         return when (this) {
@@ -32,19 +26,21 @@ class ConstantFolder(
     override fun visit(node: ProgramNode): AstNode {
         // add global symbols to scope
         scopeContext.enterScope(node)
+
         node.children.filterIsInstance<GlobalVariableNode>()
                 .forEach {
                     val result = visit(it) as GlobalVariableNode
-                    scopeContext.createSymbol(it.lhs, it.storage, result.rhs.getValue())
+                    scopeContext.createSymbol(it.lhs, StorageType.VAR, result.rhs.value)
                 }
 
         node.children.filterIsInstance<FunctionNode>().forEach { visit(it) }
+
         scopeContext.exitScope()
         return node
     }
 
     override fun visit(node: GlobalVariableNode): AstNode {
-        return GlobalVariableNode(node.storage, node.lhs, visit(node.rhs))
+        return GlobalVariableNode(node.lhs, visit(node.rhs))
     }
 
     override fun visit(node: FunctionNode): AstNode {
@@ -53,6 +49,7 @@ class ConstantFolder(
         val stmts = node.statements.map { visit(it) }
                 .filter { it != EmptyNode }
                 .toCollection(mutableListOf())
+
         scopeContext.exitScope()
         node.statements.clear()
         node.statements.addAll(stmts)
@@ -76,8 +73,8 @@ class ConstantFolder(
         }
 
         val rhs = visit(node.rhs)
-        return if (rhs.isConstant()) {
-            scopeContext.createSymbol(node.lhs, node.storage, rhs.getValue())
+        return if (rhs.isConstant) {
+            scopeContext.createSymbol(node.lhs, node.storage, rhs.value)
             DeclarationNode(node.storage, node.lhs, rhs)
         } else {
             scopeContext.createSymbol(node.lhs, node.storage)
@@ -95,13 +92,16 @@ class ConstantFolder(
         val rhs = visit(node.rhs)
         val symbol = scopeContext.resolveLocalSymbol(node.lhs)
         if (symbol != null) {
-            when {
-                symbol.storage == StorageType.VAL -> throw CompileException("val cannot be reassigned: ${node.lhs}")
-                rhs.isConstant() -> symbol.value = rhs.getValue()
-                else -> symbol.value = NullValue
-            }
+            assert(symbol.storage == StorageType.VAR)
+            // TODO
+            //when {
+            //    rhs.isConstant() -> symbol.value = rhs.getValue()
+            //    else -> symbol.value = Unit
+            //}
+        } else {
+            return AssignmentNode(node.lhs, rhs, node.sourceInfo)
         }
-        return AssignmentNode(node.lhs, rhs)
+        return AssignmentNode(node.lhs, rhs, node.sourceInfo)
     }
 
     override fun visit(node: AtomIdNode): AstNode {
@@ -112,10 +112,9 @@ class ConstantFolder(
         }
 
         val symbol = scopeContext.resolveSymbol(node.identifier) ?: UnknownSymbol
-        val value = symbol.value
-        return when (value) {
-            is IntValue -> AtomIntNode(value.value)
-            is StrValue -> AtomStrNode(value.value)
+        return when (symbol.value) {
+            is Int -> AtomIntNode(symbol.value)
+            is String-> AtomStrNode(symbol.value)
             else -> node
         }
     }
@@ -125,7 +124,7 @@ class ConstantFolder(
         val left = visit(node.left)
         val right = visit(node.right)
 
-        if (left.isConstant() && right.isConstant()) {
+        if (left.isConstant && right.isConstant) {
             return expEval.evalConstantBinaryExp(node.op, left, right)
         }
 
@@ -148,12 +147,13 @@ class ConstantFolder(
         val statements = visitList(node.statements)
 
         // unroll loop
-        if (start.isConstant() && stop.isConstant() && inc.isConstant()) {
+        if (start.isConstant && stop.isConstant && inc.isConstant) {
             val result = AstNode()
             var i = start.getIntValue()
             val j = stop.getIntValue()
             val k = inc.getIntValue()
             while (i < j) {
+                result.children.add(AssignmentNode(node.counter, AtomIntNode(i)))
                 result.children.addAll(node.statements)
                 i += k
             }
@@ -167,13 +167,14 @@ class ConstantFolder(
         scopeContext.enterScope(node)
         val condition = visit(node.condition)
 
-        val result = if (condition.isConstant()) {
+        val result = if (condition.isConstant) {
             val intVal = condition.getIntValue()
-            if (intVal == 0) {
-                AstNode(children = node.falseStatements)
+            val newNode = AstNode(children = if (intVal == 0) {
+                node.falseStatements
             } else {
-                AstNode(children = node.trueStatements)
-            }
+                node.trueStatements
+            })
+            visitChildren(newNode)
         } else {
             val trueStatements = visitList(node.trueStatements)
             val falseStatements = visitList(node.falseStatements)
@@ -196,17 +197,17 @@ class ConstantFolder(
         }
     }
 
-    override fun visit(node: WhileStatementNode): AstNode {
-        scopeContext.enterScope(node)
-        val condition = visit(node.condition)
-        val statements = visitList(node.statements)
-        scopeContext.exitScope()
-
-        if (condition.isConstant() && condition.getIntValue() == 0) {
-            return EmptyNode
-        }
-        return WhileStatementNode(condition as ExpNode, statements)
-    }
+//    override fun visit(node: WhileStatementNode): AstNode {
+//        val condition = visit(node.condition)
+//        scopeContext.enterScope(node)
+//        val statements = visitList(node.statements)
+//        scopeContext.exitScope()
+//
+//        if (condition.isConstant() && condition.getIntValue() == 0) {
+//            return EmptyNode
+//        }
+//        return WhileStatementNode(condition as ExpNode, statements)
+//    }
 
     override fun visitChildren(node: AstNode): AstNode {
         node.children = node.children.map { visit(it) }
@@ -215,7 +216,7 @@ class ConstantFolder(
         return node
     }
 
-    override fun defaultValue(): AstNode {
+    override fun defaultValue(node: AstNode): AstNode {
         return EmptyNode
     }
 }

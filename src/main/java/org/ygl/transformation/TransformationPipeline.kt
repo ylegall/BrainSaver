@@ -1,23 +1,24 @@
 package org.ygl.transformation
 
 import org.antlr.v4.runtime.ParserRuleContext
-import org.ygl.CompilerOptions
+import org.ygl.CompileException
 import org.ygl.ast.AstBuilder
 import org.ygl.ast.AstNode
 import org.ygl.ast.AstPrinter
-import java.io.OutputStream
+import org.ygl.ast.SemanticValidator
+import org.ygl.runtime.SystemContext
 
 
 /**
  *
  */
 class TransformationPipeline(
-        private val outStream: OutputStream,
-        private val options: CompilerOptions
+        private val ctx: SystemContext
 )
 {
     private var symbolInfo: Map<AstNode, SymbolInfo> = mapOf()
     private var lastUseInfo: Map<AstNode, Set<String>> = mapOf()
+    private val options = ctx.options
 
     /**
      *
@@ -33,8 +34,28 @@ class TransformationPipeline(
     /**
      *
      */
+    private fun AstNode.semanticValidation(): AstNode {
+        val validator = SemanticValidator(ctx.stdlib)
+        val errors = validator.validate(this)
+        if (errors.isNotEmpty()) {
+            errors.forEach { println(it.message) }
+            throw CompileException("compilation failed")
+        }
+        return this
+    }
+
+    /**
+     *
+     */
     private fun AstNode.resolveConstants(): AstNode {
-        return ConstantResolver(options).resolveConstants(this)
+        val resolver = ConstantResolver()
+        val constants = resolver.resolveConstants(this)
+        if (options.verbose) {
+            println("\nresolved constants:")
+            println("-------------------")
+            constants.forEach { (key, value) -> println("\t$key = $value") }
+        }
+        return ConstantEvaluator(constants).evaluateConstants(this)
     }
 
     private fun AstNode.findUnusedSymbols(): AstNode {
@@ -57,17 +78,17 @@ class TransformationPipeline(
         return this
     }
 
-    private fun AstNode.constantFold(): AstNode {
-        val ast = ConstantFolder(symbolInfo).visit(this)
-
-        if (options.verbose) {
-            println("constant folding:")
-            println("-----------------")
-            AstPrinter().print(ast)
-        }
-
-        return ast
-    }
+//    private fun AstNode.constantFold(): AstNode {
+//        val ast = ConstantFolder(symbolInfo).visit(this)
+//
+//        if (options.verbose) {
+//            println("constant folding:")
+//            println("-----------------")
+//            AstPrinter().print(ast)
+//        }
+//
+//        return ast
+//    }
 
     private fun AstNode.findLastUsages(): AstNode {
         lastUseInfo = LastUseResolver().getSymbolLastUseInfo(this)
@@ -83,16 +104,31 @@ class TransformationPipeline(
         return this
     }
 
+    private fun AstNode.propagateConstants(): AstNode {
+//        val env = AssignmentResolver().resolveAssignments(this)
+//
+//        println("\nresolved env:")
+//        println("-------------")
+//        for ((key, value) in env) {
+//            println("\t$key:\t\t$value")
+//        }
+
+        return ConstantPropagator().visit(this)
+    }
+
     fun transform(ctx: ParserRuleContext) {
         val ast = ctx.buildAst()
+                .semanticValidation()
                 .resolveConstants()
-                .findUnusedSymbols()
-                .constantFold()
-                .findUnusedSymbols()
-                .constantFold()
-                .findUnusedSymbols()
-                .constantFold()
-                .findLastUsages()
+                .propagateConstants()
+//                .findUnusedSymbols()
+//                .constantFold()
+//                .findUnusedSymbols()
+//                .constantFold()
+//                .findUnusedSymbols()
+//                .constantFold()
+//                .findLastUsages()
+
         println("\nfinal ast:\n")
         AstPrinter().print(ast)
 

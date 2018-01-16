@@ -1,9 +1,9 @@
 package org.ygl.runtime
 
-import org.ygl.ast.*
-import org.ygl.model.NullValue
+import org.ygl.ast.AstNode
+import org.ygl.ast.DeclarationNode
+import org.ygl.ast.GlobalVariableNode
 import org.ygl.model.StorageType
-import org.ygl.model.Value
 
 /**
  *
@@ -23,13 +23,13 @@ class Scope(
 
     fun createSymbol(node: AstNode): Symbol {
         return when(node) {
-            is GlobalVariableNode -> createSymbol(node.lhs, node.storage)
+            is GlobalVariableNode -> createSymbol(node.lhs, StorageType.VAR)
             is DeclarationNode -> createSymbol(node.lhs, node.storage)
             else -> throw Exception("not implemented")
         }
     }
 
-    fun createSymbol(name: String, storageType: StorageType, value: Value = NullValue): Symbol {
+    fun createSymbol(name: String, storageType: StorageType, value: Any = Unit): Symbol {
         // TODO: check free slots
         val address = startAddress + scopeSize
         val symbol = Symbol(name, storageType, value, address)
@@ -40,7 +40,7 @@ class Scope(
 
     fun createSymbol(name: String, storageType: StorageType): Symbol {
         val address = startAddress + scopeSize
-        val symbol = Symbol(name, storageType, NullValue, address)
+        val symbol = Symbol(name, storageType, Unit, address)
         symbols[name] = symbol
         scopeSize += symbol.size
         return symbol
@@ -61,8 +61,7 @@ class Scope(
         }
     }
 
-    fun createTempSymbol(value: Value): Symbol {
-        // TODO
+    fun createTempSymbol(value: Any = Unit): Symbol {
         val address = startAddress + scopeSize
         val name = "\$t$tempCounter"
         tempCounter++

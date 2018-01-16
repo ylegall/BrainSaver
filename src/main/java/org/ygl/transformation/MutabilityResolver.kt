@@ -4,7 +4,7 @@ import org.ygl.ast.*
 import org.ygl.runtime.Runtime
 
 /**
- *
+ * TODO: remove double stores without reads in between
  */
 class SymbolInfo(
         val modifiedSymbols: MutableSet<String> = mutableSetOf(),
@@ -24,6 +24,7 @@ internal class MutabilityResolver : AstWalker<ModifiedSymbols>()
 {
     private val scopeContext = Runtime()
     private val scopeSymbolInfo = mutableMapOf<AstNode, SymbolInfo>()
+    private val tempStores = mutableMapOf<AstNode, MutableMap<String, AstNode>>()
 
     fun getSymbolMutabilityInfo(ast: AstNode): Map<AstNode, SymbolInfo> {
         visit(ast)
@@ -35,7 +36,21 @@ internal class MutabilityResolver : AstWalker<ModifiedSymbols>()
     }
 
     override fun visit(node: IfStatementNode): ModifiedSymbols {
-        return visitScope(node)
+        visit(node.condition)
+
+        val symbolInfo = enterScope(node)
+
+        val result1 = visit(node.trueStatements)
+        symbolInfo.modifiedSymbols.addAll(result1)
+        tempStores[node]!!.clear()
+
+        val result2 = visit(node.falseStatements)
+        symbolInfo.modifiedSymbols.addAll(result2)
+        tempStores[node]!!.clear()
+
+        exitScope(node)
+
+        return aggregateResult(result1, result2)
     }
 
     override fun visit(node: ForStatementNode): ModifiedSymbols {
@@ -52,24 +67,17 @@ internal class MutabilityResolver : AstWalker<ModifiedSymbols>()
     }
 
     private fun visitScope(node: AstNode, children: Iterable<AstNode> = node.children): ModifiedSymbols {
-        scopeContext.enterScope(node)
-        val symbolInfo = SymbolInfo()
-        scopeSymbolInfo.put(node, symbolInfo)
-
+        val symbolInfo = enterScope(node)
 
         val result = visit(children)
         symbolInfo.modifiedSymbols.addAll(result)
 
-        // remove empty dead store entries
-        val it = symbolInfo.deadStores.iterator()
-        while (it.hasNext()) {
-            val entry = it.next()
-            if (entry.value.isEmpty()) {
-                it.remove()
-            }
+        // find any remaining writes and record dead stores:
+        tempStores[node]!!.entries.forEach {
+            symbolInfo.deadStores.getOrPut(it.key, { mutableSetOf() }).add(it.value)
         }
 
-        scopeContext.exitScope()
+        exitScope(node)
         return result
     }
 
@@ -119,18 +127,34 @@ internal class MutabilityResolver : AstWalker<ModifiedSymbols>()
     private fun recordSymbolWrite(node: AstNode, name: String) {
         val scope = scopeContext.findScopeWithSymbol(name)
         if (scope != null) {
-            scopeSymbolInfo[scope.node]
-                    ?.deadStores
-                    ?.getOrPut(name, { mutableSetOf() })
-                    ?.add(node)
+            val deadStores = scopeSymbolInfo[scope.node]!!.deadStores
+            val tempStores = tempStores[scope.node]!!
+
+            // any existing entry for this variable is a dead store (write without a read):
+            val previousWrite = tempStores[name]
+            previousWrite?.let { deadStores.getOrPut(name, { mutableSetOf() }).add(it) }
+            tempStores[name] = node
         }
     }
 
     private fun recordSymbolRead(name: String) {
         val scope = scopeContext.findScopeWithSymbol(name)
         if (scope != null) {
-            scopeSymbolInfo[scope.node]?.deadStores?.get(name)?.clear()
+            tempStores[scope.node]!!.remove(name)
         }
+    }
+
+    private fun enterScope(node: AstNode): SymbolInfo {
+        scopeContext.enterScope(node)
+        val symbolInfo = SymbolInfo()
+        scopeSymbolInfo.put(node, symbolInfo)
+        tempStores.put(node, mutableMapOf())
+        return symbolInfo
+    }
+
+    private fun exitScope(node: AstNode) {
+        scopeContext.exitScope()
+        tempStores.remove(node)
     }
 
     override fun aggregateResult(agg: ModifiedSymbols, next: ModifiedSymbols): ModifiedSymbols {
@@ -138,5 +162,5 @@ internal class MutabilityResolver : AstWalker<ModifiedSymbols>()
         return agg
     }
 
-    override fun defaultValue() = mutableSetOf<String>()
+    override fun defaultValue(node: AstNode) = mutableSetOf<String>()
 }

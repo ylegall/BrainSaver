@@ -2,12 +2,15 @@ package org.ygl.ast
 
 import org.ygl.CompileException
 import org.ygl.model.StorageType
+import org.ygl.runtime.StdLib
 import java.util.*
 
 /**
  *
  */
-class SemanticValidator: AstWalker<Unit>() {
+class SemanticValidator(
+        private val stdlib: StdLib
+): AstWalker<Unit>() {
 
     private val context = ArrayDeque<MutableMap<String, AstNode>>()
     private val errors = mutableListOf<CompileException>()
@@ -74,7 +77,7 @@ class SemanticValidator: AstWalker<Unit>() {
     }
 
     override fun visit(node: CallStatementNode) {
-        if (node.name !in functions) {
+        if (node.name !in stdlib.functions && node.name !in functions) {
             errors.add(CompileException("undefined function ${node.name}", node))
         }
     }
@@ -106,5 +109,5 @@ class SemanticValidator: AstWalker<Unit>() {
         return context.find { name in it }?.get(name) ?: EmptyNode
     }
 
-    override fun defaultValue() {}
+    override fun defaultValue(node: AstNode) {}
 }

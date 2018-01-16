@@ -5,11 +5,13 @@ import org.antlr.v4.runtime.ParserRuleContext
 import org.antlr.v4.runtime.RecognitionException
 import org.antlr.v4.runtime.Recognizer
 import org.antlr.v4.runtime.misc.ParseCancellationException
+import org.ygl.ast.AstNode
 import org.ygl.ast.SourceInfo
 
-
+/**
+ *
+ */
 class CompileErrorListener : BaseErrorListener() {
-
     @Throws(ParseCancellationException::class)
     override fun syntaxError(
             recognizer: Recognizer<*, *>,
@@ -27,8 +29,11 @@ class CompileErrorListener : BaseErrorListener() {
     }
 }
 
+/**
+ *
+ */
 class CompileException(
-        message: String,
+        override val message: String,
         sourceInfo: SourceInfo? = null
 ) : Exception(
         if (sourceInfo != null) {
@@ -38,4 +43,5 @@ class CompileException(
         }
 ) {
     constructor(message: String, ctx: ParserRuleContext): this(message, SourceInfo(ctx))
+    constructor(message: String, astNode: AstNode): this(message, astNode.sourceInfo)
 }

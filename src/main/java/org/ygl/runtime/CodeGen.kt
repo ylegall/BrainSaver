@@ -2,8 +2,7 @@ package org.ygl.runtime
 
 import org.ygl.CompilerOptions
 import org.ygl.DEFAULT_COMPILE_OPTIONS
-import org.ygl.MinifyingOutputStream
-import org.ygl.model.StrValue
+import org.ygl.util.MinifyingOutputStream
 import java.io.OutputStream
 
 class CodeGen(
@@ -48,7 +47,7 @@ class CodeGen(
             val intValue = value[i].toInt()
             loadImmediate(symbol.offset(i), intValue)
         }
-        symbol.value = StrValue(value)
+        //symbol.value = value
         return symbol
     }
 

@@ -2,15 +2,17 @@ package org.ygl
 
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
+import org.antlr.v4.runtime.ParserRuleContext
 import org.antlr.v4.runtime.misc.ParseCancellationException
 import org.apache.commons.cli.DefaultParser
 import org.apache.commons.cli.HelpFormatter
 import org.apache.commons.cli.Options
 import org.apache.commons.cli.ParseException
+import org.ygl.runtime.SystemContext
 import org.ygl.transformation.TransformationPipeline
 import java.io.*
 
-const val VERSION = "1.0"
+const val VERSION = "1.1"
 
 private fun printUsageAndHalt(options: Options) {
     HelpFormatter().printHelp("brainsaver", options, true)
@@ -39,10 +41,10 @@ fun compile(infile: File, options: CompilerOptions = DEFAULT_COMPILE_OPTIONS) {
 
 fun compile(input: InputStream, outStream: OutputStream, options: CompilerOptions = DEFAULT_COMPILE_OPTIONS) {
     // parse and generate the AST:
-    val parser = parseInput(input)
-    val tree = parser.program()
+    val tree = parse(input)
 
-    TransformationPipeline(outStream, options).transform(tree)
+    val ctx = SystemContext(outStream, options)
+    TransformationPipeline(ctx).transform(tree)
 
 //    val globals = resolveGlobals(parser, tree)
 //    val programInfo = getProgramInfo(parser, options, tree)
@@ -63,12 +65,12 @@ fun compile(input: InputStream, outStream: OutputStream, options: CompilerOption
 //    }
 }
 
-private fun parseInput(input: InputStream): BrainSaverParser {
+fun parse(input: InputStream): ParserRuleContext {
     val lexer = BrainSaverLexer(CharStreams.fromStream(input))
     val tokens = CommonTokenStream(lexer)
     val parser = BrainSaverParser(tokens)
     parser.addErrorListener(CompileErrorListener.INSTANCE)
-    return parser
+    return parser.program()
 }
 
 
@@ -105,8 +107,7 @@ fun main(args: Array<String>) {
         System.err.println(e.message)
         printUsageAndHalt(options)
     } catch (e: CompileException) {
-        //System.err.println(e.message)
-        throw e
+        System.err.println(e.message)
     } catch (e: ParseCancellationException) {
         System.err.println(e.message)
     }
