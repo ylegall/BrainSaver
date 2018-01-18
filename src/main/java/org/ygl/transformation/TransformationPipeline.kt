@@ -16,7 +16,7 @@ class TransformationPipeline(
         private val ctx: SystemContext
 )
 {
-    private var symbolInfo: Map<AstNode, SymbolInfo> = mapOf()
+    //private var symbolInfo: Map<AstNode, SymbolInfo> = mapOf()
     private var lastUseInfo: Map<AstNode, Set<String>> = mapOf()
     private val options = ctx.options
 
@@ -59,21 +59,28 @@ class TransformationPipeline(
     }
 
     private fun AstNode.findUnusedSymbols(): AstNode {
-        symbolInfo = MutabilityResolver().getSymbolMutabilityInfo(this)
+        //symbolInfo = MutabilityResolver().getSymbolMutabilityInfo(this)
+        val deadStores = DeadStoreResolver().getDeadStores(this)
 
         if (options.verbose) {
-            println("\nsymbol info:")
+            println("\ndead stores:")
             println("-------------")
-            symbolInfo.forEach { scope, symbols ->
-                if (!symbols.deadStores.isEmpty() || !symbols.modifiedSymbols.isEmpty()) {
-                    println("  in scope '$scope':")
-                    println("    modified: ${symbols.modifiedSymbols}")
-                    println("    unused:   ${symbols.deadStores}")
-                    println()
-                }
-            }
-            println()
+            deadStores.forEach { println("\t$it") }
         }
+
+//        if (options.verbose) {
+//            println("\nsymbol info:")
+//            println("-------------")
+//            symbolInfo.forEach { scope, symbols ->
+//                if (!symbols.deadStores.isEmpty() || !symbols.modifiedSymbols.isEmpty()) {
+//                    println("  in scope '$scope':")
+//                    println("    modified: ${symbols.modifiedSymbols}")
+//                    println("    unused:   ${symbols.deadStores}")
+//                    println()
+//                }
+//            }
+//            println()
+//        }
 
         return this
     }
@@ -116,18 +123,18 @@ class TransformationPipeline(
         return ConstantPropagator().visit(this)
     }
 
+    private fun AstNode.strengthReduce(): AstNode {
+        return StrengthReducer().visit(this)
+    }
+
     fun transform(ctx: ParserRuleContext) {
         val ast = ctx.buildAst()
                 .semanticValidation()
                 .resolveConstants()
                 .propagateConstants()
-//                .findUnusedSymbols()
-//                .constantFold()
-//                .findUnusedSymbols()
-//                .constantFold()
-//                .findUnusedSymbols()
-//                .constantFold()
-//                .findLastUsages()
+                .strengthReduce()
+                .findUnusedSymbols()
+                .findLastUsages()
 
         println("\nfinal ast:\n")
         AstPrinter().print(ast)

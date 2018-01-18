@@ -7,7 +7,7 @@ import org.ygl.runtime.Runtime
 /**
  *
  */
-class ConstantPropagator(): AstTransformer()
+class ConstantPropagator: AstTransformer()
 {
     private val runtime = Runtime()
     private val assignmentResolver = AssignmentResolver()

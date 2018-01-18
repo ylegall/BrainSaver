@@ -84,6 +84,10 @@ open class AstTransformer: AstWalker<AstNode>() {
         return NotExpNode(visit(node.right))
     }
 
+    override fun visit(node: ProgramNode): AstNode {
+        return ProgramNode(visitList(node.children))
+    }
+
     override fun visit(node: WhileStatementNode): AstNode {
         return WhileStatementNode(
                 visit(node.condition) as ExpNode,

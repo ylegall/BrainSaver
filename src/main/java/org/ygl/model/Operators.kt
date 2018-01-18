@@ -4,7 +4,7 @@ enum class Op(val text: String)
 {
     ADD("+"),
     SUB("-"),
-    MUL("+"),
+    MUL("*"),
     DIV("/"),
     MOD("%"),
     AND("&&"),

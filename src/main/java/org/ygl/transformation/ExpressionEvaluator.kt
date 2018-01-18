@@ -58,7 +58,7 @@ class ExpressionEvaluator : AstWalker<AstNode>()
         return evalConstantBinaryExp(node.op, left, right)
     }
 
-    fun evalConstantBinaryExp(op: Op, left: AstNode, right: AstNode): AstNode {
+    private fun evalConstantBinaryExp(op: Op, left: AstNode, right: AstNode): AstNode {
         return when (left) {
             is AtomStrNode -> when (right) {
                 is AtomStrNode -> AtomStrNode(evalStringExpression(op, left.value, right.value))
@@ -74,21 +74,21 @@ class ExpressionEvaluator : AstWalker<AstNode>()
         }
     }
 
-    fun evalStringExpression(op: Op, left: String, right: String): String {
+    private fun evalStringExpression(op: Op, left: String, right: String): String {
         return when (op) {
             Op.ADD -> left + right
             else -> throw CompileException("unsupported operator: $op")
         }
     }
 
-    fun evalUnaryExpression(op: Op, right: Int): Int {
+    private fun evalUnaryExpression(op: Op, right: Int): Int {
         return when (op) {
             Op.NOT -> if (right == 0) 1 else 0
             else -> throw CompileException("unsupported unary operator: $op")
         }
     }
 
-    fun evalIntExpression(op: Op, left: Int, right: Int): Int {
+    private fun evalIntExpression(op: Op, left: Int, right: Int): Int {
         return when (op) {
             Op.ADD -> left + right
             Op.SUB -> left - right
