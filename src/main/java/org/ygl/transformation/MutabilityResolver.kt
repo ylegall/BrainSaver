@@ -1,6 +1,7 @@
 package org.ygl.transformation
 
 import org.ygl.ast.*
+import java.util.*
 
 /**
  * TODO: handle if-else
@@ -9,7 +10,7 @@ import org.ygl.ast.*
 class DeadStoreResolver: AstWalker<Unit>()
 {
     private val deadStores = mutableSetOf<AstNode>()
-    private val tempStores = mutableMapOf<String, AstNode>()
+    private val tempStores = ArrayDeque<MutableMap<String, AstNode>>()
 
     fun getDeadStores(ast: AstNode): Set<AstNode> {
         visit(ast)
@@ -22,8 +23,42 @@ class DeadStoreResolver: AstWalker<Unit>()
     }
 
     override fun visit(node: FunctionNode) {
-        tempStores.clear()
-        node.statements.forEach { visit(it) }
+        wrapInScope {
+            node.statements.forEach { visit(it) }
+        }
+    }
+
+    override fun visit(node: ForStatementNode) {
+        visit(node.start)
+        visit(node.stop)
+        visit(node.inc)
+        wrapInScope {
+            visit(node.statements)
+        }
+    }
+
+    override fun visit(node: WhileStatementNode) {
+        visit(node.condition)
+
+        wrapInScope {
+            visit(node.statements)
+            visit(node.condition)
+        }
+    }
+
+    override fun visit(node: IfStatementNode) {
+        visit(node.condition)
+
+        tempStores.push(mutableMapOf())
+        visit(node.trueStatements)
+        val trueStores = tempStores.pop()
+
+        tempStores.push(mutableMapOf())
+        visit(node.falseStatements)
+        val falseStores = tempStores.pop()
+
+        trueStores.keys.intersect(falseStores.keys)
+                .forEach { recordSymbolWrite(EmptyNode, it) }
     }
 
     override fun visit(node: ArrayConstructorNode) {
@@ -60,13 +95,25 @@ class DeadStoreResolver: AstWalker<Unit>()
         recordSymbolWrite(node, node.lhs)
     }
 
+    private fun wrapInScope(body: () -> Unit) {
+        tempStores.push(mutableMapOf())
+        body()
+        val stores = tempStores.pop()
+        stores.forEach { deadStores.add(it.value) }
+    }
+
     private fun recordSymbolWrite(node: AstNode, name: String) {
-        val oldStore = tempStores.put(name, node)
+        val oldStore = if (node == EmptyNode) {
+            tempStores.peek().remove(name)
+        } else {
+            tempStores.peek().put(name, node)
+        }
         oldStore?.let { deadStores.add(it) }
+
     }
 
     private fun recordSymbolRead(name: String) {
-        tempStores.remove(name)
+        tempStores.find { name in it }?.remove(name)
     }
 
     override fun defaultValue(node: AstNode) = Unit
