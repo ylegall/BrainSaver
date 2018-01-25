@@ -38,6 +38,15 @@ fun parse(code: String): AstNode {
     return AstBuilder().visit(parse(inputStream))
 }
 
+fun getInterpreter(
+        code: String,
+        compilerOptions: CompilerOptions = DEFAULT_COMPILE_OPTIONS,
+        options: InterpreterOptions = DEFAULT_INTERPRETER_OPTIONS
+): Interpreter {
+    val compiled = compile(code)
+    return Interpreter(str = compiled, options = options)
+}
+
 class TestContext(wrapping: Boolean = false, globals: HashMap<String, Symbol> = HashMap())
 {
     private val output: ByteArrayOutputStream = ByteArrayOutputStream()

@@ -14,7 +14,7 @@ abstract class AstWalker<T>
                     else -> visit(node)
                 }
                 is CallStatementNode -> visit(node)
-                is DebugStatementNode -> visit(node)
+                //is DebugStatementNode -> visit(node)
                 is ForStatementNode -> visit(node)
                 is IfStatementNode -> visit(node)
                 is WhileStatementNode -> visit(node)
@@ -55,7 +55,7 @@ abstract class AstWalker<T>
     open fun visit(node: CallStatementNode): T = visitChildren(node)
     open fun visit(node: ConditionExpNode): T = visitChildren(node)
     open fun visit(node: ConstantNode): T = visitChildren(node)
-    open fun visit(node: DebugStatementNode): T = visitChildren(node)
+    //open fun visit(node: DebugStatementNode): T = visitChildren(node)
     open fun visit(node: DeclarationNode): T = visitChildren(node)
     open fun visit(node: ForStatementNode): T = visitChildren(node)
     open fun visit(node: FunctionNode): T = visitChildren(node)

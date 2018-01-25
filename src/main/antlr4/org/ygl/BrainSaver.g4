@@ -35,11 +35,6 @@ statement
     |   forStatement
     |   arrayInitStatement
     |   arrayWriteStatement
-    |   debugStatement
-    ;
-
-debugStatement
-    :   'debug' '(' (params+=Identifier (',' params+=Identifier)*)? ')' ';'
     ;
 
 ifStatement

@@ -10,6 +10,7 @@ import org.apache.commons.cli.Options
 import org.apache.commons.cli.ParseException
 import org.ygl.runtime.SystemContext
 import org.ygl.transformation.TransformationPipeline
+import org.ygl.util.time
 import java.io.*
 
 const val VERSION = "1.1"

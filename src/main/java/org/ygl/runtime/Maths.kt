@@ -2,6 +2,8 @@ package org.ygl.runtime
 
 import org.ygl.model.StorageType
 
+private typealias BinaryOp = (Symbol, Symbol) -> Symbol
+
 class Maths(
         private val cg: CodeGen,
         private val runtime: Runtime
@@ -42,7 +44,7 @@ class Maths(
             val tmp = runtime.createTempSymbol()
             cg.copyInt(tmp, s2)
 
-            cg.loop(tmp, {
+            cf.loop(tmp, {
                 dec(tmp)
                 inc(s1)
             })
@@ -64,18 +66,18 @@ class Maths(
                 val tmp2 = runtime.createTempSymbol()
                 copyInt(tmp, s2)
 
-                loop(tmp, {
+                cf.loop(tmp, {
 
                     loadImmediate(breakFlag, 1)
                     copyInt(tmp2, s1)
 
-                    onlyIf(tmp2, {
+                    cf.onlyIf(tmp2, {
                         dec(s1)
                         dec(tmp)
                         setZero(breakFlag)
                     })
 
-                    onlyIf(breakFlag, {
+                    cf.onlyIf(breakFlag, {
                         setZero(tmp)
                     })
 
@@ -88,7 +90,7 @@ class Maths(
                 val tmp = runtime.createTempSymbol()
                 copyInt(tmp, s2)
 
-                loop(tmp, {
+                cf.loop(tmp, {
                     dec(s1)
                     dec(tmp)
                 })
@@ -111,7 +113,7 @@ class Maths(
             copyInt(t2, s2)
             setZero(s1)
 
-            loop(t2, {
+            cf.loop(t2, {
                 dec(t2)
                 addTo(s1, t1)
             })
@@ -136,7 +138,7 @@ class Maths(
 
             copyInt(cpy, s1)
 
-            loop(cpy, {
+            cf.loop(cpy, {
                 subtractFrom(cpy, s2)
                 inc(div)
             })
@@ -146,7 +148,7 @@ class Maths(
             val remainder = multiply(div, s2)
             subtractFrom(remainder, s1)
 
-            onlyIf(remainder, {
+            cf.onlyIf(remainder, {
                 inc(flag)
                 moveTo(remainder)
             })
@@ -191,14 +193,14 @@ class Maths(
             copyInt(x, lhs)
             subtractFrom(x, rhs)
 
-            onlyIf(x, {
+            cf.onlyIf(x, {
                 setZero(z)
             })
 
             copyInt(x, rhs)
             subtractFrom(x, lhs)
 
-            onlyIf(x, {
+            cf.onlyIf(x, {
                 setZero(z)
             })
 
@@ -216,7 +218,7 @@ class Maths(
 
             loadImmediate(result, 1)
 
-            onlyIf(x, {
+            cf.onlyIf(x, {
                 setZero(result)
             })
 
@@ -237,14 +239,14 @@ class Maths(
             copyInt(x, lhs)
             subtractFrom(x, rhs)
 
-            onlyIf(x, {
+            cf.onlyIf(x, {
                 setZero(ret)
             })
 
             copyInt(x, rhs)
             subtractFrom(x, lhs)
 
-            onlyIf(x, {
+            cf.onlyIf(x, {
                 loadImmediate(ret, 1)
             })
 
@@ -263,7 +265,7 @@ class Maths(
             copyInt(x, lhs)
             subtractFrom(x, rhs)
 
-            onlyIf(x, {
+            cf.onlyIf(x, {
                 setZero(ret)
             })
 
@@ -284,7 +286,7 @@ class Maths(
             setZero(ret)
             val z = subtract(lhs, rhs)
 
-            onlyIf(z, {
+            cf.onlyIf(z, {
                 loadImmediate(ret, 1)
             })
 
@@ -305,14 +307,14 @@ class Maths(
             copyInt(y, rhs)
 
             moveTo(x)
-            startLoop()
+            cf.startLoop()
                 moveTo(y)
-                startLoop()
+                cf.startLoop()
                     loadImmediate(ret, 1)
                     setZero(y)
-                endLoop()
+                cf.endLoop()
                 setZero(x)
-            endLoop()
+            cf.endLoop()
 
             cs.delete(x)
             cs.delete(y)
@@ -329,13 +331,13 @@ class Maths(
 
             copyInt(x, lhs)
 
-            onlyIf(x, {
+            cf.onlyIf(x, {
                 loadImmediate(ret, 1)
             })
 
             copyInt(x, rhs)
 
-            onlyIf(x, {
+            cf.onlyIf(x, {
                 loadImmediate(ret, 1)
             })
 
@@ -353,7 +355,7 @@ class Maths(
             copyInt(tmp, rhs)
             loadImmediate(ret, 1)
 
-            onlyIf(tmp, {
+            cf.onlyIf(tmp, {
                 setZero(ret)
             })
 

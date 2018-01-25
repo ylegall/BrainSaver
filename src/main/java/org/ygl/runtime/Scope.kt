@@ -3,20 +3,25 @@ package org.ygl.runtime
 import org.ygl.ast.AstNode
 import org.ygl.ast.DeclarationNode
 import org.ygl.ast.GlobalVariableNode
+import org.ygl.model.IntType
 import org.ygl.model.StorageType
+import org.ygl.model.Type
+import org.ygl.util.orElse
+import java.util.*
 
 /**
  *
  */
 class Scope(
         val node: AstNode,
-        val startAddress: Int
+        private val startAddress: Int
 )
 {
     val symbols = mutableMapOf<String, Symbol>()
     val tempSymbols = mutableMapOf<String, Symbol>()
+    private val freeSlots = ArrayDeque<Symbol>()
 
-    var scopeSize = 0
+    var headPointer = startAddress
         private set
 
     private var tempCounter = 0
@@ -29,44 +34,72 @@ class Scope(
         }
     }
 
-    fun createSymbol(name: String, storageType: StorageType, value: Any = Unit): Symbol {
-        // TODO: check free slots
-        val address = startAddress + scopeSize
-        val symbol = Symbol(name, storageType, value, address)
-        symbols[name] = symbol
-        scopeSize += symbol.size
-        return symbol
-    }
+    fun createSymbol(name: String, storageType: StorageType, size: Int = 1, type: Type = IntType): Symbol {
+        if (symbols.containsKey(name)) throw Exception("duplicate symbol: $name")
 
-    fun createSymbol(name: String, storageType: StorageType): Symbol {
-        val address = startAddress + scopeSize
-        val symbol = Symbol(name, storageType, Unit, address)
+        // check for freed slots
+        var address: Int? = null
+        if (freeSlots.isNotEmpty()) {
+            val slot = freeSlots.find { it.size >= size }
+            if (slot != null) {
+                freeSlots.remove(slot)
+                address = slot.address
+                if (slot.size > size) {
+                    freeSlots.addFirst(Symbol.new(
+                            slot.name,
+                            slot.storage,
+                            slot.size - size,
+                            slot.type,
+                            slot.address + size
+                    ))
+                }
+                if (address + size >= headPointer) {
+                    headPointer = address + size
+                }
+            }
+        }
+
+        if (address == null) {
+            address = headPointer
+            headPointer += size
+        }
+
+        val symbol = Symbol.new(name, storageType, size, type, address)
         symbols[name] = symbol
-        scopeSize += symbol.size
         return symbol
     }
 
     fun delete(symbol: Symbol) {
-        assert(symbol.hasAddress(),
-                { "symbol ${symbol.name} does not have an address" }
-        )
-        if (symbol.isTemp()) {
-            assert(tempSymbols.remove(symbol.name) != null,
-                    { "symbol ${symbol.name} was not a temp symbol" }
-            )
+        val oldSymbol = tempSymbols.remove(symbol.name)
+                .orElse { symbols.remove(symbol.name) } ?: throw Exception("unknown symbol ${symbol.name}")
+        deleteInternal(oldSymbol)
+    }
+
+    fun deleteTempSymbols() {
+        tempSymbols.forEach { _, tempSymbol ->
+            deleteInternal(tempSymbol)
+        }
+        tempSymbols.clear()
+        tempCounter = 0
+    }
+
+    private fun deleteInternal(symbol: Symbol) {
+        if (symbol.address + symbol.size == headPointer) {
+            assert(symbol.size > 0)
+            headPointer -= symbol.size
+            assert(headPointer >= startAddress)
         } else {
-            assert(symbols.remove(symbol.name) != null,
-                    { "symbol ${symbol.name} was not found for deletion" }
-            )
+            freeSlots.add(symbol)
         }
     }
 
-    fun createTempSymbol(value: Any = Unit): Symbol {
-        val address = startAddress + scopeSize
+    fun createTempSymbol(size: Int = 1, type: Type = IntType): Symbol {
+        val address = headPointer
         val name = "\$t$tempCounter"
         tempCounter++
-        val symbol = TempSymbol(name, value, address)
-        scopeSize += symbol.size
+        val symbol = Symbol.temp(name, StorageType.VAR, size, type, address)
+        headPointer += symbol.size
+        tempSymbols[name] = symbol
         return symbol
     }
 }

@@ -12,7 +12,7 @@ class CodeGen(
 ): AutoCloseable {
 
     private var col = 0
-    private var nestLevel = 0
+    internal var nestLevel = 0
     private var dataPointer = 0
 
     private val reservedChars = Regex("""[\[\]<>+\-,.]""")
@@ -20,6 +20,8 @@ class CodeGen(
     private val commentMargin = margin + 4
 
     val math = Maths(this, runtime)
+    val io = IO(this, runtime)
+    val cf = ControlFlow(this)
 
     private val output: OutputStream = if (options.minify) {
         MinifyingOutputStream(outputStream, options.margin)
@@ -29,6 +31,14 @@ class CodeGen(
 
     override fun close() {
         output.flush()
+    }
+
+    fun loadImmediate(symbol: Symbol, value: Any): Symbol {
+        return when (value) {
+            is Int -> loadImmediate(symbol, value)
+            is String -> loadImmediate(symbol, value)
+            else -> throw Exception("invalid symbol value: $value")
+        }
     }
 
     fun loadImmediate(symbol: Symbol, value: Int): Symbol {
@@ -58,13 +68,13 @@ class CodeGen(
         setZero(lhs)
         setZero(tmp)
 
-        loop(rhs, {
+        cf.loop(rhs, {
             emit("-")
             inc(lhs)
             inc(tmp)
         })
 
-        loop(tmp, {
+        cf.loop(tmp, {
             emit("-")
             inc(rhs)
         })
@@ -76,38 +86,6 @@ class CodeGen(
 
     fun copyStr(lhs: Symbol, rhs: Symbol): Symbol {
         TODO("implement")
-    }
-
-    inline fun onlyIf(symbol: Symbol, body: () -> Unit, comment: String = "") {
-        moveTo(symbol)
-        startLoop(comment)
-        setZero(symbol)
-        body()
-        moveTo(symbol)
-        endLoop()
-    }
-
-    fun startLoop(comment: String = "") {
-        newline()
-        emit("[", comment)
-        nestLevel = Math.min(nestLevel + 1, 10)
-        newline()
-    }
-
-    fun endLoop(comment: String = "") {
-        nestLevel -= 1
-        assert(nestLevel >= 0, {"negative nest level"})
-        newline()
-        emit("]", comment)
-        newline()
-    }
-
-    inline fun loop(symbol: Symbol, body: () -> Unit, comment: String = "") {
-        moveTo(symbol)
-        startLoop(comment)
-        body()
-        moveTo(symbol)
-        endLoop()
     }
 
     fun incrementBy(symbol: Symbol, value: Int): Symbol {
@@ -147,7 +125,7 @@ class CodeGen(
         if (rhs.address == lhs.address) return lhs
         commentLine("move $rhs to $lhs")
         setZero(lhs)
-        loop(rhs, {
+        cf.loop(rhs, {
             inc(lhs)
             dec(rhs)
         })
@@ -164,6 +142,16 @@ class CodeGen(
             val dir = if (address > dataPointer) ">" else "<"
             emit(dir.repeat(diff), comment)
             dataPointer = address
+        }
+    }
+
+    fun debug(symbol: Symbol, comment: String = "") {
+        newline()
+        if (symbol.isConstant) {
+            emit("@${symbol.name} = ${symbol.value}@")
+        } else {
+            moveTo(symbol)
+            emit("@$comment@")
         }
     }
 
@@ -202,7 +190,7 @@ class CodeGen(
                 }
 
                 if (!cmt.isEmpty()) {
-                    assert(!cmt.contains(reservedChars))
+                    assert(!cmt.contains(reservedChars), { "comment contained bad chars: '$cmt'" })
                     val commentPadding = commentMargin - col
                     write(" ".repeat(commentPadding) + "${options.commentChar} $cmt")
                     cmt = ""

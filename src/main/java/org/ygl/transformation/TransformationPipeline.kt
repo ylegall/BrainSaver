@@ -16,8 +16,7 @@ class TransformationPipeline(
         private val ctx: SystemContext
 )
 {
-    //private var symbolInfo: Map<AstNode, SymbolInfo> = mapOf()
-    private var lastUseInfo: Map<AstNode, Set<String>> = mapOf()
+    //private var lastUseInfo: Map<AstNode, Set<String>> = mapOf()
     private val options = ctx.options
 
     /**
@@ -58,7 +57,7 @@ class TransformationPipeline(
         return ConstantEvaluator(constants).evaluateConstants(this)
     }
 
-    private fun AstNode.findUnusedSymbols(): AstNode {
+    private fun AstNode.removeDeadCode(): AstNode {
         //symbolInfo = MutabilityResolver().getSymbolMutabilityInfo(this)
         val deadStores = DeadStoreResolver().getDeadStores(this)
 
@@ -68,58 +67,26 @@ class TransformationPipeline(
             deadStores.forEach { println("\t$it") }
         }
 
-//        if (options.verbose) {
-//            println("\nsymbol info:")
-//            println("-------------")
-//            symbolInfo.forEach { scope, symbols ->
-//                if (!symbols.deadStores.isEmpty() || !symbols.modifiedSymbols.isEmpty()) {
-//                    println("  in scope '$scope':")
-//                    println("    modified: ${symbols.modifiedSymbols}")
-//                    println("    unused:   ${symbols.deadStores}")
-//                    println()
-//                }
-//            }
-//            println()
-//        }
-
-        return this
+        return DeadStoreRemover(deadStores).visit(this)
     }
 
-//    private fun AstNode.constantFold(): AstNode {
-//        val ast = ConstantFolder(symbolInfo).visit(this)
-//
-//        if (options.verbose) {
-//            println("constant folding:")
-//            println("-----------------")
-//            AstPrinter().print(ast)
-//        }
-//
-//        return ast
-//    }
-
     private fun AstNode.findLastUsages(): AstNode {
-        lastUseInfo = LastUseResolver().getSymbolLastUseInfo(this)
+        AstPrinter().print(this)
 
-        if (options.verbose) {
+        ctx.lastUseInfo = LastUseResolver().getSymbolLastUseInfo(this)
+
+        //if (options.verbose) {
             println("last use nodes:")
             println("---------------")
-            lastUseInfo.forEach { node, symbols ->
+            ctx.lastUseInfo.forEach { node, symbols ->
                 println("  $node\t\t: $symbols")
             }
-        }
+        //}
 
         return this
     }
 
     private fun AstNode.propagateConstants(): AstNode {
-//        val env = AssignmentResolver().resolveAssignments(this)
-//
-//        println("\nresolved env:")
-//        println("-------------")
-//        for ((key, value) in env) {
-//            println("\t$key:\t\t$value")
-//        }
-
         return ConstantPropagator().visit(this)
     }
 
@@ -127,17 +94,21 @@ class TransformationPipeline(
         return StrengthReducer().visit(this)
     }
 
-    fun transform(ctx: ParserRuleContext) {
-        val ast = ctx.buildAst()
+    fun transform(ruleContext: ParserRuleContext) {
+        val ast = ruleContext.buildAst()
                 .semanticValidation()
                 .resolveConstants()
                 .propagateConstants()
                 .strengthReduce()
-                .findUnusedSymbols()
+                .removeDeadCode()
                 .findLastUsages()
 
         println("\nfinal ast:\n")
+        println("----------")
         AstPrinter().print(ast)
+        println("\n______________\n")
+
+        AstCompiler(ctx).visit(ast)
 
         // generate bf code:
         //AstCodeGenerator(outStream, options, lastUseInfo).visit(ast)

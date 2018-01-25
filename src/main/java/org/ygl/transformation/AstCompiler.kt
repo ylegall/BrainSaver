@@ -1,29 +1,26 @@
 package org.ygl.transformation
 
-import com.sun.org.apache.xalan.internal.xsltc.compiler.CompilerException
-import org.antlr.v4.runtime.misc.ParseCancellationException
-import org.ygl.BrainSaverParser
 import org.ygl.CompileException
-import org.ygl.CompilerOptions
 import org.ygl.ast.*
-import org.ygl.model.*
-import org.ygl.runtime.*
-import java.io.OutputStream
-import java.util.ArrayList
+import org.ygl.model.IntType
+import org.ygl.model.Op
+import org.ygl.model.StorageType
+import org.ygl.model.StrType
+import org.ygl.runtime.Symbol
+import org.ygl.runtime.Symbol.NullSymbol
+import org.ygl.runtime.SystemContext
 
 /**
  * Walks the Ast and generates code
  */
 class AstCompiler(
-        outputStream: OutputStream,
-        private val options: CompilerOptions,
-        private val lastUseInfo: Map<AstNode, Set<String>> = mapOf()
+    private val ctx: SystemContext
 ): AstWalker<Symbol>()
 {
-    private val runtime = Runtime()
+    private val runtime = ctx.runtime
     private val functions = mutableMapOf<String, FunctionNode>()
-    private val cg = CodeGen(outputStream, options, runtime)
-    private val stdlib = StdLib(cg, runtime)
+    private val cg = ctx.cg
+    private val stdlib = ctx.stdlib
 
     /**
      * visit the main function.
@@ -33,11 +30,12 @@ class AstCompiler(
     override fun visit(node: ProgramNode): Symbol {
         // register functions:
         node.children.filterIsInstance<FunctionNode>()
+                .also {  }
                 .forEach {
                     if (it.name in functions) {
                         throw CompileException("function ${it.name} redefined")
                     }
-                    functions.put(it.name, it)
+                    functions[it.name] = it
                 }
 
         // add global variables:
@@ -45,33 +43,16 @@ class AstCompiler(
         node.children.filterIsInstance<GlobalVariableNode>()
                 .forEach { visit(it) }
 
-        functions["main"]?.let { visit(it) } ?: throw CompileException("no main function found")
+        functions["main"]?.let { visit(it.statements) } ?: throw CompileException("no main function found")
 
-        return UnknownSymbol
+        return Symbol.NullSymbol
     }
 
     override fun visit(node: GlobalVariableNode): Symbol {
         val rhs = visit(node.rhs)
-        return when {
-            rhs.isConstant() -> {
-                val lhs = runtime.createSymbol(node.lhs, StorageType.VAR, rhs.value)
-                assignConstant(lhs, rhs.value)
-            }
-            rhs.isTemp() -> runtime.rename(rhs, node.lhs)
-            else -> {
-                val lhs = runtime.createSymbol(node.lhs, StorageType.VAR, rhs.value)
-                assignVariable(lhs, rhs)
-            }
-        }
+        val lhs = runtime.createSymbol(node.lhs, StorageType.VAR, rhs.type, rhs.size)
+        return assign(lhs, rhs)
     }
-
-    private fun evaluateGlobal(node: GlobalVariableNode): Symbol {
-        val rhs = visit(node.rhs)
-        TODO("assign value")
-        return rhs
-    }
-
-
 
     /**
      * visit the statement.
@@ -80,8 +61,13 @@ class AstCompiler(
      */
     override fun visit(node: StatementNode): Symbol {
         val result = visit(node.children)
-        // TODO(clean up temp variables)
+
         // TODO(check if this is the last time a symbol is used)
+        val lastUsedSymbols = ctx.lastUseInfo[node] ?: emptySet()
+        lastUsedSymbols.mapNotNull { runtime.resolveSymbol(it) }
+                .forEach { runtime.delete(it) }
+
+        runtime.deleteTempSymbols()
         return result
     }
 
@@ -90,11 +76,11 @@ class AstCompiler(
 
         // check for pre-defined stdlib function
         if (node.name in stdlib.functions) {
-            // TODO
+            return stdlib.invoke(node.name, args)
         }
 
         // lookup matching function and its params
-        val functionNode = functions[node.name] ?: throw CompilerException("unrecognized function ${node.name}")
+        val functionNode = functions[node.name] ?: throw CompileException("unrecognized function ${node.name}")
 
         return functionCall(functionNode, args)
     }
@@ -103,12 +89,13 @@ class AstCompiler(
         val args = node.params.map { visit(it) }
 
         // check for pre-defined stdlib function
+        // todo check for void function in semantic analysis pass
         if (node.name in stdlib.functions) {
-            // TODO
+            return stdlib.functions[node.name]?.invoke(args) ?: throw Exception("function ${node.name} is void")
         }
 
         // lookup matching function and its params
-        val functionNode = functions[node.name] ?: throw CompilerException("unrecognized function ${node.name}")
+        val functionNode = functions[node.name] ?: throw CompileException("unrecognized function ${node.name}")
 
         return functionCall(functionNode, args)
     }
@@ -128,7 +115,7 @@ class AstCompiler(
             for (i in 0 until params.size) {
                 val param = runtime.createSymbol(params[i], StorageType.VAL, args[i].value)
                 when {
-                    args[i].isConstant() -> assignConstant(param, args[i].value)
+                    args[i].isConstant -> assignConstant(param, args[i].value)
                     else -> assignVariable(param, args[i])
                 }
             }
@@ -142,11 +129,11 @@ class AstCompiler(
         fnNode.statements.forEach { visit(it) }
 
         // TODO
-        var result: Symbol = UnknownSymbol
+        var result: Symbol = NullSymbol
         if (fnNode.ret != null) {
             val ret = visit(fnNode.ret)
             runtime.exitScope()
-            val cpy = runtime.createTempSymbol(ret.value)
+            val cpy = runtime.createTempSymbol(ret.size, ret.type)
             result = cg.move(cpy, ret)
         } else {
             runtime.exitScope()
@@ -158,17 +145,17 @@ class AstCompiler(
 
     override fun visit(node: DeclarationNode): Symbol {
         val rhs = visit(node.rhs)
-
         return when {
-            rhs.isConstant() -> {
-                val lhs = runtime.createSymbol(node.lhs, node.storage, rhs.value)
+            rhs.isConstant -> {
+                val lhs = runtime.createSymbol(node.lhs, node.storage, rhs.type, rhs.size)
                 assignConstant(lhs, rhs.value)
             }
-            rhs.isTemp() -> {
+            rhs.isTemp -> {
+                assert(rhs.hasAddress)
                 runtime.rename(rhs, node.lhs)
             }
             else -> {
-                val lhs = runtime.createSymbol(node.lhs, node.storage, rhs.value)
+                val lhs = runtime.createSymbol(node.lhs, node.storage, rhs.type, rhs.size)
                 assignVariable(lhs, rhs)
             }
         }
@@ -176,27 +163,22 @@ class AstCompiler(
 
     override fun visit(node: AssignmentNode): Symbol {
         val rhs = visit(node.rhs)
-        if (rhs.name == node.lhs) return rhs // no-op
-        val lhs = runtime.resolveSymbol(node.lhs) ?: throw CompileException("unresolved symbol ${node.lhs}")
-
-        return when {
-            rhs.isConstant() -> assignConstant(lhs, rhs.value)
-            rhs.isTemp() -> runtime.rename(rhs, lhs.name)
-            else -> assignVariable(lhs, rhs)
-        }
+        val lhs = runtime.resolveSymbol(node.lhs) ?: runtime.createSymbol(node.lhs, StorageType.VAR, rhs.type, rhs.size)
+        return assign(lhs, rhs)
     }
 
     private fun assign(lhs: Symbol, rhs: Symbol): Symbol {
         return when {
-            rhs.isConstant() -> assignConstant(lhs, rhs.value)
+            rhs.isConstant -> assignConstant(lhs, rhs.value)
             else -> assignVariable(lhs, rhs)
         }
     }
 
     private fun assignVariable(lhs: Symbol, rhs: Symbol): Symbol {
-        return when (rhs.value) {
-            is Int -> cg.copyInt(lhs, rhs)
-            else -> throw CompileException("invalid rhs type: $rhs")
+        return when (rhs.type) {
+            IntType -> cg.copyInt(lhs, rhs)
+            StrType -> cg.copyStr(lhs, rhs)
+            else -> throw CompileException("invalid rhs value: $rhs")
         }
     }
 
@@ -204,8 +186,83 @@ class AstCompiler(
         return when (rhs) {
             is Int -> cg.loadImmediate(lhs, rhs)
             is String -> cg.loadImmediate(lhs, rhs)
-            else -> throw CompileException("invalid rhs value: ${rhs}")
+            else -> throw CompileException("invalid rhs value: $rhs")
         }
+    }
+
+    override fun visit(node: IfStatementNode): Symbol {
+        val condition = visit(node.condition)
+        if (node.falseStatements.isEmpty()) {
+            doIf(condition, node)
+        } else {
+            doIfElse(condition, node)
+        }
+        return NullSymbol
+    }
+
+    private fun doIf(condition: Symbol, node: IfStatementNode) {
+        with (cg) {
+            val cpy = runtime.createSymbol("&${condition.name}")
+            assign(cpy, condition)
+
+            cf.startIf(cpy)
+            visit(node.trueStatements)
+            cf.endIf(cpy)
+
+            runtime.delete(cpy)
+        }
+    }
+
+    private fun doIfElse(condition: Symbol, node: IfStatementNode) {
+        with (cg) {
+            val cpy = runtime.createSymbol("&${condition.name}")
+            assign(cpy, condition)
+
+            val elseFlag = runtime.createSymbol("${cpy.name}_else")
+            loadImmediate(elseFlag, 1)
+            cf.onlyIf(cpy, {
+                setZero(elseFlag)
+            })
+            assign(cpy, condition)
+
+            cf.startIf(cpy)
+            visit(node.trueStatements)
+            cf.endIf(cpy)
+
+            cf.startElse(elseFlag)
+            visit(node.falseStatements)
+            cf.endElse(elseFlag)
+
+            runtime.delete(cpy)
+            runtime.delete(elseFlag)
+        }
+    }
+
+    override fun visit(node: ConditionExpNode): Symbol {
+        val condition = visit(node.condition)
+        val trueExp = visit(node.trueExp)
+        val falseExp = visit(node.trueExp)
+
+        val cpy = runtime.createTempSymbol()
+        val elseFlag = runtime.createTempSymbol()
+        val ret = runtime.createTempSymbol()
+
+        with (cg) {
+            assign(cpy, condition)
+            loadImmediate(elseFlag, 1)
+            cf.onlyIf(cpy, {
+                setZero(elseFlag)
+                assign(ret, trueExp)
+            })
+
+            cf.onlyIf(elseFlag, {
+                assign(ret, falseExp)
+            })
+        }
+
+        runtime.delete(cpy)
+        runtime.delete(elseFlag)
+        return ret
     }
 
     override fun visit(node: BinaryExpNode): Symbol {
@@ -241,12 +298,12 @@ class AstCompiler(
     }
 
     override fun visit(node: AtomIntNode): Symbol {
-        return ConstantSymbol(node.value)
+        return Symbol.constant(node.value)
     }
 
     override fun visit(node: AtomStrNode): Symbol {
-        return ConstantSymbol(node.value)
+        return Symbol.constant(node.value)
     }
 
-    override fun defaultValue(node: AstNode) = UnknownSymbol
+    override fun defaultValue(node: AstNode) = NullSymbol
 }

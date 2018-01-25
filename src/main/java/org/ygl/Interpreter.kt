@@ -4,6 +4,7 @@ import org.apache.commons.cli.DefaultParser
 import org.apache.commons.cli.HelpFormatter
 import org.apache.commons.cli.Options
 import org.apache.commons.cli.ParseException
+import org.ygl.util.formatElapsed
 import java.io.*
 import java.util.*
 

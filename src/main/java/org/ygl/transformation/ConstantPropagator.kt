@@ -12,16 +12,29 @@ class ConstantPropagator: AstTransformer()
     private val runtime = Runtime()
     private val assignmentResolver = AssignmentResolver()
     private val evaluator = ExpressionEvaluator()
+    private val globals = mutableMapOf<String, AstNode>()
 
     private var env = emptyMap<AstNode, Map<String, AstNode>>()
     private var constantSymbols = emptyMap<String, AstNode>()
 
     override fun visit(node: ProgramNode): AstNode {
-        // add global symbols to scope
+        val newGlobals = node.children.filterIsInstance<GlobalVariableNode>().map { visit(it) }
         runtime.enterScope(node)
-        node.children.filterIsInstance<FunctionNode>().forEach { visit(it) }
+        val newFunctions = node.children.filterIsInstance<FunctionNode>().map { visit(it) }
         runtime.exitScope()
-        return node
+
+        return ProgramNode(mutableListOf<AstNode>().apply {
+            addAll(newGlobals)
+            addAll(newFunctions)
+        })
+    }
+
+    override fun visit(node: GlobalVariableNode): AstNode {
+        val rhs = evaluator.evaluate(node.rhs, globals)
+        if (rhs.isConstant) {
+            globals[node.lhs] = rhs
+        }
+        return GlobalVariableNode(node.lhs, rhs, node.sourceInfo)
     }
 
     override fun visit(node: FunctionNode): AstNode {

@@ -9,6 +9,8 @@ import org.ygl.CompileErrorListener
 import org.ygl.ast.AstBuilder
 import org.ygl.ast.AstNode
 import org.ygl.ast.AtomIntNode
+import org.ygl.parse
+import java.io.ByteArrayInputStream
 import kotlin.test.assertEquals
 
 internal class ExpressionEvaluatorTest {
@@ -17,14 +19,14 @@ internal class ExpressionEvaluatorTest {
 
     @Test
     fun testExp() {
-        val node = parse("""(3 * 4 - 8) * 10 + 2""")
+        val node = ast("""(3 * 4 - 8) * 10 + 2""")
         val result = expEval.evaluate(node)
         assertEquals(42, (result as AtomIntNode).value)
     }
 
     @Test
     fun testSymbolExp() {
-        val node = parse("""(50 / x) + (y % 4)""")
+        val node = ast("""(50 / x) + (y % 4)""")
         val symbols = mutableMapOf(Pair("x", AtomIntNode(5)), Pair("y", AtomIntNode(6)))
         val result = expEval.evaluate(node, symbols)
         assertEquals(12, (result as AtomIntNode).value)
@@ -32,7 +34,7 @@ internal class ExpressionEvaluatorTest {
 
     @Test
     fun testNotExp() {
-        val node = parse("""!(5 <= 6)""")
+        val node = ast("""!(5 <= 6)""")
         val result = expEval.evaluate(node)
         assertEquals(0, (result as AtomIntNode).value)
     }
@@ -40,12 +42,12 @@ internal class ExpressionEvaluatorTest {
     @Test
     fun testConditionalExp() {
         run {
-            val node = parse(""" (4 > 3)? 17 : 13 """)
+            val node = ast(""" (4 > 3)? 17 : 13 """)
             val result = expEval.evaluate(node)
             assertEquals(17, (result as AtomIntNode).value)
         }
         run {
-            val node = parse(""" (4 == 3)? 17 : 13 """)
+            val node = ast(""" (4 == 3)? 17 : 13 """)
             val result = expEval.evaluate(node)
             assertEquals(13, (result as AtomIntNode).value)
         }
@@ -53,7 +55,7 @@ internal class ExpressionEvaluatorTest {
 
     @Test
     fun testArrayReadExp() {
-        val node = parse("""a[x] + a[0]""")
+        val node = ast("""a[x] + a[0]""")
         val symbols = mutableMapOf(
                 Pair("x", AtomIntNode(1)),
                 Pair("a[0]", AtomIntNode(6)),
@@ -63,7 +65,7 @@ internal class ExpressionEvaluatorTest {
         assertEquals(4, (result as AtomIntNode).value)
     }
 
-    private fun parse(program: String): AstNode {
+    private fun ast(program: String): AstNode {
         val lexer = BrainSaverLexer(CharStreams.fromStream(program.byteInputStream()))
         val tokens = CommonTokenStream(lexer)
         val parser = BrainSaverParser(tokens)

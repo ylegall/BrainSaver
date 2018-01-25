@@ -13,7 +13,7 @@ enum class StorageType
             return when (str) {
                 "val" -> VAL
                 "var" -> VAR
-                else -> throw CompilerException("unknown storage type: $str")
+                else -> throw CompilerException("unknown storage value: $str")
             }
         }
     }

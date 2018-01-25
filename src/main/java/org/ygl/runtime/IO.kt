@@ -1,5 +1,8 @@
 package org.ygl.runtime
 
+import org.ygl.model.IntType
+import org.ygl.model.StrType
+
 class IO(
         private val cg: CodeGen,
         private val runtime: Runtime
@@ -13,19 +16,19 @@ class IO(
         return symbol
     }
 
-    fun readInt(symbol: Symbol): Symbol {
-        with (cg) {
-            commentLine("read int $symbol")
-            moveTo(symbol)
-            emit(",")
-            emit("-".repeat(48), "convert char to int")
-        }
-        return symbol
-    }
+//    fun readInt(symbol: Symbol): Symbol {
+//        with (cg) {
+//            commentLine("read int $symbol")
+//            moveTo(symbol)
+//            emit(",")
+//            emit("-".repeat(48), "convert char to int")
+//        }
+//        return symbol
+//    }
 
     fun print(symbol: Symbol) {
         cg.newline()
-        if (symbol.isConstant()) {
+        if (symbol.isConstant) {
             val symbolValue = symbol.value
             when (symbolValue) {
                 is Int -> printImmediate(symbolValue.toString())
@@ -33,9 +36,9 @@ class IO(
             }
         } else {
             // TODO
-            when (symbol.value) {
-                is Int -> printInt(symbol)
-                is String -> printString(symbol)
+            when (symbol.type) {
+                IntType -> printInt(symbol)
+                StrType -> printString(symbol)
             }
         }
     }
@@ -59,20 +62,20 @@ class IO(
             commentLine("print 100s char")
             copyInt(ten, cpy)
             moveTo(cpy)
-            startLoop()
+            cf.startLoop()
                 incrementBy(cpy, asciiOffset)
                 printChar(cpy)
                 setZero(cpy)
-            endLoop()
+            cf.endLoop()
 
             commentLine("print 10s char")
             math.addTo(ten, d2)
             moveTo(ten)
-            startLoop()
+            cf.startLoop()
                 incrementBy(d2, asciiOffset)
                 printChar(d2)
                 setZero(ten)
-            endLoop()
+            cf.endLoop()
 
             commentLine("print 1s char")
             moveTo(d3)

@@ -16,7 +16,8 @@ fun main(args: Array<String>) {
 
     val outputFile = File("output.txt")
     val inStream  = FileInputStream(File("input.txt"))
-    val outStream = TeeOutputStream(FileOutputStream(outputFile))
+    //val outStream = TeeOutputStream(FileOutputStream(outputFile))
+    val outStream = FileOutputStream(outputFile)
 
     inStream.use { input ->
         outStream.use { output ->
@@ -24,6 +25,7 @@ fun main(args: Array<String>) {
                 compile(input, output, compilerOptions)
             } catch (e: CompileException) {
                 System.err.println(e.message)
+                e.printStackTrace()
                 return
             }
         }
@@ -35,7 +37,7 @@ fun main(args: Array<String>) {
 
     val evalOptions = InterpreterOptions(
             debug = true,
-            predefinedInput = "1"
+            predefinedInput = "2"
     )
 
     eval(outputFile, options = evalOptions)

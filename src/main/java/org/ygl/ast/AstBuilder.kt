@@ -40,11 +40,6 @@ class AstBuilder: BrainSaverBaseVisitor<AstNode>()
         return StatementNode(children = mutableListOf(super.visitChildren(ctx!!)))
     }
 
-    override fun visitDebugStatement(ctx: DebugStatementContext?): AstNode {
-        val params = ctx!!.params.map { it.text }
-        return DebugStatementNode(params)
-    }
-
     override fun visitIfStatement(ctx: IfStatementContext?): AstNode {
         val condition = visit(ctx!!.condition) as ExpNode
         val trueStatements = toNodeList(ctx.trueStmts)

@@ -21,7 +21,11 @@ object EmptyNode : AstNode() {
     override fun toString() = "(?)"
 }
 
-class ProgramNode(children: MutableList<AstNode>) : AstNode(children)
+class ProgramNode(
+        children: MutableList<AstNode>
+): AstNode(children) {
+    override fun toString() = "program"
+}
 
 class ConstantNode(
         val lhs: String,
@@ -55,8 +59,8 @@ open class StatementNode(
         children: MutableList<AstNode> = mutableListOf(),
         sourceInfo: SourceInfo? = null
 ) : AstNode(children, sourceInfo) {
-    override fun toString() = "(stmt)"
-//    override fun toString() = children[0].toString()
+//    override fun toString() = "(stmt)"
+    override fun toString() = children[0].toString()
 }
 
 class ReturnNode(
@@ -110,10 +114,6 @@ class CallStatementNode(
 ) : StatementNode(params, sourceInfo) {
     override fun toString() = "call $name()"
 }
-
-class DebugStatementNode(
-        val params: List<String>
-) : StatementNode()
 
 open class StoreNode(
         val lhs: String,
@@ -214,7 +214,6 @@ class AtomIdNode(
         sourceInfo: SourceInfo? = null
 ) : AtomNode(sourceInfo) {
     override fun toString() = "($identifier)"
-    override val isConstant = true
 }
 
 data class AtomStrNode(

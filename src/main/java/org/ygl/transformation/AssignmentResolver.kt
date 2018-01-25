@@ -4,7 +4,7 @@ import org.ygl.ast.*
 import java.util.*
 
 /**
- *
+ * http://www.cs.tau.ac.il/~msagiv/courses/pa07/lecture2-notes-update.pdf
  */
 class AssignmentResolver(
         private val globals: Map<String, AstNode> = mapOf()
