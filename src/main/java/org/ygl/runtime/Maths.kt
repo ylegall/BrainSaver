@@ -230,7 +230,6 @@ class Maths(
     fun lessThan(lhs: Symbol, rhs: Symbol): Symbol {
         with (cg) {
             commentLine("$lhs less than $rhs")
-            val cs = runtime.currentScope()
             val ret = runtime.createTempSymbol()
             val x = runtime.createTempSymbol()
 

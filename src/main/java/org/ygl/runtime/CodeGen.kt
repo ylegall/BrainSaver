@@ -64,6 +64,10 @@ class CodeGen(
     fun copyInt(lhs: Symbol, rhs: Symbol): Symbol {
         commentLine("assign $rhs to $lhs")
 
+        if (rhs.isConstant) {
+            return loadImmediate(lhs, rhs.value)
+        }
+
         val tmp = runtime.createTempSymbol()
         setZero(lhs)
         setZero(tmp)
@@ -157,7 +161,7 @@ class CodeGen(
 
     fun commentLine(str: String) {
         if (col != 0) newline()
-        assert(!str.contains(reservedChars))
+        assert(!str.contains(reservedChars), { "bad comment: $str" })
         write("${options.commentChar} $str")
         newline()
     }

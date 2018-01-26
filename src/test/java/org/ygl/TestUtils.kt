@@ -40,7 +40,6 @@ fun parse(code: String): AstNode {
 
 fun getInterpreter(
         code: String,
-        compilerOptions: CompilerOptions = DEFAULT_COMPILE_OPTIONS,
         options: InterpreterOptions = DEFAULT_INTERPRETER_OPTIONS
 ): Interpreter {
     val compiled = compile(code)

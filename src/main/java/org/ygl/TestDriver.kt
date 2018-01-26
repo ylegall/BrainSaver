@@ -16,8 +16,8 @@ fun main(args: Array<String>) {
 
     val outputFile = File("output.txt")
     val inStream  = FileInputStream(File("input.txt"))
-    //val outStream = TeeOutputStream(FileOutputStream(outputFile))
-    val outStream = FileOutputStream(outputFile)
+    val outStream = TeeOutputStream(FileOutputStream(outputFile))
+    //val outStream = FileOutputStream(outputFile)
 
     inStream.use { input ->
         outStream.use { output ->
@@ -37,7 +37,7 @@ fun main(args: Array<String>) {
 
     val evalOptions = InterpreterOptions(
             debug = true,
-            predefinedInput = "2"
+            predefinedInput = "0"
     )
 
     eval(outputFile, options = evalOptions)

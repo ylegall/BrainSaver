@@ -1,6 +1,6 @@
 package org.ygl
 
-import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 
@@ -17,13 +17,14 @@ internal class TestOpAssignment
     private fun test(a: Int, op:String, b:Int, expected: Int) {
         val program = """
             fn main() {
-                readInt(x);
+                var x = readInt();
                 x $op $b;
-                print(x);
+                debug(x);
             }
         """
-        val code = compile(program)
-        val result = eval(code, userInput = a.toString())
-        Assertions.assertEquals(expected.toString(), result.trim())
+        val options = InterpreterOptions(predefinedInput = a.toString())
+        val interpreter = getInterpreter(program, options)
+        interpreter.eval()
+        assertEquals(expected, interpreter.getCellValue(1))
     }
 }

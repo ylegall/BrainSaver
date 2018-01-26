@@ -1,6 +1,7 @@
 package org.ygl
 
 import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 internal class TestBooleans
@@ -46,7 +47,7 @@ internal class TestBooleans
         }
 
         val interpreter = ctx.eval(InterpreterOptions(wrap = wrapping))
-        Assertions.assertEquals(expected, interpreter.getCellValue(r.address))
+        assertEquals(expected, interpreter.getCellValue(r.address))
     }
 
     @Test
@@ -58,7 +59,7 @@ internal class TestBooleans
         testNot(0, 1, true)
     }
 
-    fun testNot(a: Int, expected: Int, wrapping: Boolean) {
+    private fun testNot(a: Int, expected: Int, wrapping: Boolean) {
         val ctx = TestContext(wrapping)
         val cg = ctx.cg
         val x = cg.currentScope().createSymbol("x")
@@ -66,6 +67,6 @@ internal class TestBooleans
         val r = cg.math.not(x)
 
         val interpreter = ctx.eval(InterpreterOptions(wrap = wrapping))
-        Assertions.assertEquals(expected, interpreter.getCellValue(r.address))
+        assertEquals(expected, interpreter.getCellValue(r.address))
     }
 }
