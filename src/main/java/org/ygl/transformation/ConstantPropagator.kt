@@ -5,7 +5,7 @@ import org.ygl.runtime.Runtime
 
 
 /**
- *
+ * TODO: remove empty loops
  */
 class ConstantPropagator: AstTransformer()
 {

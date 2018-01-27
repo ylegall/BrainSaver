@@ -48,7 +48,8 @@ class ExpressionEvaluator : AstWalker<AstNode>()
         return if (result is AtomIntNode) {
             AtomIntNode(evalUnaryExpression(Op.NOT, result.value))
         } else {
-            throw CompileException("unsupported negation operation: $result")
+            EmptyNode
+            //throw CompileException("unsupported negation operation: $result")
         }
     }
 

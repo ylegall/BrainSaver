@@ -13,6 +13,11 @@ class ConstantResolver: AstWalker<Unit>() {
     private val expEvaluator = ExpressionEvaluator()
     private val constants = mutableMapOf<String, AstNode>()
 
+    init {
+        constants["true"] = AtomIntNode(1)
+        constants["false"] = AtomIntNode(0)
+    }
+
     fun resolveConstants(root: AstNode): Map<String, AstNode> {
         assert(root is ProgramNode)
         val constantNodes = root.children.filterIsInstance<ConstantNode>()
@@ -24,7 +29,7 @@ class ConstantResolver: AstWalker<Unit>() {
                     val result = expEvaluator.evaluate(node.rhs, constants)
                     if (result.isConstant) {
                         madeProgress = true
-                        constants.put(node.lhs, result)
+                        constants[node.lhs] = result
                     }
                 }
                 val remaining = constantNodes.size - constants.size

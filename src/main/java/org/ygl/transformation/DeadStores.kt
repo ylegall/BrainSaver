@@ -89,7 +89,7 @@ class DeadStoreResolver: AstWalker<Unit>()
         val trueStores = tempStores.pop()
 
         tempStores.push(mutableMapOf())
-        visit(node.falseStatements)
+        visitList(node.falseStatements)
         val falseStores = tempStores.pop()
 
         trueStores.keys.intersect(falseStores.keys)

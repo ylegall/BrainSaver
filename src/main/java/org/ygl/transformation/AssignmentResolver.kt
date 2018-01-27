@@ -94,7 +94,7 @@ class AssignmentResolver(
             }
         } else {
             withScopedDeclarations({ visit(node.trueStatements) })
-            withScopedDeclarations({ visit(node.falseStatements) })
+            withScopedDeclarations({ visitList(node.falseStatements) })
         }
     }
 
