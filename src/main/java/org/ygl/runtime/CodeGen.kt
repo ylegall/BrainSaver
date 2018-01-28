@@ -2,14 +2,13 @@ package org.ygl.runtime
 
 import org.ygl.CompilerOptions
 import org.ygl.DEFAULT_COMPILE_OPTIONS
-import org.ygl.util.MinifyingOutputStream
 import java.io.OutputStream
 
 class CodeGen(
-        outputStream: OutputStream = System.`out`,
+        private val output: OutputStream = System.`out`,
         val options: CompilerOptions = DEFAULT_COMPILE_OPTIONS,
         private val runtime: Runtime
-): AutoCloseable {
+) {
 
     private var col = 0
     internal var nestLevel = 0
@@ -22,16 +21,6 @@ class CodeGen(
     val math = Maths(this, runtime)
     val io = IO(this, runtime)
     val cf = ControlFlow(this)
-
-    private val output: OutputStream = if (options.minify) {
-        MinifyingOutputStream(outputStream, options.margin)
-    } else {
-        outputStream
-    }
-
-    override fun close() {
-        output.flush()
-    }
 
     fun loadImmediate(symbol: Symbol, value: Any): Symbol {
         return when (value) {

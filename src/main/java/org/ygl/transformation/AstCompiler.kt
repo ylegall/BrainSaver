@@ -43,9 +43,11 @@ class AstCompiler(
         node.children.filterIsInstance<GlobalVariableNode>()
                 .forEach { visit(it) }
 
-        functions["main"]?.let { visit(it.statements) } ?: throw CompileException("no main function found")
+        functions["main"]
+                ?.let { fn -> fn.statements.forEach { visit(it) } }
+                ?: throw CompileException("no main function found")
 
-        return Symbol.NullSymbol
+        return NullSymbol
     }
 
     override fun visit(node: GlobalVariableNode): Symbol {
@@ -206,7 +208,7 @@ class AstCompiler(
             assign(cpy, condition)
 
             cf.startIf(cpy)
-            visit(node.trueStatements)
+            node.trueStatements.forEach { visit(it) }
             cf.endIf(cpy)
 
             runtime.delete(cpy)
@@ -226,11 +228,11 @@ class AstCompiler(
             assign(cpy, condition)
 
             cf.startIf(cpy)
-            visit(node.trueStatements)
+            node.trueStatements.forEach { visit(it) }
             cf.endIf(cpy)
 
             cf.startElse(elseFlag)
-            visit(node.falseStatements)
+            node.falseStatements.forEach { visit(it) }
             cf.endElse(elseFlag)
 
             runtime.delete(cpy)

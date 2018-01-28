@@ -42,7 +42,7 @@ class SemanticValidator(
         }
         functions.add(node.name)
         context.push(mutableMapOf())
-        visit(node.statements)
+        node.statements.forEach { visit(it) }
         context.pop()
     }
 

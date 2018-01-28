@@ -12,7 +12,7 @@ fun compileAndEval(input: String, userInput: String = "", wrapping: Boolean = tr
 
 fun compile(input: String): String {
     val outputStream = ByteArrayOutputStream()
-    val options = CompilerOptions()
+    val options = CompilerOptions(minify = true)
     outputStream.use { output ->
         compile(input, output, options = options)
     }
@@ -20,6 +20,8 @@ fun compile(input: String): String {
 }
 
 fun eval(code: String, userInput: String = "", wrapping: Boolean = false): String {
+    if (code.isBlank()) return ""
+
     val options = InterpreterOptions(
             predefinedInput = userInput,
             wrap = wrapping

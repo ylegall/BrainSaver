@@ -42,10 +42,10 @@ fun compile(infile: File, options: CompilerOptions = DEFAULT_COMPILE_OPTIONS) {
 
 fun compile(input: InputStream, outStream: OutputStream, options: CompilerOptions = DEFAULT_COMPILE_OPTIONS) {
     // parse and generate the AST:
-    val tree = parse(input)
-
-    val ctx = SystemContext(outStream, options)
-    TransformationPipeline(ctx).transform(tree)
+    SystemContext(outStream, options).use {
+        val tree = parse(input)
+        TransformationPipeline(it).transform(tree)
+    }
 
 //    val globals = resolveGlobals(parser, tree)
 //    val programInfo = getProgramInfo(parser, options, tree)

@@ -4,7 +4,7 @@ import org.ygl.ast.*
 import java.util.*
 
 /**
- *
+ * TODO: currently doesn't work with if-else blocks
  */
 class DeadStoreRemover(
         private val deadStores: Set<AstNode>

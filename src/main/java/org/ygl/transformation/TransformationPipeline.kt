@@ -64,7 +64,7 @@ class TransformationPipeline(
         if (options.verbose) {
             println("\ndead stores:")
             println("-------------")
-            deadStores.forEach { println("\t$it") }
+            deadStores.forEach { println("\t$it: ${it.children[0]}") }
         }
 
         return DeadStoreRemover(deadStores).visit(this)
@@ -87,7 +87,10 @@ class TransformationPipeline(
     }
 
     private fun AstNode.propagateConstants(): AstNode {
-        return ConstantPropagator().visit(this)
+        println("constant propagation:")
+        val ast = ConstantPropagator().visit(this)
+        AstPrinter().print(ast)
+        return ast
     }
 
     private fun AstNode.strengthReduce(): AstNode {

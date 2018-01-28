@@ -6,6 +6,7 @@ import org.ygl.BrainSaverBaseVisitor
 import org.ygl.BrainSaverParser.*
 import org.ygl.model.Op
 import org.ygl.model.StorageType
+import org.ygl.util.unescape
 
 /**
  *
@@ -144,7 +145,7 @@ class AstBuilder: BrainSaverBaseVisitor<AstNode>()
     }
 
     override fun visitAtomStr(ctx: AtomStrContext?): AstNode {
-        return AtomStrNode(ctx!!.StringLiteral().text)
+        return AtomStrNode(unescape(ctx!!.StringLiteral().text))
     }
 
     override fun visitAtomInt(ctx: AtomIntContext?): AstNode {

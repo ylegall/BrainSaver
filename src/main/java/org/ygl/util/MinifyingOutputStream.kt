@@ -46,7 +46,7 @@ class MinifyingOutputStream(
     }
 
     override fun close() {
-        output.flush()
+        flush()
         output.close()
     }
 }
