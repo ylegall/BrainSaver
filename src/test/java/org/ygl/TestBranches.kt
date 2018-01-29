@@ -75,10 +75,10 @@ internal class TestBranches
 
     @Test
     fun testConstantIf() {
-        //testConstantIf(4, 5, ">", "")
+        testConstantIf(4, 5, ">", "")
         testConstantIf(5, 4, ">", "1")
-        //testConstantIf(2, 2, "==", "1")
-        //testConstantIf(2, 1, "==", "")
+        testConstantIf(2, 2, "==", "1")
+        testConstantIf(2, 1, "==", "")
     }
 
     private fun testConstantIf(a: Int, b: Int, op: String, expected: String) {

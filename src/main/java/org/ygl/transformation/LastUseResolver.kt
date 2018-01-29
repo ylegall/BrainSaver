@@ -24,7 +24,7 @@ class LastUseResolver : AstWalker<Set<String>>()
 
     override fun visit(node: FunctionNode): Set<String> {
         scopeContext.enterScope(node)
-        val result = visit(node.statements)
+        val result = visitChildren(node)
         scopeContext.exitScope()
         return result
     }

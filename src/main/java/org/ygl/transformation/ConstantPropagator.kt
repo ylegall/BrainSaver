@@ -83,14 +83,18 @@ class ConstantPropagator: AstTransformer()
     override fun visit(node: IfStatementNode): AstNode {
         val condition = eval(node.condition)
         val result = if (condition.isConstant) {
-            val intVal = condition.intValue
-            val newNode = StatementNode(children = if (intVal == 0) {
+
+            val children = if (condition.intValue == 0) {
                 visitList(node.falseStatements)
             } else {
                 visitList(node.trueStatements)
-            })
-            newNode
-            //visitChildren(newNode)
+            }
+
+            if (children.isEmpty()) {
+                EmptyNode
+            } else {
+                StatementNode(children)
+            }
         } else {
             val trueStatements = visitList(node.trueStatements)
             val falseStatements = visitList(node.falseStatements)

@@ -59,8 +59,8 @@ open class StatementNode(
         children: MutableList<AstNode> = mutableListOf(),
         sourceInfo: SourceInfo? = null
 ) : AstNode(children, sourceInfo) {
-//    override fun toString() = "(stmt)"
-    override fun toString() = children[0].toString()
+    override fun toString() = "(stmt)"
+//    override fun toString() = "stmt: " + children[0].toString()
 }
 
 class ReturnNode(
