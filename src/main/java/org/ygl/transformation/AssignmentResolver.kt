@@ -38,14 +38,8 @@ class AssignmentResolver(
     fun resolveAssignments(node: FunctionNode): Map<AstNode, Map<String, AstNode>> {
         reset()
         enterScope()
-
         visit(node.statements)
-
         scopes.pop()
-
-        println("env map for fn ${node.name}:")
-        envMap.forEach { println("\t${it.key}: \t${it.value}") }
-
         return envMap
     }
 

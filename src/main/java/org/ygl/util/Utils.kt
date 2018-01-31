@@ -1,5 +1,7 @@
 package org.ygl.util
 
+import java.time.Duration
+
 
 fun Double.format(digits: Int) = String.format("%.${digits}f", this)
 
@@ -11,10 +13,11 @@ fun formatElapsed(msecs: Long): String {
     }
 }
 
-fun time(body: () -> Unit): Long {
-    val elapsed = System.currentTimeMillis()
+inline fun time(body: () -> Unit): Long {
+    val start = System.nanoTime()
     body()
-    return System.currentTimeMillis() - elapsed
+    val stop = System.nanoTime()
+    return Duration.ofNanos(stop - start).toMillis()
 }
 
 fun unescape(str: String): String {

@@ -14,16 +14,16 @@ internal class TestLoops
     }
 
     private fun testConstantWhile(start: Int, condition: String, inc: String, expected: String) {
-        val program = """
-            fn main() {
-                i = $start;
-                while ($condition) {
-                    print(i);
-                    $inc;
-                }
-            }
-        """
         Assertions.assertTimeout(Duration.ofSeconds(5), {
+            val program = """
+                fn main() {
+                    var i = $start;
+                    while ($condition) {
+                        print(i);
+                        $inc;
+                    }
+                }
+            """
             val result = compileAndEval(program)
             Assertions.assertEquals(expected, result.trim())
         })
@@ -41,8 +41,8 @@ internal class TestLoops
     fun testRuntimeWhile(input: Int, expected: String) {
         val program = """
             fn main() {
-                readInt(x);
-                i = 1;
+                val x = readInt();
+                var i = 1;
                 while (i < x) {
                     print(i);
                     i += 1;
@@ -53,6 +53,7 @@ internal class TestLoops
         Assertions.assertEquals(expected, result.trim())
     }
 
+    // TODO
     @Test
     fun testConstantFor() {
         testConstantFor("1", "4", expected="10")

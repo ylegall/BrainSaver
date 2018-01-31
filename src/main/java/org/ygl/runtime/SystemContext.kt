@@ -13,6 +13,7 @@ class SystemContext(
         outputStream: OutputStream,
         val options: CompilerOptions = DEFAULT_COMPILE_OPTIONS
 ): AutoCloseable {
+
     val output = if (options.minify) {
         MinifyingOutputStream(outputStream, options.margin)
     } else {
@@ -22,7 +23,6 @@ class SystemContext(
     val runtime = Runtime()
     val cg = CodeGen(output, options, runtime)
     val stdlib = StdLib(cg, runtime)
-
     var lastUseInfo: Map<AstNode, Set<String>> = mapOf()
 
     override fun close() {

@@ -22,8 +22,10 @@ internal class DeadStoreRemoverTest
         """
 
         val ast = test(program)
-        assertEquals(1, ast.children[0].children.size)
-        assertTrue(ast.children[0].children[0].children[0] is CallStatementNode)
+        val main = ast.children[0]
+        AstPrinter().print(ast)
+        assertEquals(4, main.children.size)
+        assertTrue(main.children[3].children[0] is CallStatementNode)
     }
 
     @Test
@@ -39,8 +41,9 @@ internal class DeadStoreRemoverTest
 
         val ast = test(program)
         val main = ast.children[0]
-        assertEquals(3, main.children.size)
-        assertTrue(main.children[0].children[0] is AssignmentNode)
+        assertEquals(EmptyNode, main.children[0].children[0].children[0])
+        assertEquals(4, main.children.size)
+        assertTrue(main.children[1].children[0] is AssignmentNode)
     }
 
     @Test

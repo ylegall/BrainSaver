@@ -9,11 +9,10 @@ import org.apache.commons.cli.HelpFormatter
 import org.apache.commons.cli.Options
 import org.apache.commons.cli.ParseException
 import org.ygl.runtime.SystemContext
+import org.ygl.transformation.AstCompiler
 import org.ygl.transformation.TransformationPipeline
 import org.ygl.util.time
 import java.io.*
-
-const val VERSION = "1.1"
 
 private fun printUsageAndHalt(options: Options) {
     HelpFormatter().printHelp("brainsaver", options, true)
@@ -44,26 +43,9 @@ fun compile(input: InputStream, outStream: OutputStream, options: CompilerOption
     // parse and generate the AST:
     SystemContext(outStream, options).use {
         val tree = parse(input)
-        TransformationPipeline(it).transform(tree)
+        val ast = TransformationPipeline(it).transform(tree)
+        AstCompiler(it).visit(ast)
     }
-
-//    val globals = resolveGlobals(parser, tree)
-//    val programInfo = getProgramInfo(parser, options, tree)
-
-    //val ast = AstBuilder().visit(tree)
-//    val constantEvaluator = ConstantEvaluator(programInfo)
-//    constantEvaluator.visit(ast)
-
-    //ConstantEvaluator(programInfo).visit(tree)
-    //ParseTreeWalker.DEFAULT.walk(SourceTransformations(parser), tree)
-
-    //println(tree.toStringTree())
-
-//    val cg = CodeGen(outStream, options, globals)
-//    cg.use {
-//        val visitor = TreeWalker(it, programInfo)
-//        visitor.visit(tree)
-//    }
 }
 
 fun parse(input: InputStream): ParserRuleContext {
@@ -81,17 +63,21 @@ fun main(args: Array<String>) {
     try {
         val commandLine = DefaultParser().parse(options, args)
         if (commandLine.hasOption("version")) {
-            println("brainsaver version \"$VERSION\"")
+            if (DEBUG) {
+                println("brainsaver DEBUG version \"$VERSION\"")
+            } else {
+                println("brainsaver release version \"$VERSION\"")
+            }
             return
         }
 
         val remainingArgs = commandLine.argList
-        if (commandLine.hasOption("help") || remainingArgs.isEmpty()) {
+        if (commandLine.hasOption("help") || commandLine.argList.isEmpty()) {
             printUsageAndHalt(options)
         }
 
         val compilerOptions = CompilerOptions(
-                optimize = !commandLine.hasOption("no-cf"),
+                optimize = !commandLine.hasOption("no-opt"),
                 minify = commandLine.hasOption("minify"),
                 wrapping = commandLine.hasOption("wrapping"),
                 output = commandLine.getOptionValue("output") ?: "",

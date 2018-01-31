@@ -97,6 +97,28 @@ internal object StringMinifier {
 
 }
 
+fun naive(chars: String): String {
+    val sb = StringBuilder()
+    var last = 0
+    for (i in 0 until chars.length) {
+        val intValue = chars[i].toInt()
+        if (last == 0) {
+            sb.append("+".repeat(intValue))
+        } else {
+            val diff = intValue - last
+            if (diff < 0) {
+                sb.append("-".repeat(Math.abs(diff)))
+            } else {
+                sb.append("+".repeat(diff))
+            }
+        }
+        sb.append(".")
+        last = intValue
+    }
+    return sb.toString()
+}
+
 fun main(args: Array<String>) {
     println(StringMinifier.generate("hello world"))
+    println(naive("hello world"))
 }

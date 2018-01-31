@@ -16,16 +16,6 @@ class IO(
         return symbol
     }
 
-//    fun readInt(symbol: Symbol): Symbol {
-//        with (cg) {
-//            commentLine("read int $symbol")
-//            moveTo(symbol)
-//            emit(",")
-//            emit("-".repeat(48), "convert char to int")
-//        }
-//        return symbol
-//    }
-
     fun print(symbol: Symbol) {
         cg.newline()
         if (symbol.isConstant) {
@@ -61,21 +51,18 @@ class IO(
 
             commentLine("print 100s char")
             copyInt(ten, cpy)
-            moveTo(cpy)
-            cf.startLoop()
+
+            cg.cf.onlyIf(cpy, {
                 incrementBy(cpy, asciiOffset)
                 printChar(cpy)
-                setZero(cpy)
-            cf.endLoop()
+            })
 
             commentLine("print 10s char")
             math.addTo(ten, d2)
-            moveTo(ten)
-            cf.startLoop()
+            cg.cf.onlyIf(ten, {
                 incrementBy(d2, asciiOffset)
                 printChar(d2)
-                setZero(ten)
-            cf.endLoop()
+            })
 
             commentLine("print 1s char")
             moveTo(d3)

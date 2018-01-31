@@ -11,9 +11,9 @@ internal class TestGlobals {
 
         fun test(a: Int, expected: Int) {
             val program = """
-            g = 3;
+            var g = 3;
             fn main() {
-                x = g + $a;
+                val x = g + $a;
                 print(x);
             }
         """
@@ -25,32 +25,12 @@ internal class TestGlobals {
         test(3, 6)
     }
 
-    @Test()
-    fun testUnusedGlobal() {
-
-        fun test(a: Int, op: String, expected: Int) {
-            val program = """
-            g = 3;
-            fn main() {
-                g $op $a;
-                print(x);
-            }"""
-            val result = compileAndEval(program)
-            Assertions.assertEquals(expected.toString(), result.trim())
-        }
-
-        Assertions.assertThrows(Exception::class.java) {
-            test(5, "+=", 8)
-        }
-
-    }
-
     @Test
     fun testWriteGlobals() {
 
         fun test(a: Int, op: String, expected: Int) {
             val program = """
-            g = 3;
+            var g = 3;
             fn main() {
                 g $op $a;
                 print(g);
@@ -69,11 +49,11 @@ internal class TestGlobals {
 
         fun test(expected: Int) {
             val program = """
-            g = 3;
+            var g = 3;
             fn foo() {g += 1;}
             fn main() {
                 foo();
-                x = g + 1;
+                val x = g + 1;
                 print(x);
             }"""
             val result = compileAndEval(program)

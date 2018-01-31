@@ -156,6 +156,12 @@ class AstCompiler(
                 assert(rhs.hasAddress)
                 runtime.rename(rhs, node.lhs)
             }
+            // happens when rhs was dead code and removed
+            rhs == NullSymbol -> {
+                assert(node.storage == StorageType.VAR)
+                runtime.createSymbol(node.lhs, node.storage, rhs.type, rhs.size)
+                NullSymbol
+            }
             else -> {
                 val lhs = runtime.createSymbol(node.lhs, node.storage, rhs.type, rhs.size)
                 assignVariable(lhs, rhs)
@@ -165,7 +171,7 @@ class AstCompiler(
 
     override fun visit(node: AssignmentNode): Symbol {
         val rhs = visit(node.rhs)
-        val lhs = runtime.resolveSymbol(node.lhs) ?: runtime.createSymbol(node.lhs, StorageType.VAR, rhs.type, rhs.size)
+        val lhs = runtime.resolveSymbol(node.lhs) ?: throw Exception("undefined identifier: ${node.lhs}")
         return assign(lhs, rhs)
     }
 
@@ -238,6 +244,27 @@ class AstCompiler(
             runtime.delete(cpy)
             runtime.delete(elseFlag)
         }
+    }
+
+    override fun visit(node: WhileStatementNode): Symbol {
+        var condition = visit(node.condition)
+        assert(!condition.isConstant, { "constant loop condition should have been removed" })
+
+        val name = "&${node.hashCode()}"
+        val cpy = if (condition.isTemp) {
+            runtime.rename(condition, name)
+        } else {
+            cg.move(runtime.createSymbol(name), condition)
+        }
+
+        cg.cf.loop(cpy, {
+            node.statements.forEach { visit(it) }
+            condition = visit(node.condition)
+            cg.move(cpy, condition)
+        })
+
+        runtime.delete(cpy)
+        return NullSymbol
     }
 
     override fun visit(node: ConditionExpNode): Symbol {

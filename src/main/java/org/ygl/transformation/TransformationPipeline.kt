@@ -2,118 +2,99 @@ package org.ygl.transformation
 
 import org.antlr.v4.runtime.ParserRuleContext
 import org.ygl.CompileException
+import org.ygl.DEBUG
 import org.ygl.ast.AstBuilder
 import org.ygl.ast.AstNode
 import org.ygl.ast.AstPrinter
 import org.ygl.ast.SemanticValidator
 import org.ygl.runtime.SystemContext
 
-
 /**
  *
  */
 class TransformationPipeline(
         private val ctx: SystemContext
-)
-{
-    //private var lastUseInfo: Map<AstNode, Set<String>> = mapOf()
-    private val options = ctx.options
+) {
+    private val printer = AstPrinter()
 
-    /**
-     *
-     */
-    private fun ParserRuleContext.buildAst(): AstNode {
-        val ast = AstBuilder().visit(this)
-        println("initial ast:")
-        println("------------")
-        AstPrinter().print(ast)
-        return ast
+    fun buildAst(parserRuleContext: ParserRuleContext): AstNode {
+        return AstBuilder().visit(parserRuleContext)
     }
 
-    /**
-     *
-     */
-    private fun AstNode.semanticValidation(): AstNode {
+    fun semanticValidation(ast: AstNode) {
         val validator = SemanticValidator(ctx.stdlib)
-        val errors = validator.validate(this)
+        val errors = validator.validate(ast)
         if (errors.isNotEmpty()) {
             errors.forEach { println(it.message) }
             throw CompileException("compilation failed")
         }
-        return this
     }
 
-    /**
-     *
-     */
-    private fun AstNode.resolveConstants(): AstNode {
-        val resolver = ConstantResolver()
-        val constants = resolver.resolveConstants(this)
-        if (options.verbose) {
+    fun resolveConstants(ast: AstNode): AstNode {
+        val constants = ConstantResolver().resolveConstants(ast)
+        if (ctx.options.verbose) {
             println("\nresolved constants:")
             println("-------------------")
             constants.forEach { (key, value) -> println("\t$key = $value") }
         }
-        return ConstantEvaluator(constants).evaluateConstants(this)
+        return ConstantEvaluator(constants).evaluateConstants(ast)
     }
 
-    private fun AstNode.removeDeadCode(): AstNode {
-        //symbolInfo = MutabilityResolver().getSymbolMutabilityInfo(this)
-        val deadStores = DeadStoreResolver().getDeadStores(this)
+    fun propagateConstants(ast: AstNode): AstNode {
+        return ConstantPropagator().visit(ast)
+    }
 
-        if (options.verbose) {
+    fun strengthReduce(ast: AstNode): AstNode {
+        return StrengthReducer().visit(ast)
+    }
+
+    fun removeDeadCode(ast: AstNode): AstNode {
+        val deadStores = DeadStoreResolver().getDeadStores(ast)
+        if (ctx.options.verbose) {
             println("\ndead stores:")
             println("-------------")
             deadStores.forEach { println("\t$it: ${it.children[0]}") }
         }
-
-        return DeadStoreRemover(deadStores).visit(this)
+        return DeadStoreRemover(deadStores).visit(ast)
     }
 
-    private fun AstNode.findLastUsages(): AstNode {
-        AstPrinter().print(this)
-
-        ctx.lastUseInfo = LastUseResolver().getSymbolLastUseInfo(this)
-
-        //if (options.verbose) {
+    fun findLastUsages(ast: AstNode): AstNode {
+        ctx.lastUseInfo = LastUseResolver().getSymbolLastUseInfo(ast)
+        if (DEBUG) {
             println("last use nodes:")
             println("---------------")
             ctx.lastUseInfo.forEach { node, symbols ->
                 println("  $node\t\t: $symbols")
             }
-        //}
-
-        return this
-    }
-
-    private fun AstNode.propagateConstants(): AstNode {
-        println("constant propagation:")
-        val ast = ConstantPropagator().visit(this)
-        AstPrinter().print(ast)
+        }
         return ast
     }
 
-    private fun AstNode.strengthReduce(): AstNode {
-        return StrengthReducer().visit(this)
-    }
+    fun transform(parserRuleContext: ParserRuleContext): AstNode {
+        var ast = buildAst(parserRuleContext)
+                .also { semanticValidation(it) }
+                .let { resolveConstants(it) }
 
-    fun transform(ruleContext: ParserRuleContext) {
-        val ast = ruleContext.buildAst()
-                .semanticValidation()
-                .resolveConstants()
-                .propagateConstants()
-                .strengthReduce()
-                .removeDeadCode()
-                .findLastUsages()
+        if (ctx.options.verbose) {
+            println("\ninitial AST:")
+            println("------------")
+            printer.print(ast)
+        }
 
-        println("\nfinal ast:\n")
-        println("----------")
-        AstPrinter().print(ast)
-        println("\n______________\n")
+        if (ctx.options.optimize) {
+            ast = propagateConstants(ast)
+                    .let { strengthReduce(it) }
+                    .let { removeDeadCode(it) }
+        }
 
-        AstCompiler(ctx).visit(ast)
+        ast = findLastUsages(ast)
 
-        // generate bf code:
-        //AstCodeGenerator(outStream, options, lastUseInfo).visit(ast)
+        if (ctx.options.verbose) {
+            println("\nfinal AST:")
+            println("----------")
+            printer.print(ast)
+        }
+
+        return ast
     }
 }

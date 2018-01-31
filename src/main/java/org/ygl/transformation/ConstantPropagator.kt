@@ -46,14 +46,10 @@ class ConstantPropagator: AstTransformer()
     }
 
     override fun visit(node: StatementNode): AstNode {
-//        constantSymbols = env[node] ?: emptyMap()
-//        return StatementNode(visitList(node.children), node.sourceInfo)
         constantSymbols = env[node] ?: emptyMap()
         val result = visit(node.children[0])
         return when (result) {
             EmptyNode -> EmptyNode
-            is StoreNode -> StatementNode(mutableListOf(result), node.sourceInfo)
-            is StatementNode -> result
             else -> StatementNode(mutableListOf(result), node.sourceInfo)
         }
     }

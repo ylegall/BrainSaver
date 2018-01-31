@@ -43,9 +43,8 @@ class ControlFlow(
         with (cg) {
             moveTo(symbol)
             startLoop(comment)
-            setZero(symbol)
             body()
-            moveTo(symbol)
+            setZero(symbol)
             endLoop()
         }
     }

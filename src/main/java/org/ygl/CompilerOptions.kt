@@ -32,8 +32,8 @@ fun configureCommandLine(): Options {
             .build()
 
     val noOptimization = Option.builder()
-            .longOpt("no-cf")
-            .desc("disables constant folding optimizations")
+            .longOpt("no-opt")
+            .desc("disables compile-time optimizations")
             .build()
 
     val output = Option.builder("o")

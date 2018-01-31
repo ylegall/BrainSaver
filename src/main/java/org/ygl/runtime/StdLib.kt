@@ -2,10 +2,7 @@ package org.ygl.runtime
 
 import org.ygl.runtime.Symbol.NullSymbol
 
-//private val NullFunction = { x -> UnknownSymbol }
-
 private typealias Params = Iterable<Symbol>
-private typealias Procedure = (p: Params) -> Symbol
 
 /**
  *

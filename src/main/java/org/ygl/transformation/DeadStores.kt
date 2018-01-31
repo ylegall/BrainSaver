@@ -4,29 +4,27 @@ import org.ygl.ast.*
 import java.util.*
 
 /**
- * TODO: currently doesn't work with if-else blocks
+ *
  */
 class DeadStoreRemover(
         private val deadStores: Set<AstNode>
 ): AstTransformer()
 {
-    private val removedDeclarations = mutableMapOf<String, DeclarationNode>()
+    //private val removedDeclarations = mutableMapOf<String, DeclarationNode>()
 
     override fun visit(node: StatementNode): AstNode {
         assert(node.children.size == 1)
         val child = node.children[0]
         return if (child in deadStores) {
             if (child is DeclarationNode) {
-                removedDeclarations[child.lhs] = child
-            }
-            EmptyNode
-        } else {
-            if (child is AssignmentNode && child.lhs in removedDeclarations) {
-                val oldDecl = removedDeclarations.remove(child.lhs)!!
-                node.children[0] = DeclarationNode(oldDecl.storage, child.lhs, child.rhs)
+                //removedDeclarations[child.lhs] = child
+                node.children[0] = DeclarationNode(child.storage, child.lhs, EmptyNode, child.sourceInfo)
+                node
             } else {
-                node.children[0] = visit(node.children[0])
+                EmptyNode
             }
+        } else {
+            node.children = visitList(node.children)
             node
         }
     }
