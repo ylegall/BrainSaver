@@ -68,17 +68,17 @@ class Maths(
 
                 cf.loop(tmp, {
 
-                    loadImmediate(breakFlag, 1)
+                    load(breakFlag, 1)
                     copyInt(tmp2, s1)
 
                     cf.onlyIf(tmp2, {
                         dec(s1)
                         dec(tmp)
-                        setZero(breakFlag)
+                        zero(breakFlag)
                     })
 
                     cf.onlyIf(breakFlag, {
-                        setZero(tmp)
+                        zero(tmp)
                     })
 
                 })
@@ -111,7 +111,7 @@ class Maths(
             val t2 = runtime.createTempSymbol()
             copyInt(t1, s1)
             copyInt(t2, s2)
-            setZero(s1)
+            zero(s1)
 
             cf.loop(t2, {
                 dec(t2)
@@ -133,8 +133,8 @@ class Maths(
             val div = runtime.createTempSymbol()
             val flag = runtime.createTempSymbol()
 
-            setZero(div)
-            setZero(flag)
+            zero(div)
+            zero(flag)
 
             copyInt(cpy, s1)
 
@@ -189,19 +189,19 @@ class Maths(
             val x = runtime.createSymbol("diff", StorageType.VAR)
             val z = runtime.createTempSymbol()
 
-            loadImmediate(z, 1)
+            load(z, 1)
             copyInt(x, lhs)
             subtractFrom(x, rhs)
 
             cf.onlyIf(x, {
-                setZero(z)
+                zero(z)
             })
 
             copyInt(x, rhs)
             subtractFrom(x, lhs)
 
             cf.onlyIf(x, {
-                setZero(z)
+                zero(z)
             })
 
             runtime.delete(x)
@@ -216,10 +216,10 @@ class Maths(
             val x = equal(lhs, rhs)
             val result = runtime.createTempSymbol()
 
-            loadImmediate(result, 1)
+            load(result, 1)
 
             cf.onlyIf(x, {
-                setZero(result)
+                zero(result)
             })
 
             cs.delete(x)
@@ -233,20 +233,20 @@ class Maths(
             val ret = runtime.createTempSymbol()
             val x = runtime.createTempSymbol()
 
-            setZero(ret)
+            zero(ret)
 
             copyInt(x, lhs)
             subtractFrom(x, rhs)
 
             cf.onlyIf(x, {
-                setZero(ret)
+                zero(ret)
             })
 
             copyInt(x, rhs)
             subtractFrom(x, lhs)
 
             cf.onlyIf(x, {
-                loadImmediate(ret, 1)
+                load(ret, 1)
             })
 
             commentLine("end $lhs less than $rhs")
@@ -260,12 +260,12 @@ class Maths(
             val ret = runtime.createTempSymbol()
             val x = runtime.createTempSymbol()
 
-            loadImmediate(ret, 1)
+            load(ret, 1)
             copyInt(x, lhs)
             subtractFrom(x, rhs)
 
             cf.onlyIf(x, {
-                setZero(ret)
+                zero(ret)
             })
 
             return ret
@@ -282,11 +282,11 @@ class Maths(
             commentLine("${lhs.name} greater than ${rhs.name}")
             val cs = runtime.currentScope()
             val ret = runtime.createTempSymbol()
-            setZero(ret)
+            zero(ret)
             val z = subtract(lhs, rhs)
 
             cf.onlyIf(z, {
-                loadImmediate(ret, 1)
+                load(ret, 1)
             })
 
             cs.delete(z)
@@ -309,10 +309,10 @@ class Maths(
             cf.startLoop()
                 moveTo(y)
                 cf.startLoop()
-                    loadImmediate(ret, 1)
-                    setZero(y)
+                    load(ret, 1)
+                    zero(y)
                 cf.endLoop()
-                setZero(x)
+                zero(x)
             cf.endLoop()
 
             cs.delete(x)
@@ -331,13 +331,13 @@ class Maths(
             copyInt(x, lhs)
 
             cf.onlyIf(x, {
-                loadImmediate(ret, 1)
+                load(ret, 1)
             })
 
             copyInt(x, rhs)
 
             cf.onlyIf(x, {
-                loadImmediate(ret, 1)
+                load(ret, 1)
             })
 
             runtime.delete(x)
@@ -352,10 +352,10 @@ class Maths(
             val tmp = runtime.createTempSymbol()
             val ret = runtime.createTempSymbol()
             copyInt(tmp, rhs)
-            loadImmediate(ret, 1)
+            load(ret, 1)
 
             cf.onlyIf(tmp, {
-                setZero(ret)
+                zero(ret)
             })
 
             cs.delete(tmp)

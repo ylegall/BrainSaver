@@ -22,29 +22,29 @@ class CodeGen(
     val io = IO(this, runtime)
     val cf = ControlFlow(this)
 
-    fun loadImmediate(symbol: Symbol, value: Any): Symbol {
+    fun load(symbol: Symbol, value: Any): Symbol {
         return when (value) {
-            is Int -> loadImmediate(symbol, value)
-            is String -> loadImmediate(symbol, value)
+            is Int -> load(symbol, value)
+            is String -> load(symbol, value)
             else -> throw Exception("invalid symbol value: $value")
         }
     }
 
-    fun loadImmediate(symbol: Symbol, value: Int): Symbol {
-        if (value <= 0) return setZero(symbol) // non wrapping
-        setZero(symbol)
+    fun load(symbol: Symbol, value: Int): Symbol {
+        if (value <= 0) return zero(symbol) // non wrapping
+        zero(symbol)
         emit("+".repeat(value), "load $symbol = $value")
         //newline()
         return symbol
     }
 
-    fun loadImmediate(symbol: Symbol, value: String): Symbol {
+    fun load(symbol: Symbol, value: String): Symbol {
         assert(symbol.size == value.length, { "loadString() string size larger than symbol size" })
         commentLine("load ${symbol.name} = \"$value\"")
         moveTo(symbol)
         for (i in 0 until symbol.size) {
             val intValue = value[i].toInt()
-            loadImmediate(symbol.offset(i), intValue)
+            load(symbol.offset(i), intValue)
         }
         //symbol.value = value
         return symbol
@@ -54,12 +54,12 @@ class CodeGen(
         commentLine("assign $rhs to $lhs")
 
         if (rhs.isConstant) {
-            return loadImmediate(lhs, rhs.value)
+            return load(lhs, rhs.value)
         }
 
         val tmp = runtime.createTempSymbol()
-        setZero(lhs)
-        setZero(tmp)
+        zero(lhs)
+        zero(tmp)
 
         cf.loop(rhs, {
             emit("-")
@@ -99,7 +99,7 @@ class CodeGen(
         emit("-", comment)
     }
 
-    fun setZero(symbol: Symbol): Symbol {
+    fun zero(symbol: Symbol): Symbol {
         moveTo(symbol)
         emit("[-]", "zero $symbol")
         if (symbol.size > 1) {
@@ -117,7 +117,7 @@ class CodeGen(
     fun move(lhs: Symbol, rhs: Symbol): Symbol {
         if (rhs.address == lhs.address) return lhs
         commentLine("move $rhs to $lhs")
-        setZero(lhs)
+        zero(lhs)
         cf.loop(rhs, {
             inc(lhs)
             dec(rhs)

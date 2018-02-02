@@ -9,7 +9,7 @@ class ControlFlow(
             commentLine("if $condition")
             moveTo(condition)
             startLoop()
-            setZero(condition)
+            zero(condition)
         }
     }
 
@@ -27,7 +27,7 @@ class ControlFlow(
             commentLine("else $elseFlag")
             moveTo(elseFlag)
             startLoop()
-            setZero(elseFlag)
+            zero(elseFlag)
         }
     }
 
@@ -44,7 +44,7 @@ class ControlFlow(
             moveTo(symbol)
             startLoop(comment)
             body()
-            setZero(symbol)
+            zero(symbol)
             endLoop()
         }
     }

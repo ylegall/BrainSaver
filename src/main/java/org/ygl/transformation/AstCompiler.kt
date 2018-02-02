@@ -39,7 +39,7 @@ class AstCompiler(
                 }
 
         // add global variables:
-        runtime.enterScope(node)
+        runtime.enterScope()
         node.children.filterIsInstance<GlobalVariableNode>()
                 .forEach { visit(it) }
 
@@ -52,8 +52,7 @@ class AstCompiler(
 
     override fun visit(node: GlobalVariableNode): Symbol {
         val rhs = visit(node.rhs)
-        val lhs = runtime.createSymbol(node.lhs, StorageType.VAR, rhs.type, rhs.size)
-        return assign(lhs, rhs)
+        return assignNew(node.lhs, rhs)
     }
 
     /**
@@ -62,15 +61,14 @@ class AstCompiler(
      * can also garbage collect any symbol that is not referenced after this statement
      */
     override fun visit(node: StatementNode): Symbol {
-        val result = visit(node.children)
+        node.children.forEach { visit(it) }
 
-        // TODO(check if this is the last time a symbol is used)
         val lastUsedSymbols = ctx.lastUseInfo[node] ?: emptySet()
         lastUsedSymbols.mapNotNull { runtime.resolveSymbol(it) }
                 .forEach { runtime.delete(it) }
 
         runtime.deleteTempSymbols()
-        return result
+        return NullSymbol
     }
 
     override fun visit(node: CallStatementNode): Symbol {
@@ -110,7 +108,7 @@ class AstCompiler(
                 throw Exception("wrong number of arguments to ${fnNode.name}")
             }
 
-            runtime.enterScope(fnNode)
+            runtime.enterScope()
             cg.commentLine("call ${fnNode.name}")
 
             // create new scope and copy expression args into function param variables
@@ -123,7 +121,7 @@ class AstCompiler(
             }
 
         } else {
-            runtime.enterScope(fnNode)
+            runtime.enterScope()
             cg.commentLine("call ${fnNode.name}")
         }
 
@@ -147,26 +145,11 @@ class AstCompiler(
 
     override fun visit(node: DeclarationNode): Symbol {
         val rhs = visit(node.rhs)
-        return when {
-            rhs.isConstant -> {
-                val lhs = runtime.createSymbol(node.lhs, node.storage, rhs.type, rhs.size)
-                assignConstant(lhs, rhs.value)
-            }
-            rhs.isTemp -> {
-                assert(rhs.hasAddress)
-                runtime.rename(rhs, node.lhs)
-            }
-            // happens when rhs was dead code and removed
-            rhs == NullSymbol -> {
-                assert(node.storage == StorageType.VAR)
-                runtime.createSymbol(node.lhs, node.storage, rhs.type, rhs.size)
-                NullSymbol
-            }
-            else -> {
-                val lhs = runtime.createSymbol(node.lhs, node.storage, rhs.type, rhs.size)
-                assignVariable(lhs, rhs)
-            }
+        if (rhs == NullSymbol) {
+            runtime.createSymbol(node.lhs, node.storage, rhs.type, rhs.size)
+            return NullSymbol
         }
+        return assignNew(node.lhs, rhs)
     }
 
     override fun visit(node: AssignmentNode): Symbol {
@@ -178,7 +161,25 @@ class AstCompiler(
     private fun assign(lhs: Symbol, rhs: Symbol): Symbol {
         return when {
             rhs.isConstant -> assignConstant(lhs, rhs.value)
+            rhs.isTemp -> cg.move(lhs, rhs)
             else -> assignVariable(lhs, rhs)
+        }
+    }
+
+    private fun assignNew(name: String, rhs: Symbol): Symbol {
+        return when {
+            rhs.isConstant -> {
+                val lhs = runtime.createSymbol(name, StorageType.VAR, rhs.type, rhs.size)
+                assignConstant(lhs, rhs.value)
+            }
+            rhs.isTemp -> {
+                assert(rhs.hasAddress)
+                runtime.rename(rhs, name)
+            }
+            else -> {
+                val lhs = runtime.createSymbol(name, StorageType.VAR, rhs.type, rhs.size)
+                assignVariable(lhs, rhs)
+            }
         }
     }
 
@@ -192,8 +193,8 @@ class AstCompiler(
 
     private fun assignConstant(lhs: Symbol, rhs: Any): Symbol {
         return when (rhs) {
-            is Int -> cg.loadImmediate(lhs, rhs)
-            is String -> cg.loadImmediate(lhs, rhs)
+            is Int -> cg.load(lhs, rhs)
+            is String -> cg.load(lhs, rhs)
             else -> throw CompileException("invalid rhs value: $rhs")
         }
     }
@@ -210,8 +211,7 @@ class AstCompiler(
 
     private fun doIf(condition: Symbol, node: IfStatementNode) {
         with (cg) {
-            val cpy = runtime.createSymbol("&${condition.name}")
-            assign(cpy, condition)
+            val cpy = assignNew("&${condition.name}", condition)
 
             cf.startIf(cpy)
             node.trueStatements.forEach { visit(it) }
@@ -223,13 +223,12 @@ class AstCompiler(
 
     private fun doIfElse(condition: Symbol, node: IfStatementNode) {
         with (cg) {
-            val cpy = runtime.createSymbol("&${condition.name}")
-            assign(cpy, condition)
+            val cpy = assignNew("&${condition.name}", condition)
 
-            val elseFlag = runtime.createSymbol("${cpy.name}_else")
-            loadImmediate(elseFlag, 1)
+            val elseFlag = runtime.createSymbol("&${cpy.name}_else")
+            load(elseFlag, 1)
             cf.onlyIf(cpy, {
-                setZero(elseFlag)
+                zero(elseFlag)
             })
             assign(cpy, condition)
 
@@ -249,47 +248,59 @@ class AstCompiler(
     override fun visit(node: WhileStatementNode): Symbol {
         var condition = visit(node.condition)
         assert(!condition.isConstant, { "constant loop condition should have been removed" })
-
-        val name = "&${node.hashCode()}"
-        val cpy = if (condition.isTemp) {
-            runtime.rename(condition, name)
-        } else {
-            cg.move(runtime.createSymbol(name), condition)
-        }
+        val cpy = assignNew("&${condition.name}", condition)
 
         cg.cf.loop(cpy, {
             node.statements.forEach { visit(it) }
             condition = visit(node.condition)
-            cg.move(cpy, condition)
+            assign(cpy, condition)
         })
 
         runtime.delete(cpy)
         return NullSymbol
     }
 
+    // TODO: test
+    override fun visit(node: ForStatementNode): Symbol {
+        val start = visit(node.start)
+        val stop = visit(node.stop)
+        val step = visit(node.inc)
+        val counter = assignNew(node.counter, start)
+
+        var condition = assignNew("&${counter.name}", cg.math.lessThanEqual(counter, stop))
+        cg.cf.loop(condition, {
+            node.statements.forEach { visit(it) }
+            cg.math.addTo(counter, step)
+            condition = assign(condition, cg.math.lessThanEqual(counter, stop))
+        })
+
+        runtime.delete(counter)
+        runtime.delete(condition)
+        return NullSymbol
+    }
+
     override fun visit(node: ConditionExpNode): Symbol {
         val condition = visit(node.condition)
-        val trueExp = visit(node.trueExp)
-        val falseExp = visit(node.trueExp)
+        assert(!condition.isConstant)
 
-        val cpy = runtime.createTempSymbol()
         val elseFlag = runtime.createTempSymbol()
         val ret = runtime.createTempSymbol()
 
         with (cg) {
-            assign(cpy, condition)
-            loadImmediate(elseFlag, 1)
-            cf.onlyIf(cpy, {
-                setZero(elseFlag)
+            load(elseFlag, 1)
+
+            cf.onlyIf(condition, {
+                zero(elseFlag)
+                val trueExp = visit(node.trueExp)
                 assign(ret, trueExp)
             })
 
             cf.onlyIf(elseFlag, {
+                val falseExp = visit(node.falseExp)
                 assign(ret, falseExp)
             })
         }
 
-        runtime.delete(cpy)
         runtime.delete(elseFlag)
         return ret
     }

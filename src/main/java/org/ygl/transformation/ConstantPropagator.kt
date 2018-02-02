@@ -1,6 +1,7 @@
 package org.ygl.transformation
 
 import org.ygl.ast.*
+import org.ygl.model.StorageType
 import org.ygl.runtime.Runtime
 
 
@@ -19,7 +20,7 @@ class ConstantPropagator: AstTransformer()
 
     override fun visit(node: ProgramNode): AstNode {
         val newGlobals = node.children.filterIsInstance<GlobalVariableNode>().map { visit(it) }
-        runtime.enterScope(node)
+        runtime.enterScope()
         val newFunctions = node.children.filterIsInstance<FunctionNode>().map { visit(it) }
         runtime.exitScope()
 
@@ -56,17 +57,18 @@ class ConstantPropagator: AstTransformer()
 
     override fun visit(node: ForStatementNode): AstNode {
         val start = eval(node.start)
-        val stop = eval(node.start)
-        val inc = eval(node.start)
+        val stop = eval(node.stop)
+        val inc = eval(node.inc)
         val statements = visitList(node.statements)
 
         // unroll loop
         if (start.isConstant && stop.isConstant && inc.isConstant) {
-            val result = AstNode()
+            val result = StatementNode()
             var i = start.intValue
             val j = stop.intValue
             val k = inc.intValue
-            while (i < j) {
+            if (i <= j) result.children.add(DeclarationNode(StorageType.VAR, node.counter, AtomIntNode(0)))
+            while (i <= j) {
                 result.children.add(AssignmentNode(node.counter, AtomIntNode(i)))
                 result.children.addAll(node.statements)
                 i += k
@@ -107,10 +109,11 @@ class ConstantPropagator: AstTransformer()
         val condition = eval(node.condition)
         val statements = visitList(node.statements)
 
-        if (condition.isConstant && condition.intValue == 0) {
-            return EmptyNode
+        return when {
+            statements.isEmpty() -> EmptyNode
+            condition.isConstant && condition.intValue == 0 -> EmptyNode
+            else -> WhileStatementNode(condition as ExpNode, statements)
         }
-        return WhileStatementNode(condition as ExpNode, statements)
     }
 
     override fun visitChildren(node: AstNode): AstNode {

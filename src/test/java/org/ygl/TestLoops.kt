@@ -64,7 +64,7 @@ internal class TestLoops
     fun testConstantFor(start: String, stop: String, step: String = "", expected: String) {
         val program = """
             fn main() {
-                x = 0;
+                var x = 0;
                 for (i in $start .. $stop $step) {
                     x += i;
                 }
@@ -78,14 +78,14 @@ internal class TestLoops
     @Test
     fun testRuntimeFor() {
         testRuntimeFor("1", "4", expected="1234")
-        testRuntimeFor("0", "4", "by 2", expected="024")
+        testRuntimeFor("0", "4", "2", expected="024")
         testRuntimeFor("3", "2", expected="")
     }
 
     fun testRuntimeFor(start: String, stop: String, step: String = "", expected: String) {
         val program = """
             fn main() {
-                for (i in $start .. $stop $step) {
+                for (i in $start .. $stop by $step) {
                     print(i);
                 }
             }
@@ -98,9 +98,9 @@ internal class TestLoops
     fun testMultiWhileStatements() {
         val program = """
             fn main() {
-                x = 0;
-                y = 0;
-                l = 4;
+                var x = 0;
+                var y = 0;
+                val l = 4;
                 while (x < l) {
                     x += 1;
                     y += 1;

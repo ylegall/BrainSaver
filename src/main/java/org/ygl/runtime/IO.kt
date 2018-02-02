@@ -42,7 +42,7 @@ class IO(
 
             val asciiOffset = 48
             val ten = runtime.createSymbol("ten")
-            loadImmediate(ten, 10)
+            load(ten, 10)
 
             val d3 = math.mod(cpy, ten)
             math.divideBy(cpy, ten)
@@ -96,7 +96,7 @@ class IO(
             for (i in 0 until chars.length) {
                 val intValue = chars[i].toInt()
                 if (last == 0) {
-                    loadImmediate(tmp, intValue)
+                    load(tmp, intValue)
                 } else {
                     incrementBy(tmp, intValue - last)
                 }

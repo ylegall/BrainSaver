@@ -60,7 +60,7 @@ class TransformationPipeline(
 
     fun findLastUsages(ast: AstNode): AstNode {
         ctx.lastUseInfo = LastUseResolver().getSymbolLastUseInfo(ast)
-        if (DEBUG) {
+        if (ctx.options.verbose) {
             println("last use nodes:")
             println("---------------")
             ctx.lastUseInfo.forEach { node, symbols ->

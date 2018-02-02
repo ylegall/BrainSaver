@@ -66,23 +66,26 @@ internal class TestMath {
     }
 
     fun test(a: Int, op: String, b: Int, expected: Int, wrapping: Boolean) {
-        val ctx = TestContext(wrapping)
-        val cg = ctx.cg
-        val x = cg.currentScope().createSymbol("x")
-        val y = cg.currentScope().createSymbol("y")
-        cg.loadInt(x, a)
-        cg.loadInt(y, b)
-        val r = when(op) {
-            "+" -> cg.math.add(x, y)
-            "-" -> cg.math.subtract(x, y)
-            "*" -> cg.math.multiply(x, y)
-            "/" -> cg.math.divide(x, y)
-            "%" -> cg.math.mod(x, y)
-            else -> throw Exception("unsupported op $op")
+        val ctx = testContext(wrapping)
+        with (ctx) {
+            runtime.enterScope()
+            val x = runtime.createSymbol("x")
+            val y = runtime.createSymbol("y")
+            cg.load(x, a)
+            cg.load(y, b)
+            val r = when(op) {
+                "+" -> cg.math.add(x, y)
+                "-" -> cg.math.subtract(x, y)
+                "*" -> cg.math.multiply(x, y)
+                "/" -> cg.math.divide(x, y)
+                "%" -> cg.math.mod(x, y)
+                else -> throw Exception("unsupported op $op")
+            }
+            val interpreter = Interpreter(str = output.toString(), options = InterpreterOptions(wrap = wrapping))
+            interpreter.eval()
+            assertEquals(expected, interpreter.getCellValue(r.address))
         }
 
-        val interpreter = ctx.eval(InterpreterOptions(wrap = wrapping))
-        assertEquals(expected, interpreter.getCellValue(r.address))
     }
 
 }

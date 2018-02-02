@@ -86,24 +86,27 @@ internal class TestComparisons {
     }
 
     fun test(a: Int, op: String, b: Int, expected: Int, wrapping: Boolean) {
-        val ctx = TestContext(wrapping)
-        val cg = ctx.cg
-        val x = cg.currentScope().createSymbol("x")
-        val y = cg.currentScope().createSymbol("y")
-        cg.loadInt(x, a)
-        cg.loadInt(y, b)
-        val r = when(op) {
-            "<" -> cg.math.lessThan(x, y)
-            ">" -> cg.math.greaterThan(x, y)
-            "<=" -> cg.math.lessThanEqual(x, y)
-            ">=" -> cg.math.greaterThanEqual(x, y)
-            "==" -> cg.math.equal(x, y)
-            "!=" -> cg.math.notEqual(x, y)
-            else -> throw Exception("unsupported op $op")
-        }
+        val ctx = testContext(wrapping)
+        with (ctx) {
+            runtime.enterScope()
+            val x = runtime.createSymbol("x")
+            val y = runtime.createSymbol("y")
+            cg.load(x, a)
+            cg.load(y, b)
+            val r = when(op) {
+                "<" -> cg.math.lessThan(x, y)
+                ">" -> cg.math.greaterThan(x, y)
+                "<=" -> cg.math.lessThanEqual(x, y)
+                ">=" -> cg.math.greaterThanEqual(x, y)
+                "==" -> cg.math.equal(x, y)
+                "!=" -> cg.math.notEqual(x, y)
+                else -> throw Exception("unsupported op $op")
+            }
 
-        val interpreter = ctx.eval(InterpreterOptions(wrap = wrapping))
-        assertEquals(expected, interpreter.getCellValue(r.address))
+            val interpreter = Interpreter(str = output.toString(), options = InterpreterOptions(wrap = wrapping))
+            interpreter.eval()
+            assertEquals(expected, interpreter.getCellValue(r.address))
+        }
     }
 
 }

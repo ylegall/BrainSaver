@@ -19,8 +19,14 @@ class AstPrinter : AstWalker<Unit>()
             "| "
         }
         println(node)
-        for (i in 0 until node.children.size) {
-            print(node.children[i], newPrefix, i == node.children.size - 1)
+
+        val children = when (node) {
+            is ForStatementNode -> node.statements
+            else -> node.children
+        }
+
+        for (i in 0 until children.size) {
+            print(children[i], newPrefix, i == children.size - 1)
         }
     }
 

@@ -33,20 +33,23 @@ internal class TestBooleans
     }
 
     fun test(a: Int, op: String, b: Int, expected: Int, wrapping: Boolean) {
-        val ctx = TestContext(wrapping)
-        val cg = ctx.cg
-        val x = cg.currentScope().createSymbol("x")
-        val y = cg.currentScope().createSymbol("y")
-        cg.loadInt(x, a)
-        cg.loadInt(y, b)
-        val r = when(op) {
-            "&&" -> cg.math.and(x, y)
-            "||" -> cg.math.or(x, y)
-            else -> throw Exception("unsupported op $op")
-        }
+        val ctx = testContext(wrapping)
+        with (ctx) {
+            runtime.enterScope()
+            val x = runtime.createSymbol("x")
+            val y = runtime.createSymbol("y")
+            cg.load(x, a)
+            cg.load(y, b)
 
-        val interpreter = ctx.eval(InterpreterOptions(wrap = wrapping))
-        assertEquals(expected, interpreter.getCellValue(r.address))
+            val r = when(op) {
+                "&&" -> cg.math.and(x, y)
+                "||" -> cg.math.or(x, y)
+                else -> throw Exception("unsupported op $op")
+            }
+            val interpreter = Interpreter(str = output.toString(), options = InterpreterOptions(wrap = wrapping))
+            interpreter.eval()
+            assertEquals(expected, interpreter.getCellValue(r.address))
+        }
     }
 
     @Test
@@ -59,13 +62,15 @@ internal class TestBooleans
     }
 
     private fun testNot(a: Int, expected: Int, wrapping: Boolean) {
-        val ctx = TestContext(wrapping)
-        val cg = ctx.cg
-        val x = cg.currentScope().createSymbol("x")
-        cg.loadInt(x, a)
-        val r = cg.math.not(x)
-
-        val interpreter = ctx.eval(InterpreterOptions(wrap = wrapping))
-        assertEquals(expected, interpreter.getCellValue(r.address))
+        val ctx = testContext(wrapping)
+        with (ctx) {
+            runtime.enterScope()
+            val x = runtime.createSymbol("x")
+            cg.load(x, a)
+            val r = cg.math.not(x)
+            val interpreter = Interpreter(str = output.toString(), options = InterpreterOptions(wrap = wrapping))
+            interpreter.eval()
+            assertEquals(expected, interpreter.getCellValue(r.address))
+        }
     }
 }

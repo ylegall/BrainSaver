@@ -9,6 +9,7 @@ import java.io.FileOutputStream
 fun main(args: Array<String>) {
 
     val compilerOptions = CompilerOptions(
+            verbose = true,
             minify = false,
             optimize = true,
             output = "output.txt"

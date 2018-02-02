@@ -10,14 +10,12 @@ class DeadStoreRemover(
         private val deadStores: Set<AstNode>
 ): AstTransformer()
 {
-    //private val removedDeclarations = mutableMapOf<String, DeclarationNode>()
 
     override fun visit(node: StatementNode): AstNode {
-        assert(node.children.size == 1)
-        val child = node.children[0]
-        return if (child in deadStores) {
+        return if (node.children.size == 1 && node.children[0] in deadStores) {
+            val child = node.children[0]
+            // leave declaration nodes so that the symbol is still created in the runtime
             if (child is DeclarationNode) {
-                //removedDeclarations[child.lhs] = child
                 node.children[0] = DeclarationNode(child.storage, child.lhs, EmptyNode, child.sourceInfo)
                 node
             } else {
@@ -59,6 +57,8 @@ class DeadStoreResolver: AstWalker<Unit>()
         wrapInScope {
             node.statements.forEach { visit(it) }
         }
+        deadStores.addAll(tempStores.peek().values)
+        tempStores.peek().clear()
     }
 
     override fun visit(node: ForStatementNode) {
@@ -136,8 +136,9 @@ class DeadStoreResolver: AstWalker<Unit>()
     private inline fun wrapInScope(body: () -> Unit) {
         tempStores.push(mutableMapOf())
         body()
-        val stores = tempStores.pop()
-        stores.forEach { deadStores.add(it.value) }
+
+        tempStores.pop().filter { it.key !in tempStores.peek() }
+                .forEach { tempStores.peek()[it.key] = it.value }
     }
 
     private fun recordSymbolWrite(node: AstNode, name: String) {

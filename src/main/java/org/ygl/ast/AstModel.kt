@@ -11,9 +11,8 @@ open class AstNode(
         var sourceInfo: SourceInfo? = null
 ) {
     override fun toString() = "(Node)"
-    //open fun getValue(): Any = Unit
     open val value: Any = Unit
-    open val intValue = 0
+    open val intValue: Int get() = throw Exception("not a constant node")
     open val isConstant = false
 }
 

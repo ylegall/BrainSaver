@@ -7,13 +7,13 @@ import org.ygl.model.IntType
 import org.ygl.model.StorageType
 import org.ygl.model.Type
 import org.ygl.util.orElse
+import java.lang.Math.max
 import java.util.*
 
 /**
  *
  */
 class Scope(
-        val node: AstNode,
         private val startAddress: Int
 )
 {
@@ -38,27 +38,7 @@ class Scope(
         if (symbols.containsKey(name)) throw Exception("duplicate symbol: $name")
 
         // check for freed slots
-        var address: Int? = null
-        if (freeSlots.isNotEmpty()) {
-            val slot = freeSlots.find { it.size >= size }
-            if (slot != null) {
-                freeSlots.remove(slot)
-                address = slot.address
-                if (slot.size > size) {
-                    freeSlots.addFirst(Symbol.new(
-                            slot.name,
-                            slot.storage,
-                            slot.size - size,
-                            slot.type,
-                            slot.address + size
-                    ))
-                }
-                if (address + size >= headPointer) {
-                    headPointer = address + size
-                }
-            }
-        }
-
+        var address = checkFreeSlots(size)
         if (address == null) {
             address = headPointer
             headPointer += size
@@ -67,6 +47,28 @@ class Scope(
         val symbol = Symbol.new(name, storageType, size, type, address)
         symbols[name] = symbol
         return symbol
+    }
+
+    private fun checkFreeSlots(size: Int = 1): Int? {
+        return if (freeSlots.isNotEmpty()) {
+            freeSlots.find { it.size >= size }
+                ?.let { slot ->
+                    freeSlots.remove(slot)
+                    if (slot.size > size) {
+                        freeSlots.add(Symbol.new(
+                                slot.name,
+                                slot.storage,
+                                slot.size - size,
+                                slot.type,
+                                slot.address + size
+                        ))
+                    }
+                    headPointer = max(headPointer, slot.address + size)
+                    slot
+                }?.address
+        } else {
+            null
+        }
     }
 
     fun delete(symbol: Symbol) {
@@ -94,12 +96,12 @@ class Scope(
     }
 
     fun createTempSymbol(size: Int = 1, type: Type = IntType): Symbol {
-        val address = headPointer
         val name = "\$t$tempCounter"
         tempCounter++
+        val address = checkFreeSlots(size) ?: headPointer.also { headPointer += size }
         val symbol = Symbol.temp(name, StorageType.VAR, size, type, address)
-        headPointer += symbol.size
         tempSymbols[name] = symbol
         return symbol
     }
+
 }

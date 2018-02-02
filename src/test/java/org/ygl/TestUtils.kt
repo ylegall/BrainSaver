@@ -14,7 +14,7 @@ fun compile(input: String): String {
     val outputStream = ByteArrayOutputStream()
     val options = CompilerOptions(minify = true)
     outputStream.use { output ->
-        compile(input, output, options = options)
+        compile(input, output, options)
     }
     return outputStream.toString()
 }
@@ -48,26 +48,6 @@ fun getInterpreter(
     return Interpreter(str = compiled, options = options)
 }
 
-class TestContext(wrapping: Boolean = false, globals: HashMap<String, Symbol> = HashMap())
-{
-    private val output: ByteArrayOutputStream = ByteArrayOutputStream()
-    val cg: CodeGen = buildCodegen(wrapping, globals)
-
-    private fun buildCodegen(wrapping: Boolean, globals: HashMap<String, Symbol>): CodeGen {
-        val options = CompilerOptions(minify = true, wrapping = wrapping)
-        val cg = CodeGen(output, options, globals)
-        cg.enterScope("main")
-        return cg
-    }
-
-    fun eval(options: InterpreterOptions = DEFAULT_INTERPRETER_OPTIONS): Interpreter {
-        cg.close()
-        output.flush()
-        output.close()
-        val str = output.toString()
-        val interpreter = Interpreter(str, output, options)
-        interpreter.eval()
-        return interpreter
-    }
-
+fun testContext(wrapping: Boolean = false): SystemContext {
+    return SystemContext(ByteArrayOutputStream(), CompilerOptions(wrapping = wrapping, minify = true))
 }

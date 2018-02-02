@@ -14,12 +14,12 @@ class Runtime
 {
     private val scopes = ArrayDeque<Scope>()
 
-    fun enterScope(node: AstNode) {
+    fun enterScope() {
         if (scopes.isEmpty()) {
-            scopes.push(Scope(node, 0))
+            scopes.push(Scope(0))
         } else {
             val top = scopes.peek()
-            scopes.push(Scope(node, top.headPointer))
+            scopes.push(Scope(top.headPointer))
         }
     }
 

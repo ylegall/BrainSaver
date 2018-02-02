@@ -23,14 +23,14 @@ class LastUseResolver : AstWalker<Set<String>>()
     }
 
     override fun visit(node: FunctionNode): Set<String> {
-        scopeContext.enterScope(node)
+        scopeContext.enterScope()
         val result = visitChildren(node)
         scopeContext.exitScope()
         return result
     }
 
     override fun visit(node: StatementNode): Set<String> {
-        return recordSymbolsUsed(node, visit(node.children))
+        return recordSymbolsUsed(node, visitChildren(node))
     }
 
     override fun visit(node: ForStatementNode): Set<String> {
@@ -46,7 +46,7 @@ class LastUseResolver : AstWalker<Set<String>>()
     }
 
     private fun recordScopeSymbols(node: AstNode): Set<String> {
-        scopeContext.enterScope(node)
+        scopeContext.enterScope()
         val result = visit(node.children)
         scopeContext.exitScope()
         return result
