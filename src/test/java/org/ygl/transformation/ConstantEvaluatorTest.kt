@@ -16,7 +16,9 @@ internal class ConstantEvaluatorTest {
         val program = """ fn main() { print(""); }"""
         val ast = parse(program)
         val constants = resolver.resolveConstants(ast)
-        assertTrue(constants.isEmpty())
+        assertEquals(2, constants.size)
+        assertEquals(AtomIntNode(1), constants["true"])
+        assertEquals(AtomIntNode(0), constants["false"])
     }
 
     @Test
@@ -24,7 +26,6 @@ internal class ConstantEvaluatorTest {
         val program = """ val x = 5; var y = 3; fn main() { }"""
         val ast = parse(program)
         val constants = resolver.resolveConstants(ast)
-        assertEquals(1, constants.size)
         val node = constants["x"] as AtomIntNode
         assertEquals(5, node.value)
     }
@@ -34,7 +35,7 @@ internal class ConstantEvaluatorTest {
         val program = """ val x = 5; val y = 4; fn main() { }"""
         val ast = parse(program)
         val constants = resolver.resolveConstants(ast)
-        assertEquals(2, constants.size)
+        assertEquals(4, constants.size)
         val x = constants["x"] as AtomIntNode
         assertEquals(5, x.value)
         val y = constants["y"] as AtomIntNode
@@ -52,7 +53,7 @@ internal class ConstantEvaluatorTest {
 
         val ast = parse(program)
         val constants = resolver.resolveConstants(ast)
-        assertEquals(3, constants.size)
+        assertEquals(5, constants.size)
         val x = constants["x"] as AtomIntNode
         assertEquals(2, x.value)
         val y = constants["y"] as AtomIntNode

@@ -15,8 +15,7 @@ internal class TestGlobals {
             fn main() {
                 val x = g + $a;
                 print(x);
-            }
-        """
+            }"""
             val result = compileAndEval(program)
             Assertions.assertEquals(expected.toString(), result.trim())
         }
@@ -59,7 +58,6 @@ internal class TestGlobals {
             val result = compileAndEval(program)
             Assertions.assertEquals(expected.toString(), result.trim())
         }
-
         test(5)
     }
 }

@@ -39,6 +39,11 @@ class MinifyingOutputStream(
         }
     }
 
+    override fun toString(): String {
+        flush()
+        return output.toString()
+    }
+
     override fun flush() {
         if (bi > 0) output.write(buffer.sliceArray(0 until bi))
         bi = 0

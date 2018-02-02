@@ -78,14 +78,14 @@ internal class TestLoops
     @Test
     fun testRuntimeFor() {
         testRuntimeFor("1", "4", expected="1234")
-        testRuntimeFor("0", "4", "2", expected="024")
+        testRuntimeFor("0", "4", "by 2", expected="024")
         testRuntimeFor("3", "2", expected="")
     }
 
     fun testRuntimeFor(start: String, stop: String, step: String = "", expected: String) {
         val program = """
             fn main() {
-                for (i in $start .. $stop by $step) {
+                for (i in $start .. $stop $step) {
                     print(i);
                 }
             }

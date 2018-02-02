@@ -81,7 +81,8 @@ internal class TestMath {
                 "%" -> cg.math.mod(x, y)
                 else -> throw Exception("unsupported op $op")
             }
-            val interpreter = Interpreter(str = output.toString(), options = InterpreterOptions(wrap = wrapping))
+            val str = output.toString()
+            val interpreter = Interpreter(str, options = InterpreterOptions(wrap = wrapping))
             interpreter.eval()
             assertEquals(expected, interpreter.getCellValue(r.address))
         }

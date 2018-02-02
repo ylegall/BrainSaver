@@ -119,6 +119,9 @@ IN      : 'in';
 BY      : 'by';
 VAR     : 'var';
 VAL     : 'val';
+TRUE    : 'true';
+FALSE   : 'false';
+
 
 // lexer rules
 

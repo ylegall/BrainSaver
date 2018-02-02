@@ -20,6 +20,7 @@ class ConstantResolver: AstWalker<Unit>() {
 
     fun resolveConstants(root: AstNode): Map<String, AstNode> {
         assert(root is ProgramNode)
+        val initialConstants = constants.size
         val constantNodes = root.children.filterIsInstance<ConstantNode>()
 
         if (constantNodes.isNotEmpty()) {
@@ -32,7 +33,7 @@ class ConstantResolver: AstWalker<Unit>() {
                         constants[node.lhs] = result
                     }
                 }
-                val remaining = constantNodes.size - constants.size
+                val remaining = constantNodes.size - (constants.size - initialConstants)
                 if (!madeProgress && (remaining > 0)) {
                     throw CompileException("cannot evaluate ${constantNodes[0].lhs} at compile time")
                 }
