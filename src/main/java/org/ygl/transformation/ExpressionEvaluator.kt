@@ -5,7 +5,6 @@ import org.ygl.ast.*
 import org.ygl.model.Op
 
 /**
- * TODO: static function evaluation
  * TODO: strength reductions
  */
 class ExpressionEvaluator : AstWalker<AstNode>()
@@ -107,6 +106,9 @@ class ExpressionEvaluator : AstWalker<AstNode>()
             else -> throw CompileException("unsupported operator: $op")
         }
     }
+
+    // TODO: constant function evaluation
+    override fun visit(node: CallExpNode) = EmptyNode
 
     override fun visit(node: AtomIdNode): AstNode {
         return symbols.getOrDefault(node.identifier, EmptyNode)

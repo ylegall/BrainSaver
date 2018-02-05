@@ -46,9 +46,12 @@ class FunctionNode(
         val name: String,
         val params: List<String>,
         val statements: MutableList<AstNode>,
-        val ret: AstNode? = null
+        val ret: ReturnNode? = null
 ) : AstNode(
-        statements.apply { ret?.let { add(it) } }
+        mutableListOf<AstNode>().apply {
+            addAll(statements)
+            ret?.let { add(it) }
+        }
 )
 {
     override fun toString() = "fn $name()"
@@ -65,7 +68,7 @@ open class StatementNode(
 class ReturnNode(
         val exp: AstNode
 ) : StatementNode(mutableListOf(exp)) {
-    override fun toString() = "ret"
+    override fun toString() = "return"
 }
 
 class IfStatementNode(

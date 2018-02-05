@@ -30,10 +30,7 @@ class AstBuilder: BrainSaverBaseVisitor<AstNode>()
         val name = ctx!!.name.text
         val params = ctx.params?.mapNotNull { it.text } ?: listOf()
         val stmts = toNodeList(ctx.body.statement())
-        var ret: AstNode? = null
-        if (ctx.body.ret != null) {
-            ret = visit(ctx.body.ret)
-        }
+        val ret = ctx.body.ret?.let { ReturnNode(visit(it)) }
         return FunctionNode(name, params, stmts, ret)
     }
 

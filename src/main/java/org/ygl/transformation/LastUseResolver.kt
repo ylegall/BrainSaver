@@ -33,6 +33,10 @@ class LastUseResolver : AstWalker<Set<String>>()
         return recordSymbolsUsed(node, visitChildren(node))
     }
 
+    override fun visit(node: ReturnNode): Set<String> {
+        return recordSymbolsUsed(node, visitChildren(node))
+    }
+
     override fun visit(node: ForStatementNode): Set<String> {
         return recordScopeSymbols(node)
     }

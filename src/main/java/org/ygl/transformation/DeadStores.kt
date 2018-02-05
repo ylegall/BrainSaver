@@ -35,6 +35,7 @@ class DeadStoreResolver: AstWalker<Unit>()
 {
     private val deadStores = mutableSetOf<AstNode>()
     private val tempStores = ArrayDeque<MutableMap<String, AstNode>>()
+    private val globals = mutableSetOf<String>()
 
     fun getDeadStores(ast: AstNode): Set<AstNode> {
         visit(ast)
@@ -45,7 +46,10 @@ class DeadStoreResolver: AstWalker<Unit>()
         tempStores.push(mutableMapOf())
 
         node.children.filterIsInstance<GlobalVariableNode>()
-                .forEach { visit(it) }
+                .forEach {
+                    globals.add(it.lhs)
+                    visit(it)
+                }
 
         node.children.filterIsInstance<FunctionNode>()
                 .forEach { visit(it) }
@@ -56,6 +60,7 @@ class DeadStoreResolver: AstWalker<Unit>()
     override fun visit(node: FunctionNode) {
         wrapInScope {
             node.statements.forEach { visit(it) }
+            node.ret?.let { visit(it) }
         }
         deadStores.addAll(tempStores.peek().values)
         tempStores.peek().clear()
@@ -138,6 +143,7 @@ class DeadStoreResolver: AstWalker<Unit>()
         body()
 
         tempStores.pop().filter { it.key !in tempStores.peek() }
+                .filter { it.key !in globals }
                 .forEach { tempStores.peek()[it.key] = it.value }
     }
 

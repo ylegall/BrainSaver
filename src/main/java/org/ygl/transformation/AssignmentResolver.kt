@@ -38,7 +38,7 @@ class AssignmentResolver(
     fun resolveAssignments(node: FunctionNode): Map<AstNode, Map<String, AstNode>> {
         reset()
         enterScope()
-        visit(node.statements)
+        node.children.forEach { visit(it) }
         scopes.pop()
         return envMap
     }
@@ -113,6 +113,10 @@ class AssignmentResolver(
         if (!condition.isConstant || (condition is AtomIntNode && condition.value != 0)) {
             visitLoop(node, node.statements)
         }
+    }
+
+    override fun visit(node: ReturnNode) {
+        return visit(node as StatementNode)
     }
 
     override fun visit(node: StatementNode) {

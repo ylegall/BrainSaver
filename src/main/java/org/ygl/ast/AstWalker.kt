@@ -14,10 +14,10 @@ abstract class AstWalker<T>
                     else -> visit(node)
                 }
                 is CallStatementNode -> visit(node)
-                //is DebugStatementNode -> visit(node)
                 is ForStatementNode -> visit(node)
                 is IfStatementNode -> visit(node)
                 is WhileStatementNode -> visit(node)
+                is ReturnNode -> visit(node)
                 else -> visit(node)
             }
             is AtomNode -> when(node) {
@@ -63,6 +63,7 @@ abstract class AstWalker<T>
     open fun visit(node: ProgramNode): T = visitChildren(node)
     open fun visit(node: StatementNode): T = visitChildren(node)
     open fun visit(node: NotExpNode): T = visitChildren(node)
+    open fun visit(node: ReturnNode): T = visitChildren(node)
     open fun visit(node: WhileStatementNode): T = visitChildren(node)
 
     open fun visitChildren(node: AstNode): T {

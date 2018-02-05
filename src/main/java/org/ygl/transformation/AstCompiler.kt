@@ -30,7 +30,6 @@ class AstCompiler(
     override fun visit(node: ProgramNode): Symbol {
         // register functions:
         node.children.filterIsInstance<FunctionNode>()
-                .also {  }
                 .forEach {
                     if (it.name in functions) {
                         throw CompileException("function ${it.name} redefined")
@@ -113,7 +112,7 @@ class AstCompiler(
 
             // create new scope and copy expression args into function param variables
             for (i in 0 until params.size) {
-                val param = runtime.createSymbol(params[i], StorageType.VAL, args[i].value)
+                val param = runtime.createSymbol(params[i], StorageType.VAL, args[i].type)
                 when {
                     args[i].isConstant -> assignConstant(param, args[i].value)
                     else -> assignVariable(param, args[i])
@@ -146,7 +145,8 @@ class AstCompiler(
     override fun visit(node: DeclarationNode): Symbol {
         val rhs = visit(node.rhs)
         if (rhs == NullSymbol) {
-            runtime.createSymbol(node.lhs, node.storage, rhs.type, rhs.size)
+            // TODO: will have to update the size/type upon re-assignment
+            runtime.createSymbol(node.lhs, node.storage)
             return NullSymbol
         }
         return assignNew(node.lhs, rhs)
@@ -183,6 +183,13 @@ class AstCompiler(
         }
     }
 
+    private fun assignSafe(lhs: Symbol, rhs: Symbol): Symbol {
+        return when {
+            rhs.isConstant -> assignConstant(lhs, rhs.value)
+            else -> assignVariable(lhs, rhs)
+        }
+    }
+
     private fun assignVariable(lhs: Symbol, rhs: Symbol): Symbol {
         return when (rhs.type) {
             IntType -> cg.copyInt(lhs, rhs)
@@ -211,7 +218,8 @@ class AstCompiler(
 
     private fun doIf(condition: Symbol, node: IfStatementNode) {
         with (cg) {
-            val cpy = assignNew("&${condition.name}", condition)
+            val cpy = runtime.createSymbol("&${condition.name}")
+            assignSafe(cpy, condition)
 
             cf.startIf(cpy)
             node.trueStatements.forEach { visit(it) }
@@ -223,7 +231,8 @@ class AstCompiler(
 
     private fun doIfElse(condition: Symbol, node: IfStatementNode) {
         with (cg) {
-            val cpy = assignNew("&${condition.name}", condition)
+            val cpy = runtime.createSymbol("&${condition.name}")
+            assignSafe(cpy, condition)
 
             val elseFlag = runtime.createSymbol("&${cpy.name}_else")
             load(elseFlag, 1)
@@ -306,8 +315,20 @@ class AstCompiler(
     }
 
     override fun visit(node: BinaryExpNode): Symbol {
-        val left = visit(node.left)
-        val right = visit(node.right)
+        var left = visit(node.left)
+        var right = visit(node.right)
+
+        // TODO: stregnth reduce to inc()/dec() for add/sub with 1 constant operand
+
+        if (!left.hasAddress) {
+            val temp = runtime.createTempSymbol(left.size, left.type)
+            left = assign(temp, left)
+        }
+
+        if (!right.hasAddress) {
+            val temp = runtime.createTempSymbol(right.size, right.type)
+            right = assign(temp, right)
+        }
 
         with (cg) {
             return when (node.op) {

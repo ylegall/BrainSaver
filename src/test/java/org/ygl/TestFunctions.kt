@@ -9,16 +9,16 @@ internal class TestFunctions
 
     @Test
     fun testDuplicateFunction() {
-        val program = """
-            fn foo() { print("foo1"); }
-            fn foo() { print("foo2"); }
-
-            fn main() {
-                foo();
-                print(" bar");
-            }
-        """
         Assertions.assertThrows(CompileException::class.java) {
+            val program = """
+                fn foo() { print("foo1"); }
+                fn foo() { print("foo2"); }
+
+                fn main() {
+                    foo();
+                    print(" bar");
+                }
+            """
             val result = compileAndEval(program)
             assertEquals("foo bar", result.trim())
         }
@@ -44,17 +44,17 @@ internal class TestFunctions
     fun testComplexCall() {
         val program = """
             fn bar(z) {
-                readInt(x);
+                val x = readInt();
                 return x + z;
             }
 
             fn foo() {
-                x = 3 + bar(2);
+                val x = 3 + bar(2);
                 return x;
             }
 
             fn main() {
-                x = foo() + bar(5);
+                val x = foo() + bar(5);
                 print(x);
             }
         """
@@ -70,12 +70,12 @@ internal class TestFunctions
             }
 
             fn foo() {
-                x = bar();
+                val x = bar();
                 return x;
             }
 
             fn main() {
-                x = foo();
+                val x = foo();
                 print(x);
             }
         """
@@ -91,7 +91,7 @@ internal class TestFunctions
             }
 
             fn main() {
-                x = foo(3, 4);
+                val x = foo(3, 4);
                 print(x);
             }
         """
@@ -107,7 +107,7 @@ internal class TestFunctions
             }
 
             fn main() {
-                x = 3 + foo();
+                val x = 3 + foo();
                 print(x);
             }
         """
@@ -119,7 +119,7 @@ internal class TestFunctions
     fun testLoopParams() {
         val program = """
             fn isEven(x) {
-                ret = 0;
+                var ret = 0;
                 if ((x % 2) == 0) {
                     ret = 1;
                 } else {
@@ -129,7 +129,7 @@ internal class TestFunctions
             }
 
             fn main() {
-                i = 1;
+                var i = 1;
                 while (i <= 6) {
                     if (isEven(i)) {
                         print(i);

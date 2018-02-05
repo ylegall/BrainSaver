@@ -61,7 +61,7 @@ open class AstTransformer: AstWalker<AstNode>() {
         return FunctionNode(node.name,
                 node.params,
                 visitList(node.statements),
-                node.ret?.let { visit(it) }
+                node.ret?.let { ReturnNode(visit(it)) }
         )
     }
 

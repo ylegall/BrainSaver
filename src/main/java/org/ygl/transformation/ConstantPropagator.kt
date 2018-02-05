@@ -40,10 +40,21 @@ class ConstantPropagator: AstTransformer()
 
     override fun visit(node: FunctionNode): AstNode {
         env = assignmentResolver.resolveAssignments(node)
+        //for ((key, value) in env) {
+        //    println("${key.children}:\t\t$value")
+        //}
         val newStatements = visitList(node.statements)
-        node.statements.clear()
-        node.statements.addAll(newStatements)
-        return node
+        val newRet = node.ret?.let{ ReturnNode(visit(it)) }
+        return FunctionNode(node.name, node.params, newStatements, newRet)
+    }
+
+    override fun visit(node: ReturnNode): AstNode {
+        constantSymbols = env[node] ?: emptyMap()
+        val result = visit(node.children[0])
+        return when (result) {
+            EmptyNode -> EmptyNode
+            else -> ReturnNode(result)
+        }
     }
 
     override fun visit(node: StatementNode): AstNode {

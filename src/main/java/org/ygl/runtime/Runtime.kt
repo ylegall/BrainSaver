@@ -23,11 +23,8 @@ class Runtime
         }
     }
 
-    fun currentScope() = scopes.peek()
-
-    fun exitScope() {
-        scopes.pop()
-    }
+    fun currentScope(): Scope = scopes.peek()
+    fun exitScope(): Scope = scopes.pop()
 
     fun createSymbol(
             name: String,
@@ -38,16 +35,6 @@ class Runtime
         if (scopes.isEmpty()) throw Exception("addSymbol(): no current scope")
 
         return scopes.peek().createSymbol(name, storageType, size, type)
-    }
-
-    fun <T: Any> createSymbol(
-            name: String,
-            storageType: StorageType = StorageType.VAL,
-            value: T
-    ): Symbol {
-        if (scopes.isEmpty()) throw Exception("addSymbol(): no current scope")
-
-        return scopes.peek().createSymbol(name, storageType, getSize(value), getType(value))
     }
 
     fun createTempSymbol(
@@ -72,7 +59,7 @@ class Runtime
         }
         val newSymbol = Symbol.new(newName, symbol.storage, symbol.size, symbol.type, symbol.address)
         currentScope().symbols[newName] = newSymbol
-        return symbol
+        return newSymbol
     }
 
     fun delete(symbol: Symbol) {

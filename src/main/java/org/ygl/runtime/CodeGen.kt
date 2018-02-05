@@ -51,11 +51,9 @@ class CodeGen(
     }
 
     fun copyInt(lhs: Symbol, rhs: Symbol): Symbol {
-        commentLine("assign $rhs to $lhs")
+        if (lhs.address == rhs.address) return lhs
 
-        if (rhs.isConstant) {
-            return load(lhs, rhs.value)
-        }
+        commentLine("assign $rhs to $lhs")
 
         val tmp = runtime.createTempSymbol()
         zero(lhs)
@@ -126,6 +124,7 @@ class CodeGen(
     }
 
     fun moveTo(symbol: Symbol, comment: String = "") {
+        assert(symbol.hasAddress)
         return moveToAddress(symbol.address, comment)
     }
 

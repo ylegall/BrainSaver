@@ -41,6 +41,7 @@ class Scope(
         var address = checkFreeSlots(size)
         if (address == null) {
             address = headPointer
+            assert(size > 0)
             headPointer += size
         }
 
@@ -98,6 +99,7 @@ class Scope(
     fun createTempSymbol(size: Int = 1, type: Type = IntType): Symbol {
         val name = "\$t$tempCounter"
         tempCounter++
+        assert(size > 0)
         val address = checkFreeSlots(size) ?: headPointer.also { headPointer += size }
         val symbol = Symbol.temp(name, StorageType.VAR, size, type, address)
         tempSymbols[name] = symbol

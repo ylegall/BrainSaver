@@ -38,9 +38,10 @@ class ConstantEvaluator(
     override fun visit(node: FunctionNode): AstNode {
         scopeSymbols.push(mutableSetOf())
         node.params.forEach { scopeSymbols.peek().add(it) }
-        val newStatements = MutableList(node.statements.size, { i -> visit(node.statements[i]) })
+        val newStatements = visitList(node.statements)
+        val newReturn = node.ret?.let{ ReturnNode(visit(it)) }
         scopeSymbols.pop()
-        return FunctionNode(node.name, node.params, newStatements)
+        return FunctionNode(node.name, node.params, newStatements, newReturn)
     }
 
     // shadowing not allowed

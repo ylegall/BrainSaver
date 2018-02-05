@@ -42,6 +42,7 @@ class SemanticValidator(
         }
         functions.add(node.name)
         context.push(mutableMapOf())
+        node.params.forEach { addSymbol(it, DeclarationNode(StorageType.VAL, it, EmptyNode)) }
         node.statements.forEach { visit(it) }
         context.pop()
     }
@@ -50,14 +51,13 @@ class SemanticValidator(
     override fun visit(node: GlobalVariableNode) = addSymbol(node.lhs, node)
     override fun visit(node: ArrayConstructorNode) = addSymbol(node.array, node)
     override fun visit(node: ArrayLiteralNode) = addSymbol(node.array, node)
-
     override fun visit(node: ArrayWriteNode) = validateWrite(node.array, node)
     override fun visit(node: AssignmentNode) = validateWrite(node.lhs, node)
 
     private fun validateWrite(name: String, node: AstNode) {
         val symbol = resolveSymbol(name)
         when (symbol) {
-            is EmptyNode -> errors.add(CompileException("undefined identifier $name", node))
+            EmptyNode -> errors.add(CompileException("undefined identifier $name", node))
             is DeclarationNode -> if (symbol.storage == StorageType.VAL) {
                 errors.add(CompileException("val $name cannot be reassigned", node))
             }
@@ -102,7 +102,7 @@ class SemanticValidator(
         if (symbol != EmptyNode) {
             errors.add(CompileException("duplicate declaration: $name", node))
         }
-        context.peek().put(name, node)
+        context.peek()[name] = node
     }
 
     private fun resolveSymbol(name: String): AstNode {
