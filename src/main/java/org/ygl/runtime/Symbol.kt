@@ -40,15 +40,13 @@ open class Symbol private constructor(
     }
 
     fun offset(offset: Int): Symbol {
-        // TODO: arrays
         assert(address >= 0)
-        return Symbol(
-                "$name($offset)",
-                storage,
-                size,
-                type,
-                address.plus(offset)
-        )
+        return Symbol("$name($offset)", storage, 1, type, address + offset)
+    }
+
+    fun idx(offset: Int): Symbol {
+        assert(size >= 1 && address >= 0)
+        return Symbol("$name($offset)", storage, 1, type, address + offset + 4)
     }
 
     companion object {

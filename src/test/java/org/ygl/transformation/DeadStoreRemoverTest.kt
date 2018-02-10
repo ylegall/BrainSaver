@@ -23,7 +23,6 @@ internal class DeadStoreRemoverTest
 
         val ast = test(program)
         val main = ast.children[0]
-        AstPrinter().print(ast)
         assertEquals(4, main.children.size)
         assertTrue(main.children[3].children[0] is CallStatementNode)
     }

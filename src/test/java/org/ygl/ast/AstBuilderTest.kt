@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.ygl.parse
+import kotlin.test.assertNull
 
 internal class AstBuilderTest {
 
@@ -34,7 +35,19 @@ internal class AstBuilderTest {
         assertEquals("foo", function.name)
         assertEquals(listOf("x", "y"), function.params)
         assertTrue(function.statements[0].children[0] is DeclarationNode)
-        assertTrue(function.statements[1] is ReturnNode)
+        assertTrue(function.ret is ReturnNode)
+        assertTrue(function.ret?.rhs is AtomIdNode)
     }
 
+    @Test
+    fun testVoidFunction() {
+        val program = """fn bar() { z = 0; }"""
+        val ast = parse(program)
+        assertTrue(ast.children[0] is FunctionNode)
+        val function = ast.children[0] as FunctionNode
+        assertEquals("bar", function.name)
+        assertEquals(emptyList<String>(), function.params)
+        assertTrue(function.statements[0].children[0] is AssignmentNode)
+        assertNull(function.ret)
+    }
 }

@@ -32,7 +32,7 @@ class ConstantPropagator: AstTransformer()
 
     override fun visit(node: GlobalVariableNode): AstNode {
         val rhs = evaluator.evaluate(node.rhs, globals)
-        if (rhs.isConstant) {
+        if (rhs.isConstant()) {
             globals[node.lhs] = rhs
         }
         return GlobalVariableNode(node.lhs, rhs, node.sourceInfo)
@@ -67,17 +67,17 @@ class ConstantPropagator: AstTransformer()
     }
 
     override fun visit(node: ForStatementNode): AstNode {
-        val start = eval(node.start)
-        val stop = eval(node.stop)
-        val inc = eval(node.inc)
+        val start = eval(node.start) as AtomIntNode
+        val stop = eval(node.stop) as AtomIntNode
+        val inc = eval(node.inc) as AtomIntNode
         val statements = visitList(node.statements)
 
         // unroll loop
-        if (start.isConstant && stop.isConstant && inc.isConstant) {
+        if (start.isConstant() && stop.isConstant() && inc.isConstant()) {
             val result = StatementNode()
-            var i = start.intValue
-            val j = stop.intValue
-            val k = inc.intValue
+            var i = start.value
+            val j = stop.value
+            val k = inc.value
             if (i <= j) result.children.add(DeclarationNode(StorageType.VAR, node.counter, AtomIntNode(0)))
             while (i <= j) {
                 result.children.add(AssignmentNode(node.counter, AtomIntNode(i)))
@@ -91,9 +91,10 @@ class ConstantPropagator: AstTransformer()
 
     override fun visit(node: IfStatementNode): AstNode {
         val condition = eval(node.condition)
-        val result = if (condition.isConstant) {
+        val result = if (condition.isConstant()) {
 
-            val children = if (condition.intValue == 0) {
+            val cond = condition as AtomIntNode
+            val children = if (cond.value == 0) {
                 visitList(node.falseStatements)
             } else {
                 visitList(node.trueStatements)
@@ -107,8 +108,9 @@ class ConstantPropagator: AstTransformer()
         } else {
             val trueStatements = visitList(node.trueStatements)
             val falseStatements = visitList(node.falseStatements)
-            if (condition is NotExpNode) {
-                IfStatementNode(condition.right as ExpNode, falseStatements, trueStatements)
+            if (condition.nodeType == NodeType.UNARY_EXP) {
+                val cond = condition as NotExpNode
+                IfStatementNode(cond.right, falseStatements, trueStatements)
             } else {
                 IfStatementNode(node.condition, trueStatements, falseStatements)
             }
@@ -122,13 +124,18 @@ class ConstantPropagator: AstTransformer()
 
         return when {
             statements.isEmpty() -> EmptyNode
-            condition.isConstant && condition.intValue == 0 -> EmptyNode
-            else -> WhileStatementNode(condition as ExpNode, statements)
+            else -> {
+                if (condition.isConstant() && (condition as AtomIntNode).value == 0) {
+                    EmptyNode
+                } else {
+                    WhileStatementNode(condition, statements)
+                }
+            }
         }
     }
 
     override fun visitChildren(node: AstNode): AstNode {
-        return if (node is ExpNode) {
+        return if (isExp(node)) {
             eval(node)
         } else {
             super.visitChildren(node)
@@ -138,5 +145,19 @@ class ConstantPropagator: AstTransformer()
     private fun eval(node: AstNode): AstNode {
         val result = evaluator.evaluate(node, constantSymbols)
         return if (result == EmptyNode) node else result
+    }
+
+    private fun isExp(node: AstNode): Boolean {
+        return when (node.nodeType) {
+            NodeType.ARRAY_READ_EXP -> true
+            NodeType.ATOM_ID -> true
+            NodeType.ATOM_INT -> true
+            NodeType.ATOM_STR -> true
+            NodeType.BINARY_EXP -> true
+            NodeType.CALL_EXP -> true
+            NodeType.IF_EXP -> true
+            NodeType.UNARY_EXP -> true
+            else -> false
+        }
     }
 }

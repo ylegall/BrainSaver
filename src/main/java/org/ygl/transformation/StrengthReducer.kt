@@ -7,9 +7,9 @@ import org.ygl.model.Op
 class StrengthReducer: AstTransformer()
 {
     override fun visit(node: BinaryExpNode): AstNode {
-        return if (node.left.isConstant && node.left is AtomIntNode) {
+        return if (node.left.isConstant() && node.left is AtomIntNode) {
             strengthReduce(node.op, node.left.value, node.right)
-        } else if (node.right.isConstant && node.right is AtomIntNode) {
+        } else if (node.right.isConstant() && node.right is AtomIntNode) {
             strengthReduce(node.op, node.left, node.right.value)
         } else if (node.right is AtomIdNode && node.left is AtomIdNode){
             if (node.right.identifier == node.left.identifier) {

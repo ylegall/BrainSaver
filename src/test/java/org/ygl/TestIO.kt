@@ -17,7 +17,7 @@ internal class TestIO
     private fun testPrint(a: Any, expected: String) {
         val program = """
             fn main() {
-                x = $a;
+                val x = $a;
                 print(x);
             }
         """
@@ -35,7 +35,7 @@ internal class TestIO
     private fun testRuntimePrint(a: Int, expected: String) {
         val program = """
             fn main() {
-                readInt(x);
+                val x = readInt();
                 print(x);
             }
         """

@@ -14,17 +14,15 @@ internal class TestOpAssignment
         test(4, "-=", 2, 2)
     }
 
-    private fun test(a: Int, op:String, b:Int, expected: Int) {
+    private fun test(userInput: Int, op:String, b:Int, expected: Int) {
         val program = """
             fn main() {
                 var x = readInt();
                 x $op $b;
-                debug(x);
+                print(x);
             }
         """
-        val options = InterpreterOptions(predefinedInput = a.toString())
-        val interpreter = getInterpreter(program, options)
-        interpreter.eval()
-        assertEquals(expected, interpreter.getCellValue(1))
+        val result = compileAndEval(program, userInput.toString())
+        assertEquals(expected.toString(), result)
     }
 }

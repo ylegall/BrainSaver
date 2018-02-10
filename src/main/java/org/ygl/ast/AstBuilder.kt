@@ -14,7 +14,7 @@ import org.ygl.util.unescape
 class AstBuilder: BrainSaverBaseVisitor<AstNode>()
 {
     override fun visitProgram(ctx: ProgramContext?): AstNode {
-        val children = visit(ctx!!.declList()).children
+        val children = visitChildren(ctx!!.declList()).children
         return ProgramNode(children)
     }
 
@@ -30,7 +30,7 @@ class AstBuilder: BrainSaverBaseVisitor<AstNode>()
         val name = ctx!!.name.text
         val params = ctx.params?.mapNotNull { it.text } ?: listOf()
         val stmts = toNodeList(ctx.body.statement())
-        val ret = ctx.body.ret?.let { ReturnNode(visit(it)) }
+        val ret = ctx.body.ret?.let { visit(it) as ReturnNode }
         return FunctionNode(name, params, stmts, ret)
     }
 
@@ -39,22 +39,22 @@ class AstBuilder: BrainSaverBaseVisitor<AstNode>()
     }
 
     override fun visitIfStatement(ctx: IfStatementContext?): AstNode {
-        val condition = visit(ctx!!.condition) as ExpNode
+        val condition = visit(ctx!!.condition)
         val trueStatements = toNodeList(ctx.trueStmts)
         val falseStatements = toNodeList(ctx.falseStmts)
         return IfStatementNode(condition, trueStatements, falseStatements)
     }
 
     override fun visitWhileStatement(ctx: WhileStatementContext?): AstNode {
-        val condition = visit(ctx!!.condition) as ExpNode
+        val condition = visit(ctx!!.condition)
         val stmts = toNodeList(ctx.body)
         return WhileStatementNode(condition, stmts)
     }
 
     override fun visitForStatement(ctx: ForStatementContext?): AstNode {
-        val start = visit(ctx!!.start) as AtomNode
-        val stop = visit(ctx.stop) as AtomNode
-        val inc = if (ctx.step != null) visit(ctx.step) as AtomNode else AtomIntNode(1)
+        val start = visit(ctx!!.start)
+        val stop = visit(ctx.stop)
+        val inc = if (ctx.step != null) visit(ctx.step) else AtomIntNode(1)
         val statements = toNodeList(ctx.body)
         return ForStatementNode(ctx.loopVar.text, start, stop, inc, statements)
     }
@@ -114,7 +114,7 @@ class AstBuilder: BrainSaverBaseVisitor<AstNode>()
         return ConditionExpNode(condition, trueExp, falseExp)
     }
 
-    override fun visitArrayReadExp(ctx: ArrayReadExpContext?): ExpNode {
+    override fun visitArrayReadExp(ctx: ArrayReadExpContext?): AstNode {
         val idx = visit(ctx!!.exp())
         return ArrayReadExpNode(ctx.array.text, idx)
     }
@@ -124,13 +124,13 @@ class AstBuilder: BrainSaverBaseVisitor<AstNode>()
         return CallExpNode(ctx.funcName.text, params)
     }
 
-    override fun visitOpExp(ctx: OpExpContext?): ExpNode {
+    override fun visitOpExp(ctx: OpExpContext?): AstNode {
         val op = ctx!!.op.text
         return BinaryExpNode(Op.parse(op), visit(ctx.left), visit(ctx.right))
     }
 
-    override fun visitNotExp(ctx: NotExpContext?): ExpNode {
-        return NotExpNode(visit(ctx!!.right) as ExpNode)
+    override fun visitNotExp(ctx: NotExpContext?): AstNode {
+        return NotExpNode(visit(ctx!!.right))
     }
 
     override fun visitAtomExp(ctx: AtomExpContext?): AstNode {
@@ -160,6 +160,6 @@ class AstBuilder: BrainSaverBaseVisitor<AstNode>()
             val childResult = c.accept<AstNode>(this)
             if (childResult != null) children.add(childResult)
         }
-        return AstNode(children = children)
+        return StatementNode(children = children)
     }
 }

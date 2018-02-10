@@ -127,7 +127,6 @@ class AstCompiler(
         // execute statements in function body:
         fnNode.statements.forEach { visit(it) }
 
-        // TODO
         var result: Symbol = NullSymbol
         if (fnNode.ret != null) {
             val ret = visit(fnNode.ret)
@@ -286,6 +285,84 @@ class AstCompiler(
         runtime.delete(counter)
         runtime.delete(condition)
         return NullSymbol
+    }
+
+    override fun visit(node: ArrayConstructorNode): Symbol {
+        return createArray(node.array, node.size, node.storage)
+    }
+
+    override fun visit(node: ArrayLiteralNode): Symbol {
+        val items = node.items.map { (it as AtomIntNode).value }
+        return createArray(node.array, node.items.size, node.storage, items)
+    }
+
+    // TODO: zero array entries if values not provided?
+    private fun createArray(
+            name: String,
+            size: Int,
+            storageType: StorageType,
+            values: Iterable<Int> = emptyList()
+    ): Symbol {
+        if (size < 1 || size >= 256) throw CompileException("array size must be between 0 and 256")
+        val array = runtime.createSymbol(name, storageType, size = size + 4)
+        values.forEachIndexed { idx, value -> cg.load(array.idx(idx), value) }
+        return array
+    }
+
+    override fun visit(node: ArrayWriteNode): Symbol {
+        val array = runtime.resolveSymbol(node.array) ?: throw CompileException("undefined identifier: ${node.array}")
+        val value = visit(node.rhs)
+        val idx = visit(node.idx)
+        writeArray(array, idx, value)
+        return value
+    }
+
+    override fun visit(node: ArrayReadExpNode): Symbol {
+        val array = runtime.resolveSymbol(node.array) ?: throw CompileException("undefined identifier: ${node.array}")
+        val idx = runtime.createTempSymbol()
+        assign(idx, visit(node.idx))
+        return readArray(array, idx)
+    }
+
+    private fun writeArray(array: Symbol, index: Symbol, value: Symbol) {
+        with (cg) {
+            commentLine("write array $array($index) = $value")
+
+            assignSafe(array.offset(2), index) // copy idx to readIdx
+            assignSafe(array.offset(1), index) // copy idx to writeIdx
+            assignSafe(array.offset(3), value) // copy value to dataIdx
+
+            moveTo(array)
+            newline()
+            emit(">[>>>[-<<<<+>>>>]<[->+<]<[->+<]<[->+<]>-]", "move read head to $index")
+            emit(">>>[-]<[->+<]<", "move $value to $index")
+            emit("[[-<+>]<<<[->>>>+<<<<]>>-]<<", "restore read head")
+
+            commentLine("end write array $array($index) = $value")
+        }
+    }
+
+    private fun readArray(array: Symbol, index: Symbol): Symbol {
+        with (cg) {
+            commentLine("read array $array($index)")
+            val ret = runtime.createTempSymbol()
+            val data = array.offset(3)
+
+            assignSafe(array.offset(2), index)     // copy idx to readIdx
+            assignSafe(array.offset(1), index)     // copy idx to writeIdx
+            zero(data)                          // zero dataIdx
+
+            moveTo(array)
+            newline()
+            emit(">[>>>[-<<<<+>>>>]<<[->+<]<[->+<]>-]", "move read head to $index")
+            emit(">>>[-<+<<+>>>]<<<[->>>+<<<]>", "")
+            emit("[[-<+>]>[-<+>]<<<<[->>>>+<<<<]>>-]<<", "restore read head")
+
+            move(ret, data)
+
+            commentLine("end read array $array($index)")
+            return ret
+        }
     }
 
     override fun visit(node: ConditionExpNode): Symbol {

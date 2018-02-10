@@ -1,68 +1,65 @@
 package org.ygl
 
-import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
-import java.util.*
+import kotlin.test.assertEquals
 
 internal class TestArrays
 {
     @Test
     fun testArrayInitializer() {
-
         fun test(a: Int, expected: Int) {
             val program = """
             fn main() {
-                x = [1,2,3,4];
-                print(x[$a]);
-            }
-        """
-            val result = compileAndEval(program)
-            Assertions.assertEquals(expected.toString(), result.trim())
+                val x = [1,2,3,4];
+                debug(x[$a]);
+            }"""
+            val interpreter = getInterpreter(program)
+            interpreter.eval()
+            assertEquals(expected, interpreter.getCellValue(a + 4))
         }
 
         test(0, 1)
         test(3, 4)
     }
 
+    // TODO: dead stores is removing 1st line
     @Test
     fun testConstantArrays() {
-
-        fun test(a: Int) {
-            val idx = Random().nextInt(5)
+        fun test(a: Int, idx: Int) {
             val program = """
             fn main() {
-                x = array(5);
+                val x = array(5);
                 x[$idx] = $a;
-                print(x[$idx]);
-            }
-            """
-            val result = compileAndEval(program)
-            Assertions.assertEquals(a.toString(), result.trim())
+                debug(x[$idx]);
+            }"""
+            val interpreter = getInterpreter(program)
+            interpreter.eval()
+            assertEquals(a, interpreter.getCellValue(idx + 4))
         }
 
-        test(0)
-        test(3)
+        test(3, 0)
+        test(3, 3)
     }
 
     @Test
     fun testRuntimeArrays() {
 
-        fun test(a: Int) {
-            val idx = Random().nextInt(5)
+        fun test(a: Int, idx: Int) {
             val program = """
             fn main() {
-                x = array(5);
-                readInt(y);
+                val x = array(5);
+                val y = readInt();
                 x[$idx] = y;
-                print(x[$idx]);
-            }
-        """
-            val result = compileAndEval(program, userInput = a.toString())
-            Assertions.assertEquals(a.toString(), result.trim())
+                debug(x[$idx]);
+            }"""
+            val interpreter = getInterpreter(program, InterpreterOptions(predefinedInput = a.toString()))
+            interpreter.eval()
+            assertEquals(a, interpreter.getCellValue(idx + 4))
         }
 
-        test(0)
-        test(6)
+        test(1, 0)
+        test(2, 2)
+        test(1, 4)
     }
 
 }

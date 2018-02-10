@@ -3,42 +3,31 @@ package org.ygl.ast
 abstract class AstWalker<T>
 {
     fun visit(node: AstNode): T {
-        return when(node) {
-            is StatementNode -> when(node) {
-                is ArrayConstructorNode -> visit(node)
-                is ArrayLiteralNode -> visit(node)
-                is ArrayWriteNode -> visit(node)
-                is StoreNode -> when(node) {
-                    is AssignmentNode -> visit(node)
-                    is DeclarationNode -> visit(node)
-                    else -> visit(node)
-                }
-                is CallStatementNode -> visit(node)
-                is ForStatementNode -> visit(node)
-                is IfStatementNode -> visit(node)
-                is WhileStatementNode -> visit(node)
-                is ReturnNode -> visit(node)
-                else -> visit(node)
-            }
-            is AtomNode -> when(node) {
-                is AtomIdNode -> visit(node)
-                is AtomIntNode -> visit(node)
-                is AtomStrNode -> visit(node)
-                else -> visitChildren(node)
-            }
-            is ExpNode -> when(node) {
-                is ArrayReadExpNode -> visit(node)
-                is BinaryExpNode -> visit(node)
-                is CallExpNode -> visit(node)
-                is ConditionExpNode -> visit(node)
-                is NotExpNode -> visit(node)
-                else -> visitChildren(node)
-            }
-            is ConstantNode -> visit(node)
-            is GlobalVariableNode -> visit(node)
-            is FunctionNode -> visit(node)
-            is ProgramNode -> visit(node)
-            else -> visitChildren(node)
+        return when (node.nodeType) {
+            NodeType.ARRAY_CTOR -> visit(node as ArrayConstructorNode)
+            NodeType.ARRAY_LITERAL -> visit(node as ArrayLiteralNode)
+            NodeType.ARRAY_READ_EXP -> visit(node as ArrayReadExpNode)
+            NodeType.ARRAY_WRITE -> visit(node as ArrayWriteNode)
+            NodeType.ASSIGN -> visit(node as AssignmentNode)
+            NodeType.ATOM_ID -> visit(node as AtomIdNode)
+            NodeType.ATOM_INT -> visit(node as AtomIntNode)
+            NodeType.ATOM_STR -> visit(node as AtomStrNode)
+            NodeType.BINARY_EXP -> visit(node as BinaryExpNode)
+            NodeType.CALL -> visit(node as CallStatementNode)
+            NodeType.CALL_EXP -> visit(node as CallExpNode)
+            NodeType.CONSTANT -> visit(node as ConstantNode)
+            NodeType.DECLARE -> visit(node as DeclarationNode)
+            NodeType.FOR -> visit(node as ForStatementNode)
+            NodeType.FUNCTION -> visit(node as FunctionNode)
+            NodeType.GLOBAL -> visit(node as GlobalVariableNode)
+            NodeType.IF -> visit(node as IfStatementNode)
+            NodeType.IF_EXP -> visit(node as ConditionExpNode)
+            NodeType.NONE -> defaultValue(node)
+            NodeType.PROGRAM -> visit(node as ProgramNode)
+            NodeType.RETURN -> visit(node as ReturnNode)
+            NodeType.STATEMENT -> visit(node as StatementNode)
+            NodeType.UNARY_EXP -> visit(node as NotExpNode)
+            NodeType.WHILE -> visit(node as WhileStatementNode)
         }
     }
 

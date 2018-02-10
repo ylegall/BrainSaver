@@ -28,7 +28,7 @@ class ConstantResolver: AstWalker<Unit>() {
                 var madeProgress = false
                 for (node in constantNodes) {
                     val result = expEvaluator.evaluate(node.rhs, constants)
-                    if (result.isConstant) {
+                    if (result.isConstant()) {
                         madeProgress = true
                         constants[node.lhs] = result
                     }

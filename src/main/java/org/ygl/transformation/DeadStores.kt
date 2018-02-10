@@ -99,15 +99,6 @@ class DeadStoreResolver: AstWalker<Unit>()
                 .forEach { recordSymbolWrite(EmptyNode, it) }
     }
 
-    override fun visit(node: ArrayConstructorNode) {
-        recordSymbolWrite(node, node.array)
-    }
-
-    override fun visit(node: ArrayLiteralNode) {
-        visit(node.items)
-        recordSymbolWrite(node, node.array)
-    }
-
     override fun visit(node: ArrayReadExpNode) {
         visit(node.idx)
         recordSymbolRead(node.array)

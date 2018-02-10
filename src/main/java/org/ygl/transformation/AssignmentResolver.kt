@@ -84,7 +84,7 @@ class AssignmentResolver(
 
     override fun visit(node: IfStatementNode) {
         val condition = evaluate(node.condition)
-        if (condition.isConstant) {
+        if (condition.isConstant()) {
             if (condition is AtomIntNode && condition.value != 0) {
                 visitList(node.trueStatements)
             } else {
@@ -110,7 +110,7 @@ class AssignmentResolver(
 
     override fun visit(node: WhileStatementNode) {
         val condition = evaluate(node.condition)
-        if (!condition.isConstant || (condition is AtomIntNode && condition.value != 0)) {
+        if (!condition.isConstant() || (condition is AtomIntNode && condition.value != 0)) {
             visitLoop(node, node.statements)
         }
     }

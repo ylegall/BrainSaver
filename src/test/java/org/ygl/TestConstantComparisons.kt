@@ -56,7 +56,7 @@ internal class TestConstantComparisons
     fun test(a: Int, b: Int, op: String, expected: Int) {
         val program = """
             fn main() {
-                x = $a $op $b;
+                val x = $a $op $b;
                 print(x);
             }
         """

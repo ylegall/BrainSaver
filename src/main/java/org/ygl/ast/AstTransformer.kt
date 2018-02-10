@@ -50,9 +50,9 @@ open class AstTransformer: AstWalker<AstNode>() {
 
     override fun visit(node: ForStatementNode): AstNode {
         return ForStatementNode(node.counter,
-                visit(node.start) as AtomNode,
-                visit(node.stop) as AtomNode,
-                visit(node.inc) as AtomNode,
+                visit(node.start),
+                visit(node.stop),
+                visit(node.inc),
                 visitList(node.statements)
         )
     }
@@ -70,7 +70,7 @@ open class AstTransformer: AstWalker<AstNode>() {
     }
 
     override fun visit(node: IfStatementNode): AstNode {
-        return IfStatementNode(visit(node.condition) as ExpNode,
+        return IfStatementNode(visit(node.condition),
                 visitList(node.trueStatements),
                 visitList(node.falseStatements)
         )
@@ -90,7 +90,7 @@ open class AstTransformer: AstWalker<AstNode>() {
 
     override fun visit(node: WhileStatementNode): AstNode {
         return WhileStatementNode(
-                visit(node.condition) as ExpNode,
+                visit(node.condition),
                 visitList(node.statements)
         )
     }
